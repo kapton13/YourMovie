@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useOptimistic, useRef, useState } from "react";
+import { useEffect, useMemo, useOptimistic, useRef, useState } from "react";
 import type { TagGroup } from "@/lib/anilist";
 import {
   COUNTRIES,
@@ -69,6 +69,11 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
   }
 
   const typingTimer = useRef<number | undefined>(undefined);
+  // Якщо людина пішла зі сторінки, не дописавши запит, — не повертати її назад.
+  useEffect(() => {
+    const timer = typingTimer;
+    return () => window.clearTimeout(timer.current);
+  }, []);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
