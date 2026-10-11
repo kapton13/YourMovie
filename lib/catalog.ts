@@ -1,56 +1,288 @@
-import type { CatalogQuery, MediaSort, Season } from "./anilist";
-import { SEASON_LABELS } from "./labels";
+/**
+ * Стан каталогу (пошук, фільтри, сортування, сторінка) і його запис в адресі сторінки.
+ * Файл використовується і на сервері, і в браузері, тому не імпортує нічого серверного.
+ *
+ * Приклад адреси:
+ * /catalog?q=titan&genres=action,drama&genres_not=romance&tags=Isekai&year=2010-2015
+ *        &season=fall&format=tv,movie&status=finished&episodes=13-26&score=7.5
+ *        &country=jp&source=manga&sort=score&page=2
+ */
+import type { MediaFormat, MediaStatus, Season } from "./anilist";
+import { GENRE_LABELS, SEASON_LABELS } from "./labels";
 
-/** Короткі назви для адреси сторінки, напр. /catalog?sort=popular&season=fall&year=2026 */
-const SORT_PARAMS: Record<string, MediaSort> = {
-  trending: "TRENDING_DESC",
-  popular: "POPULARITY_DESC",
-  score: "SCORE_DESC",
+export type SortKey = "relevance" | "popular" | "score" | "trending" | "newest" | "oldest";
+
+export type Range = { min?: number; max?: number };
+
+export type CatalogQuery = {
+  /** Текст пошуку за назвою. */
+  q: string;
+  /** Жанри (назви як в AniList: "Action", "Slice of Life"). */
+  genres: string[];
+  genresNot: string[];
+  /** Теги AniList ("Isekai", "Time Travel"). */
+  tags: string[];
+  tagsNot: string[];
+  yearFrom?: number;
+  yearTo?: number;
+  season?: Season;
+  formats: MediaFormat[];
+  statuses: MediaStatus[];
+  episodes?: Range;
+  /** Мінімальна оцінка за шкалою 1–10. */
+  minScore?: number;
+  /** Код країни AniList: "JP", "CN", "KR", "TW". */
+  country?: string;
+  /** Першоджерело AniList: "MANGA", "LIGHT_NOVEL"… */
+  source?: string;
+  sort: SortKey;
+  page: number;
 };
 
-const SEASON_PARAMS: Record<string, Season> = {
-  winter: "WINTER",
-  spring: "SPRING",
-  summer: "SUMMER",
-  fall: "FALL",
+export const MIN_YEAR = 1940;
+export const PAGE_SIZE = 48;
+const MAX_LIST = 15;
+
+// ---------------------------------------------------------------------------
+// Варіанти фільтрів і їхні короткі назви в адресі
+
+/** Жанри AniList без «Hentai» (сайт не показує дорослий контент). */
+export const GENRES = Object.keys(GENRE_LABELS).filter((g) => g !== "Hentai");
+
+export const FORMATS: MediaFormat[] = ["TV", "TV_SHORT", "MOVIE", "SPECIAL", "OVA", "ONA", "MUSIC"];
+
+export const STATUSES: MediaStatus[] = ["RELEASING", "FINISHED", "NOT_YET_RELEASED", "HIATUS", "CANCELLED"];
+
+export const SEASONS: Season[] = ["WINTER", "SPRING", "SUMMER", "FALL"];
+
+export const COUNTRIES = ["JP", "CN", "KR", "TW"];
+
+/** Лише ті першоджерела, які AniList приймає у фільтрі. */
+export const SOURCES = [
+  "MANGA",
+  "LIGHT_NOVEL",
+  "WEB_NOVEL",
+  "NOVEL",
+  "ORIGINAL",
+  "VISUAL_NOVEL",
+  "VIDEO_GAME",
+  "OTHER",
+];
+
+export const SORTS: SortKey[] = ["relevance", "popular", "score", "trending", "newest", "oldest"];
+
+export const EPISODE_PRESETS: { value: string; label: string }[] = [
+  { value: "1", label: "1 серія" },
+  { value: "2-12", label: "2–12" },
+  { value: "13-26", label: "13–26" },
+  { value: "27-52", label: "27–52" },
+  { value: "53-100", label: "53–100" },
+  { value: "101-", label: "Понад 100" },
+];
+
+export const SCORE_PRESETS = [5, 6, 7, 7.5, 8, 8.5, 9];
+
+const STATUS_SLUGS: Record<MediaStatus, string> = {
+  RELEASING: "releasing",
+  FINISHED: "finished",
+  NOT_YET_RELEASED: "upcoming",
+  HIATUS: "hiatus",
+  CANCELLED: "cancelled",
 };
 
-type SearchParams = Record<string, string | string[] | undefined>;
-
-function first(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
+/** "Slice of Life" → "slice-of-life", "LIGHT_NOVEL" → "light-novel". */
+function slugify(value: string): string {
+  return value.toLowerCase().replace(/[\s_]+/g, "-");
 }
 
-function toInt(value: string | undefined, min: number, max: number): number | undefined {
-  if (!value || !/^\d+$/.test(value)) return undefined;
+function slugMap<T extends string>(values: readonly T[], toSlug: (v: T) => string = slugify) {
+  const bySlug = new Map(values.map((v) => [toSlug(v), v]));
+  return { toSlug, fromSlug: (slug: string) => bySlug.get(slug.toLowerCase()) };
+}
+
+const genreSlugs = slugMap(GENRES);
+const formatSlugs = slugMap(FORMATS);
+const statusSlugs = slugMap(STATUSES, (s) => STATUS_SLUGS[s]);
+const seasonSlugs = slugMap(SEASONS);
+const countrySlugs = slugMap(COUNTRIES);
+const sourceSlugs = slugMap(SOURCES);
+
+// ---------------------------------------------------------------------------
+// Читання з адреси
+
+export type ParamsInput = URLSearchParams | Record<string, string | string[] | undefined>;
+
+function reader(params: ParamsInput) {
+  return (key: string): string | undefined => {
+    if (params instanceof URLSearchParams) return params.get(key) ?? undefined;
+    const value = params[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+}
+
+function parseList<T>(raw: string | undefined, fromSlug: (slug: string) => T | undefined): T[] {
+  if (!raw) return [];
+  const result: T[] = [];
+  for (const part of raw.split(",")) {
+    const value = fromSlug(part.trim());
+    if (value !== undefined && !result.includes(value)) result.push(value);
+    if (result.length >= MAX_LIST) break;
+  }
+  return result;
+}
+
+function parseTags(raw: string | undefined): string[] {
+  return parseList(raw, (tag) => (tag && tag.length <= 60 ? tag : undefined));
+}
+
+function parseInt10(value: string | undefined, min: number, max: number): number | undefined {
+  if (!value || !/^\d{1,4}$/.test(value)) return undefined;
   const n = Number(value);
   return n >= min && n <= max ? n : undefined;
 }
 
-export function parseCatalogParams(params: SearchParams): CatalogQuery {
+/** "2013", "2010-2015", "2010-", "-2015" → межі діапазону. */
+export function parseRange(raw: string | undefined, min: number, max: number): Range | undefined {
+  if (!raw) return undefined;
+  const match = /^(\d*)(-?)(\d*)$/.exec(raw.trim());
+  if (!match) return undefined;
+  const [, a, dash, b] = match;
+  let from = parseInt10(a, min, max);
+  let to = dash ? parseInt10(b, min, max) : from;
+  if (from === undefined && to === undefined) return undefined;
+  if (from !== undefined && to !== undefined && from > to) [from, to] = [to, from];
+  return { min: from, max: to };
+}
+
+function parseScore(raw: string | undefined): number | undefined {
+  if (!raw || !/^\d{1,2}(\.\d)?$/.test(raw)) return undefined;
+  const n = Number(raw);
+  return n >= 1 && n <= 10 ? n : undefined;
+}
+
+export function defaultSort(q: string): SortKey {
+  return q ? "relevance" : "popular";
+}
+
+export function parseCatalogParams(params: ParamsInput): CatalogQuery {
+  const get = reader(params);
+  const q = (get("q") ?? "").replace(/\s+/g, " ").trim().slice(0, 100);
+  const genres = parseList(get("genres"), genreSlugs.fromSlug);
+  const tags = parseTags(get("tags"));
+  const years = parseRange(get("year"), 1900, 2100);
+
+  let sort = SORTS.find((s) => s === get("sort")) ?? defaultSort(q);
+  if (sort === "relevance" && !q) sort = "popular";
+
   return {
-    sort: SORT_PARAMS[first(params.sort) ?? ""] ?? "POPULARITY_DESC",
-    season: SEASON_PARAMS[first(params.season) ?? ""],
-    year: toInt(first(params.year), 1940, 2100),
-    page: toInt(first(params.page), 1, 500) ?? 1,
+    q,
+    genres,
+    genresNot: parseList(get("genres_not"), genreSlugs.fromSlug).filter((g) => !genres.includes(g)),
+    tags,
+    tagsNot: parseTags(get("tags_not")).filter((t) => !tags.includes(t)),
+    yearFrom: years?.min,
+    yearTo: years?.max,
+    season: seasonSlugs.fromSlug(get("season") ?? ""),
+    formats: parseList(get("format"), formatSlugs.fromSlug),
+    statuses: parseList(get("status"), statusSlugs.fromSlug),
+    episodes: parseRange(get("episodes"), 1, 5000),
+    minScore: parseScore(get("score")),
+    country: countrySlugs.fromSlug(get("country") ?? ""),
+    source: sourceSlugs.fromSlug(get("source") ?? ""),
+    sort,
+    page: parseInt10(get("page"), 1, 500) ?? 1,
   };
 }
 
-export function catalogHref(query: Partial<CatalogQuery>): string {
-  const params = new URLSearchParams();
-  const sortKey = Object.keys(SORT_PARAMS).find((key) => SORT_PARAMS[key] === query.sort);
-  if (sortKey && query.sort !== "POPULARITY_DESC") params.set("sort", sortKey);
-  if (query.season) params.set("season", query.season.toLowerCase());
-  if (query.year) params.set("year", String(query.year));
-  if (query.page && query.page > 1) params.set("page", String(query.page));
-  const qs = params.toString();
-  return qs ? `/catalog?${qs}` : "/catalog";
+// ---------------------------------------------------------------------------
+// Запис в адресу
+
+export const EMPTY_QUERY: CatalogQuery = {
+  q: "",
+  genres: [],
+  genresNot: [],
+  tags: [],
+  tagsNot: [],
+  formats: [],
+  statuses: [],
+  sort: "popular",
+  page: 1,
+};
+
+export function rangeToParam(range: Range | undefined): string | undefined {
+  if (!range || (range.min === undefined && range.max === undefined)) return undefined;
+  if (range.min !== undefined && range.min === range.max) return String(range.min);
+  return `${range.min ?? ""}-${range.max ?? ""}`;
+}
+
+export function catalogHref(partial: Partial<CatalogQuery>): string {
+  const query = { ...EMPTY_QUERY, ...partial };
+  if (!partial.sort) query.sort = defaultSort(query.q);
+
+  const parts: string[] = [];
+  const add = (key: string, value: string | undefined) => {
+    if (value) parts.push(`${key}=${value}`);
+  };
+  const list = <T extends string>(values: T[], toSlug: (v: T) => string) =>
+    values.map((v) => encodeURIComponent(toSlug(v))).join(",");
+
+  add("q", query.q && encodeURIComponent(query.q));
+  add("genres", list(query.genres, genreSlugs.toSlug));
+  add("genres_not", list(query.genresNot, genreSlugs.toSlug));
+  add("tags", list(query.tags, (t) => t));
+  add("tags_not", list(query.tagsNot, (t) => t));
+  add("year", rangeToParam({ min: query.yearFrom, max: query.yearTo }));
+  add("season", query.season && seasonSlugs.toSlug(query.season));
+  add("format", list(query.formats, formatSlugs.toSlug));
+  add("status", list(query.statuses, statusSlugs.toSlug));
+  add("episodes", rangeToParam(query.episodes));
+  add("score", query.minScore !== undefined ? String(query.minScore) : undefined);
+  add("country", query.country && countrySlugs.toSlug(query.country));
+  add("source", query.source && sourceSlugs.toSlug(query.source));
+  if (query.sort !== defaultSort(query.q)) add("sort", query.sort);
+  if (query.page > 1) add("page", String(query.page));
+
+  return parts.length ? `/catalog?${parts.join("&")}` : "/catalog";
+}
+
+// ---------------------------------------------------------------------------
+// Підписи
+
+/** Скільки фільтрів увімкнено (без пошуку, сортування й сторінки). */
+export function countFilters(query: CatalogQuery): number {
+  return (
+    query.genres.length +
+    query.genresNot.length +
+    query.tags.length +
+    query.tagsNot.length +
+    query.formats.length +
+    query.statuses.length +
+    (query.yearFrom !== undefined || query.yearTo !== undefined ? 1 : 0) +
+    (query.season ? 1 : 0) +
+    (query.episodes ? 1 : 0) +
+    (query.minScore !== undefined ? 1 : 0) +
+    (query.country ? 1 : 0) +
+    (query.source ? 1 : 0)
+  );
 }
 
 export function catalogTitle(query: CatalogQuery): string {
-  if (query.season && query.year) return `Сезон: ${SEASON_LABELS[query.season]} ${query.year}`;
-  if (query.year) return `Аніме ${query.year} року`;
-  if (query.sort === "TRENDING_DESC") return "Зараз у тренді";
-  if (query.sort === "SCORE_DESC") return "Топ рейтингу";
-  return "Популярне за весь час";
+  if (query.q) return `Пошук: «${query.q}»`;
+
+  const filters = countFilters(query);
+  const singleYear =
+    query.yearFrom !== undefined && query.yearFrom === query.yearTo ? query.yearFrom : undefined;
+  const yearCounts = query.yearFrom !== undefined || query.yearTo !== undefined ? 1 : 0;
+
+  if (query.season && filters === 1 + yearCounts && (singleYear || !yearCounts)) {
+    return `Сезон: ${SEASON_LABELS[query.season]}${singleYear ? ` ${singleYear}` : ""}`;
+  }
+  if (singleYear && filters === 1) return `Аніме ${singleYear} року`;
+  if (query.genres.length === 1 && filters === 1) return `Жанр: ${GENRE_LABELS[query.genres[0]]}`;
+  if (filters === 0) {
+    if (query.sort === "trending") return "Зараз у тренді";
+    if (query.sort === "score") return "Топ рейтингу";
+    if (query.sort === "newest") return "Нові аніме";
+  }
+  return "Каталог аніме";
 }

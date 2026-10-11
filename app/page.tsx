@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { HomeSearch } from "@/components/HomeSearch";
 import { MediaRow } from "@/components/MediaRow";
 import { getHomeSections } from "@/lib/anilist";
 import { catalogHref } from "@/lib/catalog";
@@ -11,6 +12,7 @@ export default function Home() {
       <section className={styles.intro}>
         <h1>Відкривай аніме</h1>
         <p>Що зараз дивляться, що виходить цього сезону і що варто побачити кожному.</p>
+        <HomeSearch />
       </section>
       <Suspense fallback={<p className={styles.status}>Завантажуємо добірки…</p>}>
         <HomeSections />
@@ -37,20 +39,24 @@ async function HomeSections() {
     <>
       <MediaRow
         title="Зараз у тренді"
-        href={catalogHref({ sort: "TRENDING_DESC" })}
+        href={catalogHref({ sort: "trending" })}
         items={data.trending}
       />
       <MediaRow
         title={`Поточний сезон: ${seasonTitle}`}
-        href={catalogHref(data.season)}
+        href={catalogHref({
+          season: data.season.season,
+          yearFrom: data.season.year,
+          yearTo: data.season.year,
+        })}
         items={data.seasonal}
       />
       <MediaRow
         title="Популярне за весь час"
-        href={catalogHref({ sort: "POPULARITY_DESC" })}
+        href={catalogHref({ sort: "popular" })}
         items={data.popular}
       />
-      <MediaRow title="Топ рейтингу" href={catalogHref({ sort: "SCORE_DESC" })} items={data.top} />
+      <MediaRow title="Топ рейтингу" href={catalogHref({ sort: "score" })} items={data.top} />
     </>
   );
 }

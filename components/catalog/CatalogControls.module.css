@@ -1,0 +1,527 @@
+.controls {
+  margin-bottom: 28px;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Спільний вигляд полів ---- */
+
+.control {
+  height: 42px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.control:focus-visible,
+.tri:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- Пошук ---- */
+
+.searchRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.searchForm {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.searchInput {
+  height: 48px;
+  padding: 0 44px 0 44px;
+  font-size: 1.05rem;
+}
+
+.searchInput::-webkit-search-cancel-button {
+  display: none;
+}
+
+.clearText {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.clearText:hover {
+  color: var(--foreground);
+  background: var(--border);
+}
+
+/* Кнопка «Фільтри» потрібна лише на телефоні */
+.filtersToggle {
+  display: none;
+  width: auto;
+  height: 48px;
+  padding: 0 14px;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: #fff;
+  background: var(--accent);
+}
+
+/* ---- Фільтри ---- */
+
+.filters {
+  margin-top: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.grid + .grid {
+  margin-top: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.selectWrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+  flex: 1;
+}
+
+.selectWrap::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+.select {
+  appearance: none;
+  padding: 0 30px 0 12px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.selectActive .select,
+.triggerActive {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.selectActive .select option {
+  color: var(--foreground);
+  font-weight: 400;
+}
+
+.yearRange {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.yearRange .select {
+  padding: 0 24px 0 10px;
+}
+
+.yearRange .selectWrap::after {
+  right: 8px;
+}
+
+.moreToggle {
+  margin-top: 12px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.moreToggle:hover {
+  text-decoration: underline;
+}
+
+/* ---- Випадні панелі ---- */
+
+.popover {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.triggerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.backdrop {
+  display: none;
+}
+
+.panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.panelWide {
+  width: min(560px, calc(100vw - 48px));
+  max-width: none;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.done {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.panelBody {
+  max-height: min(460px, 60vh);
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  overscroll-behavior: contain;
+}
+
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.check:hover {
+  background: var(--surface);
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.clearList {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* ---- Жанри й теги ---- */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pickerSearch {
+  padding: 0 12px;
+}
+
+.pickerHint {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.hintInclude {
+  color: var(--accent);
+}
+
+.hintExclude {
+  color: var(--danger);
+}
+
+.pickerHeading {
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.pickerNote {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.triList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tri {
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tri:hover {
+  border-color: var(--accent);
+}
+
+.triInclude {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.triExclude {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: line-through;
+}
+
+.tagGroup {
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.tagGroup summary {
+  cursor: pointer;
+  padding: 4px 0 8px;
+  font-weight: 600;
+}
+
+/* ---- Увімкнені фільтри ---- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip span {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.chip:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.chipExclude {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+.chipExclude:hover {
+  background: color-mix(in srgb, var(--danger) 26%, transparent);
+}
+
+.reset {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 5px 4px;
+}
+
+.reset:hover {
+  color: var(--foreground);
+}
+
+/* ---- Планшет ---- */
+
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ---- Телефон ---- */
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .filtersToggle {
+    display: inline-flex;
+  }
+
+  .filters {
+    display: none;
+  }
+
+  .filtersOpen {
+    display: block;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Жанри й роки — на всю ширину, щоб усе вмістилося */
+  .fieldWide {
+    grid-column: 1 / -1;
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .panel,
+  .panelWide {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .panelBody {
+    max-height: 70vh;
+  }
+}

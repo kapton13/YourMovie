@@ -1,4 +1,5 @@
 import type { FuzzyDate, MediaFormat, MediaStatus, RelationType, Season } from "./anilist";
+import type { SortKey } from "./catalog";
 
 export const FORMAT_LABELS: Record<MediaFormat, string> = {
   TV: "Серіал",
@@ -117,3 +118,21 @@ export function formatAiringDate(unixSeconds: number): string {
     timeZone: "Europe/Kyiv",
   }).format(new Date(unixSeconds * 1000));
 }
+
+export const SORT_LABELS: Record<SortKey, string> = {
+  relevance: "За збігом назви",
+  popular: "Популярність",
+  score: "Оцінка",
+  trending: "Зараз у тренді",
+  newest: "Спершу нові",
+  oldest: "Спершу старі",
+};
+
+/** Верхні категорії тегів AniList ("Theme-Action" → "Theme"). */
+export const TAG_CATEGORY_LABELS: Record<string, string> = {
+  Theme: "Теми",
+  Cast: "Персонажі",
+  Setting: "Місце й час дії",
+  Demographic: "Аудиторія",
+  Technical: "Технічне",
+};
