@@ -10,7 +10,20 @@
   background: var(--surface);
 }
 
+.link {
+  display: block;
+}
+
+.link:hover .title {
+  color: var(--accent);
+}
+
+.link:hover .poster img {
+  transform: scale(1.04);
+}
+
 .poster img {
+  transition: transform 0.25s ease;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -44,4 +57,36 @@
   margin-top: 4px;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  max-width: calc(100% - 70px);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.current .poster {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.here {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 5px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
 }
