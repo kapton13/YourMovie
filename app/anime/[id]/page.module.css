@@ -1,0 +1,239 @@
+.status {
+  margin-top: 24px;
+  color: var(--muted);
+}
+
+.banner {
+  height: 240px;
+  margin-top: -32px;
+  border-radius: 0 0 14px 14px;
+  background-size: cover;
+  background-position: center;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-areas:
+    "poster head"
+    "poster body"
+    "info body";
+  grid-template-rows: auto 1fr auto;
+  column-gap: 36px;
+  align-items: start;
+}
+
+.withBanner {
+  margin-top: -110px;
+  position: relative;
+}
+
+.withBanner .head {
+  padding-top: 120px;
+}
+
+.poster {
+  grid-area: poster;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.head {
+  grid-area: head;
+  min-width: 0;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.altTitles {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.badges span {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.badges .score {
+  font-weight: 700;
+  color: #b8860b;
+}
+
+:global(:root:not([data-theme="light"])) .badges .score {
+  color: #ffd166;
+}
+
+@media (prefers-color-scheme: light) {
+  :global(:root:not([data-theme="dark"])) .badges .score {
+    color: #b8860b;
+  }
+}
+
+.airing {
+  margin-top: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.genres,
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin-top: 14px;
+}
+
+.genres li {
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.tags li {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.body {
+  grid-area: body;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.subheading {
+  margin: 22px 0 10px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.paragraph {
+  margin-bottom: 12px;
+  line-height: 1.65;
+  max-width: 75ch;
+}
+
+.muted,
+.note {
+  color: var(--muted);
+}
+
+.note {
+  font-size: 0.8rem;
+}
+
+.info {
+  grid-area: info;
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+.infoRow + .infoRow {
+  margin-top: 12px;
+}
+
+.infoRow dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.infoRow dd {
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.infoRow a,
+.source {
+  color: var(--accent);
+}
+
+.infoRow a:hover,
+.source:hover {
+  text-decoration: underline;
+}
+
+.source {
+  display: inline-block;
+  margin-top: 16px;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .banner {
+    height: 150px;
+    margin-top: -24px;
+    margin-inline: -16px;
+    border-radius: 0;
+  }
+
+  .hero {
+    grid-template-columns: 120px minmax(0, 1fr);
+    grid-template-areas:
+      "poster head"
+      "body body"
+      "info info";
+    grid-template-rows: auto;
+    column-gap: 16px;
+  }
+
+  .withBanner {
+    margin-top: -60px;
+  }
+
+  .withBanner .head {
+    padding-top: 66px;
+  }
+
+  .title {
+    font-size: 1.3rem;
+  }
+
+  .altTitles {
+    font-size: 0.85rem;
+  }
+
+  .info dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+  }
+
+  .infoRow + .infoRow {
+    margin-top: 0;
+  }
+}
