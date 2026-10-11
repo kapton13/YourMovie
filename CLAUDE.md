@@ -14,7 +14,7 @@
 - **Серіали й фільми (пізніше):** TMDB (`api.themoviedb.org`), потрібен безкоштовний ключ і згадка TMDB. Перед комерційним використанням перевірити умови AniList і TMDB.
 - **Російські назви й описи аніме:** Shikimori API (`shikimori.io`, раніше `shikimori.one`), зіставлення через MAL id з AniList. Перевірити умови використання.
 - **Акаунти й база користувачів (етап 2):** Supabase (Auth через email+пароль, Postgres).
-- **Розміщення:** Vercel з автодеплоєм з гілки `main`. Підключаємо, коли буде готовий базовий функціонал.
+- **Розміщення:** Vercel з автодеплоєм з гілки `main`. Підключено: https://your-movie-five.vercel.app
 - **Платний ШІ-помічник (Claude API):** відкладено. Коли повернемося: запити йдуть через серверну функцію, ліміт запитів на користувача, дешева модель, кешування.
 - **Стек:** Next.js 16 (App Router, TypeScript, Cache Components з `"use cache"`), звичайний CSS (CSS-модулі), без Tailwind. Запити до AniList — на сервері (`lib/anilist.ts`), кешуються на годину. Постери — звичайний `<img>` з `s4.anilist.co`.
 
@@ -37,4 +37,4 @@
 - `npm run dev` — локальний запуск; `npm run build` — збірка; `npm run lint` — перевірка коду.
 
 ## Середовище
-У першій сесії хмарне середовище блокувало npm і AniList. Власник налаштовує мережевий доступ (Custom: стандартний список + `graphql.anilist.co`, `anilist.co`, `s4.anilist.co`, `api.themoviedb.org`, `image.tmdb.org`, `*.supabase.co`). На початку сесії перевірити доступ до npm і `graphql.anilist.co`.
+У першій сесії хмарне середовище блокувало npm і AniList. Власник налаштовує мережевий доступ (Custom: стандартний список + `graphql.anilist.co`, `anilist.co`, `s4.anilist.co`, `api.themoviedb.org`, `image.tmdb.org`, `*.supabase.co`, `shikimori.io`, `*.vercel.app`). На початку сесії перевірити доступ до npm і `graphql.anilist.co`.
