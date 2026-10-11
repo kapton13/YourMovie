@@ -90,3 +90,14 @@
   color: #fff;
   background: var(--accent);
 }
+
+.label {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.label + .title {
+  margin-top: 2px;
+}

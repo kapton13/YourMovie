@@ -9,10 +9,11 @@ type Props<T extends Media> = {
   href?: string;
   items: T[];
   badge?: (media: T, index: number) => string | undefined;
+  label?: (media: T) => string | undefined;
   currentId?: number;
 };
 
-export function MediaRow<T extends Media>({ title, href, items, badge, currentId }: Props<T>) {
+export function MediaRow<T extends Media>({ title, href, items, badge, label, currentId }: Props<T>) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -30,6 +31,7 @@ export function MediaRow<T extends Media>({ title, href, items, badge, currentId
               key={media.id}
               media={media}
               badge={badge?.(media, index)}
+              label={label?.(media)}
               current={media.id === currentId}
             />
           ))}

@@ -80,19 +80,39 @@
   border: 1px solid var(--border);
 }
 
-.badges .score {
-  font-weight: 700;
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 14px;
+}
+
+.ratingValue {
+  font-size: 1.6rem;
+  font-weight: 800;
   color: #b8860b;
 }
 
-:global(:root:not([data-theme="light"])) .badges .score {
+:global(:root:not([data-theme="light"])) .ratingValue {
   color: #ffd166;
 }
 
 @media (prefers-color-scheme: light) {
-  :global(:root:not([data-theme="dark"])) .badges .score {
+  :global(:root:not([data-theme="dark"])) .ratingValue {
     color: #b8860b;
   }
+}
+
+.ratingScale {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ratingNote {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .airing {

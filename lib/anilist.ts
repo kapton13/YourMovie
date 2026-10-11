@@ -19,6 +19,7 @@ export type MediaCard = {
   coverImage: { large: string | null; color: string | null };
   format: MediaFormat | null;
   seasonYear: number | null;
+  startDate: { year: number | null };
   episodes: number | null;
   averageScore: number | null;
 };
@@ -37,6 +38,7 @@ const CARD_FIELDS = `
   coverImage { large color }
   format
   seasonYear
+  startDate { year }
   episodes
   averageScore
 `;
@@ -171,7 +173,7 @@ export type RelationType =
   | "COMPILATION"
   | "CONTAINS";
 
-export type MediaDetails = MediaCard & {
+export type MediaDetails = Omit<MediaCard, "startDate"> & {
   idMal: number | null;
   title: { romaji: string | null; english: string | null; native: string | null };
   coverImage: { extraLarge: string | null; large: string | null; color: string | null };
@@ -183,6 +185,7 @@ export type MediaDetails = MediaCard & {
   startDate: FuzzyDate;
   endDate: FuzzyDate;
   popularity: number | null;
+  stats: { scoreDistribution: { score: number; amount: number }[] } | null;
   genres: string[];
   source: string | null;
   countryOfOrigin: string | null;
@@ -209,6 +212,7 @@ const MEDIA_QUERY = `
       startDate { year month day }
       endDate { year month day }
       popularity
+      stats { scoreDistribution { score amount } }
       genres
       source(version: 3)
       countryOfOrigin
@@ -238,7 +242,7 @@ export async function getMedia(id: number): Promise<MediaDetails | null> {
   }
 }
 
-export type WatchOrderItem = MediaCard & { startDate: FuzzyDate };
+export type WatchOrderItem = Omit<MediaCard, "startDate"> & { startDate: FuzzyDate };
 
 const CHAIN_QUERY = `
   query Chain($ids: [Int]) {

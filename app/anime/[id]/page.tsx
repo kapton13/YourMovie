@@ -23,6 +23,14 @@ function parseId(raw: string): number | null {
   return /^\d{1,9}$/.test(raw) ? Number(raw) : null;
 }
 
+function pluralVotes(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "оцінка";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "оцінки";
+  return "оцінок";
+}
+
 function displayTitle(media: MediaDetails): string {
   return media.title.english ?? media.title.romaji ?? "Без назви";
 }
@@ -61,6 +69,7 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
   const title = displayTitle(media);
   const altTitles = [media.title.romaji, media.title.native].filter((t) => t && t !== title);
   const score = formatScore(media.averageScore);
+  const votes = media.stats?.scoreDistribution.reduce((sum, d) => sum + d.amount, 0) ?? 0;
   const paragraphs = descriptionParagraphs(media.description);
   const tags = media.tags
     .filter((tag) => !tag.isMediaSpoiler && !tag.isGeneralSpoiler && tag.rank >= 50)
@@ -94,8 +103,23 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
         <div className={styles.head}>
           <h1 className={styles.title}>{title}</h1>
           {altTitles.length > 0 && <p className={styles.altTitles}>{altTitles.join(" · ")}</p>}
+          <div className={styles.rating}>
+            {score ? (
+              <>
+                <span className={styles.ratingValue}>
+                  ★ {score}
+                  <span className={styles.ratingScale}> / 10</span>
+                </span>
+                <span className={styles.ratingNote}>
+                  Середня оцінка користувачів AniList
+                  {votes > 0 && <> · {votes.toLocaleString("uk-UA")} {pluralVotes(votes)}</>}
+                </span>
+              </>
+            ) : (
+              <span className={styles.ratingNote}>Оцінки ще немає</span>
+            )}
+          </div>
           <div className={styles.badges}>
-            {score && <span className={styles.score}>★ {score}</span>}
             {media.format && <span>{FORMAT_LABELS[media.format]}</span>}
             {media.seasonYear && <span>{media.seasonYear}</span>}
             {media.status && <span>{STATUS_LABELS[media.status]}</span>}
@@ -143,7 +167,7 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
       </Suspense>
 
       {related.length > 0 && (
-        <MediaRow title="Пов'язане" items={related} badge={(m) => m.relation} />
+        <MediaRow title="Пов'язане" items={related} label={(m) => m.relation} />
       )}
       {recommendations.length > 0 && <MediaRow title="Схожі аніме" items={recommendations} />}
     </>
@@ -199,6 +223,6 @@ async function WatchOrder({ id }: { id: number }) {
   });
   if (items.length === 0) return null;
   return (
-    <MediaRow title="Порядок перегляду" items={items} currentId={id} badge={(_, i) => `${i + 1}`} />
+    <MediaRow title="Порядок перегляду" items={items} currentId={id} badge={(m) => (m.startDate.year ? String(m.startDate.year) : "Анонс")} />
   );
 }
