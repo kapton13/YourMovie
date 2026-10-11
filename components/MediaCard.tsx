@@ -5,16 +5,18 @@ import styles from "./MediaCard.module.css";
 
 type Props = {
   media: Media;
-  /** Мітка в лівому верхньому куті постера, напр. номер у порядку перегляду. */
+  /** Мітка в лівому верхньому куті постера, напр. рік у порядку перегляду. */
   badge?: string;
+  /** Підпис над назвою, напр. тип зв'язку («Спін-оф»). */
+  label?: string;
   /** Тайтл, на сторінці якого ми зараз: виділяється і не є посиланням. */
   current?: boolean;
 };
 
-export function MediaCard({ media, badge, current }: Props) {
+export function MediaCard({ media, badge, label, current }: Props) {
   const title = media.title.english ?? media.title.romaji ?? "Без назви";
   const score = formatScore(media.averageScore);
-  const meta = [media.format && FORMAT_LABELS[media.format], media.seasonYear]
+  const meta = [media.format && FORMAT_LABELS[media.format], media.startDate.year ?? media.seasonYear]
     .filter(Boolean)
     .join(" · ");
 
@@ -33,6 +35,7 @@ export function MediaCard({ media, badge, current }: Props) {
         )}
         {current && <span className={styles.here}>Ви тут</span>}
       </div>
+      {label && <p className={styles.label}>{label}</p>}
       <h3 className={styles.title} title={title}>
         {title}
       </h3>
