@@ -41,10 +41,11 @@
   padding: 0;
 }
 
+/* clip, а не hidden: hidden ламає «прилипання» шапки під час прокрутки */
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
