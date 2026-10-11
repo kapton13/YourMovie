@@ -6,6 +6,7 @@
   --foreground: #e9ebf1;
   --muted: #9097a8;
   --accent: #6c8cff;
+  --danger: #f2555a;
   --header-bg: rgba(15, 17, 23, 0.9);
   color-scheme: dark;
 }
@@ -18,6 +19,7 @@
   --foreground: #161922;
   --muted: #5d6475;
   --accent: #3d5fe0;
+  --danger: #d93036;
   --header-bg: rgba(245, 246, 250, 0.9);
   color-scheme: light;
 }
@@ -30,6 +32,7 @@
     --foreground: #161922;
     --muted: #5d6475;
     --accent: #3d5fe0;
+    --danger: #d93036;
     --header-bg: rgba(245, 246, 250, 0.9);
     color-scheme: light;
   }

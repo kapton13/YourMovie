@@ -1,28 +1,73 @@
-.back {
-  display: inline-block;
-  margin-bottom: 12px;
+.controlsFallback {
+  margin-bottom: 28px;
+}
+
+.titleFallback {
+  width: min(280px, 70%);
+  height: 38px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.searchFallback {
+  height: 48px;
+  margin-top: 18px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.summary {
+  margin-bottom: 14px;
   font-size: 0.9rem;
   color: var(--muted);
 }
 
-.back:hover {
+.skeleton {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 24px 18px;
+  margin-top: 34px;
+}
+
+.skeletonCard {
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.message {
+  padding: 28px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.message p + p {
+  margin-top: 8px;
+}
+
+.messageTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
   color: var(--foreground);
 }
 
-.title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  line-height: 1.2;
+.message a {
+  color: var(--accent);
+  font-weight: 600;
 }
 
-.pageNote {
-  margin-top: 4px;
-  color: var(--muted);
-}
-
-.status {
-  margin-top: 24px;
-  color: var(--muted);
+.message a:hover {
+  text-decoration: underline;
 }
 
 .pagination {
@@ -56,8 +101,25 @@
   color: var(--muted);
 }
 
+@media (max-width: 1000px) {
+  .skeleton {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
-  .title {
-    font-size: 1.5rem;
+  .skeleton {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 10px;
+  }
+
+  .pagination a {
+    padding: 10px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonCard {
+    animation: none;
   }
 }

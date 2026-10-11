@@ -1,4 +1,7 @@
 import { cacheLife } from "next/cache";
+import { PAGE_SIZE, type CatalogQuery, type SortKey } from "./catalog";
+import { rankByRelevance } from "./search";
+import { searchTitleIndex } from "./titleIndex";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 
@@ -69,12 +72,20 @@ export class AniListError extends Error {
   }
 }
 
-async function anilist<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+async function anilist<T>(query: string, variables: Record<string, unknown>, attempt = 1): Promise<T> {
   const res = await fetch(ANILIST_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ query, variables }),
   });
+  if (RETRY_STATUSES.has(res.status) && attempt < 2) {
+    // Ліміт запитів або тимчасовий збій AniList: одна повторна спроба трохи згодом.
+    const retryAfter = Number(res.headers.get("retry-after"));
+    await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000, 3000)));
+    return anilist<T>(query, variables, attempt + 1);
+  }
   const json = await res.json().catch(() => null);
   if (!res.ok || !json || json.errors) {
     const error = json?.errors?.[0];
@@ -83,49 +94,180 @@ async function anilist<T>(query: string, variables: Record<string, unknown>): Pr
   return json.data as T;
 }
 
-export type MediaSort = "TRENDING_DESC" | "POPULARITY_DESC" | "SCORE_DESC";
-
-export type CatalogQuery = {
-  sort: MediaSort;
-  season?: Season;
-  year?: number;
-  page: number;
+export type CatalogItem = MediaCard & {
+  title: { native: string | null };
+  synonyms: string[];
+  popularity: number | null;
 };
 
 export type CatalogPage = {
-  media: MediaCard[];
+  media: CatalogItem[];
   currentPage: number;
   hasNextPage: boolean;
 };
 
 const CATALOG_QUERY = `
-  query Catalog($page: Int, $perPage: Int, $sort: [MediaSort], $season: MediaSeason, $year: Int) {
+  query Catalog(
+    $page: Int, $perPage: Int, $sort: [MediaSort], $search: String,
+    $genreIn: [String], $genreNotIn: [String], $tagIn: [String], $tagNotIn: [String],
+    $season: MediaSeason, $seasonYear: Int, $startGreater: FuzzyDateInt, $startLesser: FuzzyDateInt,
+    $formatIn: [MediaFormat], $statusIn: [MediaStatus], $statusNotIn: [MediaStatus],
+    $episodesGreater: Int, $episodesLesser: Int, $scoreGreater: Int,
+    $country: CountryCode, $sourceIn: [MediaSource], $idIn: [Int], $minTagRank: Int
+  ) {
     Page(page: $page, perPage: $perPage) {
       pageInfo { currentPage hasNextPage }
-      media(type: ANIME, isAdult: false, sort: $sort, season: $season, seasonYear: $year) { ${CARD_FIELDS} }
+      media(
+        type: ANIME, isAdult: false, sort: $sort, search: $search,
+        genre_in: $genreIn, genre_not_in: $genreNotIn,
+        tag_in: $tagIn, tag_not_in: $tagNotIn, minimumTagRank: $minTagRank,
+        season: $season, seasonYear: $seasonYear,
+        startDate_greater: $startGreater, startDate_lesser: $startLesser,
+        format_in: $formatIn, status_in: $statusIn, status_not_in: $statusNotIn,
+        episodes_greater: $episodesGreater, episodes_lesser: $episodesLesser,
+        averageScore_greater: $scoreGreater, countryOfOrigin: $country, source_in: $sourceIn,
+        id_in: $idIn
+      ) {
+        ${CARD_FIELDS}
+        title { native }
+        synonyms
+        popularity
+      }
     }
   }
 `;
+
+const SORT_ORDER: Record<SortKey, string[]> = {
+  relevance: ["SEARCH_MATCH"],
+  popular: ["POPULARITY_DESC", "ID"],
+  score: ["SCORE_DESC", "POPULARITY_DESC", "ID"],
+  trending: ["TRENDING_DESC", "POPULARITY_DESC", "ID"],
+  newest: ["START_DATE_DESC", "POPULARITY_DESC", "ID"],
+  oldest: ["START_DATE", "POPULARITY_DESC", "ID"],
+};
+
+const nonEmpty = <T>(list: T[]) => (list.length > 0 ? list : undefined);
+
+/** Перетворює стан каталогу на змінні запиту AniList (порожні фільтри не передаються). */
+function catalogVariables(query: CatalogQuery) {
+  // Дати в AniList — числа РРРРММДД; невідомі місяць і день — нулі (20130000).
+  let startGreater: number | undefined;
+  let startLesser: number | undefined;
+  let seasonYear: number | undefined;
+  const singleYear = query.yearFrom !== undefined && query.yearFrom === query.yearTo;
+  if (query.season && singleYear) {
+    seasonYear = query.yearFrom; // «Осінь 2026» — саме сезон, а не дата першої серії
+  } else {
+    if (query.yearFrom !== undefined) startGreater = query.yearFrom * 10000 - 1;
+    if (query.yearTo !== undefined) startLesser = (query.yearTo + 1) * 10000;
+  }
+
+  // «Спершу нові / старі»: без тайтлів без дати й без анонсів (якщо статус не вибрано).
+  const byDate = query.sort === "newest" || query.sort === "oldest";
+  if (byDate) startGreater = Math.max(startGreater ?? 0, 10000000);
+  const statusNotIn = byDate && query.statuses.length === 0 ? ["NOT_YET_RELEASED"] : undefined;
+
+  return {
+    page: query.page,
+    perPage: PAGE_SIZE,
+    sort: SORT_ORDER[query.sort],
+    search: query.q || undefined,
+    genreIn: nonEmpty(query.genres),
+    genreNotIn: nonEmpty(query.genresNot),
+    tagIn: nonEmpty(query.tags),
+    tagNotIn: nonEmpty(query.tagsNot),
+    // Тег рахується, лише якщо AniList певен у ньому щонайменше на 40%
+    // (інакше на «Isekai» першим виходить «Bleach» з упевненістю 25%).
+    minTagRank: query.tags.length + query.tagsNot.length > 0 ? 40 : undefined,
+    season: query.season,
+    seasonYear,
+    startGreater,
+    startLesser,
+    formatIn: nonEmpty(query.formats),
+    statusIn: nonEmpty(query.statuses),
+    statusNotIn,
+    episodesGreater: query.episodes?.min !== undefined ? query.episodes.min - 1 : undefined,
+    episodesLesser: query.episodes?.max !== undefined ? query.episodes.max + 1 : undefined,
+    scoreGreater: query.minScore !== undefined ? Math.round(query.minScore * 10) - 1 : undefined,
+    country: query.country,
+    sourceIn: query.source ? [query.source] : undefined,
+  };
+}
+
+type CatalogResponse = {
+  Page: { pageInfo: { currentPage: number; hasNextPage: boolean }; media: CatalogItem[] };
+};
+
+/** Скільки тайтлів зі словника можна додати до першої сторінки пошуку. */
+const INDEX_EXTRAS = 12;
 
 export async function getCatalogPage(query: CatalogQuery): Promise<CatalogPage> {
   "use cache";
   cacheLife("hours");
 
-  const data = await anilist<{
-    Page: { pageInfo: { currentPage: number; hasNextPage: boolean }; media: MediaCard[] };
-  }>(CATALOG_QUERY, {
-    page: query.page,
-    perPage: 30,
-    sort: [query.sort, "ID"],
-    season: query.season,
-    year: query.year,
-  });
+  const variables = catalogVariables(query);
+  const data = await anilist<CatalogResponse>(CATALOG_QUERY, variables);
+  let media = data.Page.media;
+
+  if (query.sort === "relevance") {
+    if (query.page === 1) {
+      // AniList не знаходить за недописаним словом («frie», «spy fam»), тому додаємо
+      // збіги зі словника популярних назв. Фільтри до них застосовує сам AniList.
+      const known = new Set(media.map((m) => m.id));
+      const extraIds = searchTitleIndex(query.q, 60)
+        .filter((id) => !known.has(id))
+        .slice(0, media.length > 0 ? INDEX_EXTRAS : PAGE_SIZE);
+      if (extraIds.length > 0) {
+        const extra = await anilist<CatalogResponse>(CATALOG_QUERY, {
+          ...variables,
+          search: undefined,
+          idIn: extraIds,
+          page: 1,
+          sort: ["POPULARITY_DESC"],
+        });
+        media = [...media, ...extra.Page.media];
+      }
+    }
+    media = rankByRelevance(query.q, media);
+  }
 
   return {
-    media: data.Page.media,
+    media,
     currentPage: data.Page.pageInfo.currentPage,
     hasNextPage: data.Page.pageInfo.hasNextPage,
   };
+}
+
+export type TagGroup = { category: string; tags: string[] };
+
+export type FilterOptions = {
+  /** Теги, згруповані за верхньою категорією ("Theme", "Cast"…), без дорослих. */
+  tagGroups: TagGroup[];
+  /** Найпізніший рік у списку років (наступний рік — для анонсів). */
+  maxYear: number;
+};
+
+export async function getFilterOptions(): Promise<FilterOptions> {
+  "use cache";
+  cacheLife("days");
+
+  const maxYear = new Date().getFullYear() + 1;
+  const data = await anilist<{
+    MediaTagCollection: { name: string; category: string; isAdult: boolean }[];
+  }>(`query { MediaTagCollection { name category isAdult } }`, {});
+
+  const groups = new Map<string, string[]>();
+  for (const tag of data.MediaTagCollection) {
+    if (tag.isAdult) continue;
+    const category = tag.category.split("-")[0];
+    groups.set(category, [...(groups.get(category) ?? []), tag.name]);
+  }
+  const order = ["Theme", "Cast", "Setting", "Demographic", "Technical"];
+  const tagGroups = [...groups.entries()]
+    .sort(([a], [b]) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))
+    .map(([category, tags]) => ({ category, tags: tags.sort((a, b) => a.localeCompare(b)) }));
+
+  return { tagGroups, maxYear };
 }
 
 /** Аніме-сезон за місяцем: зима — січень–березень, весна — квітень–червень і т. д. */

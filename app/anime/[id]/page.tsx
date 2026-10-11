@@ -187,7 +187,11 @@ function InfoList({ media }: { media: MediaDetails }) {
   if (media.season && media.seasonYear)
     rows.push([
       "Сезон",
-      <Link key="season" href={catalogHref({ season: media.season, year: media.seasonYear })}>
+      <Link key="season" href={catalogHref({
+          season: media.season,
+          yearFrom: media.seasonYear,
+          yearTo: media.seasonYear,
+        })}>
         {SEASON_LABELS[media.season]} {media.seasonYear}
       </Link>,
     ]);
