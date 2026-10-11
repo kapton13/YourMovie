@@ -1,0 +1,22 @@
+.intro h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.intro p {
+  margin-top: 8px;
+  color: var(--muted);
+  max-width: 560px;
+}
+
+.status {
+  margin-top: 40px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .intro h1 {
+    font-size: 1.6rem;
+  }
+}
