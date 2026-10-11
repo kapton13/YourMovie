@@ -2,10 +2,31 @@
   margin-top: 40px;
 }
 
-.heading {
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
+}
+
+.heading {
   font-size: 1.35rem;
   font-weight: 700;
+}
+
+.heading a:hover {
+  color: var(--accent);
+}
+
+.more {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.more:hover {
+  text-decoration: underline;
 }
 
 .row {

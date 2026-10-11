@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
 import { getHomeSections } from "@/lib/anilist";
+import { catalogHref } from "@/lib/catalog";
 import { SEASON_LABELS } from "@/lib/labels";
 import styles from "./page.module.css";
 
@@ -34,10 +35,22 @@ async function HomeSections() {
   const seasonTitle = `${SEASON_LABELS[data.season.season]} ${data.season.year}`;
   return (
     <>
-      <MediaRow title="Зараз у тренді" items={data.trending} />
-      <MediaRow title={`Поточний сезон: ${seasonTitle}`} items={data.seasonal} />
-      <MediaRow title="Популярне за весь час" items={data.popular} />
-      <MediaRow title="Топ рейтингу" items={data.top} />
+      <MediaRow
+        title="Зараз у тренді"
+        href={catalogHref({ sort: "TRENDING_DESC" })}
+        items={data.trending}
+      />
+      <MediaRow
+        title={`Поточний сезон: ${seasonTitle}`}
+        href={catalogHref(data.season)}
+        items={data.seasonal}
+      />
+      <MediaRow
+        title="Популярне за весь час"
+        href={catalogHref({ sort: "POPULARITY_DESC" })}
+        items={data.popular}
+      />
+      <MediaRow title="Топ рейтингу" href={catalogHref({ sort: "SCORE_DESC" })} items={data.top} />
     </>
   );
 }

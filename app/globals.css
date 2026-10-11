@@ -1,3 +1,4 @@
+/* Ніч (типово) */
 :root {
   --background: #0f1117;
   --surface: #1a1d27;
@@ -5,7 +6,33 @@
   --foreground: #e9ebf1;
   --muted: #9097a8;
   --accent: #6c8cff;
+  --header-bg: rgba(15, 17, 23, 0.9);
   color-scheme: dark;
+}
+
+/* День: обраний вручну або світла тема в системі, якщо вручну нічого не обрано */
+:root[data-theme="light"] {
+  --background: #f5f6fa;
+  --surface: #e6e8ef;
+  --border: #d9dce5;
+  --foreground: #161922;
+  --muted: #5d6475;
+  --accent: #3d5fe0;
+  --header-bg: rgba(245, 246, 250, 0.9);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --background: #f5f6fa;
+    --surface: #e6e8ef;
+    --border: #d9dce5;
+    --foreground: #161922;
+    --muted: #5d6475;
+    --accent: #3d5fe0;
+    --header-bg: rgba(245, 246, 250, 0.9);
+    color-scheme: light;
+  }
 }
 
 * {
@@ -46,7 +73,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(15, 17, 23, 0.9);
+  background: var(--header-bg);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
@@ -55,6 +82,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   height: 60px;
 }
 
@@ -65,6 +93,12 @@ a {
 
 .logo span {
   color: var(--accent);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .nav {
@@ -105,5 +139,17 @@ a {
 
   .main {
     padding-top: 24px;
+  }
+
+  .header-actions,
+  .nav {
+    gap: 14px;
+  }
+}
+
+/* На дуже вузьких екранах «Головна» зайва: логотип теж веде на головну */
+@media (max-width: 380px) {
+  .nav-home {
+    display: none;
   }
 }

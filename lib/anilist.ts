@@ -72,6 +72,51 @@ async function anilist<T>(query: string, variables: Record<string, unknown>): Pr
   return json.data as T;
 }
 
+export type MediaSort = "TRENDING_DESC" | "POPULARITY_DESC" | "SCORE_DESC";
+
+export type CatalogQuery = {
+  sort: MediaSort;
+  season?: Season;
+  year?: number;
+  page: number;
+};
+
+export type CatalogPage = {
+  media: MediaCard[];
+  currentPage: number;
+  hasNextPage: boolean;
+};
+
+const CATALOG_QUERY = `
+  query Catalog($page: Int, $perPage: Int, $sort: [MediaSort], $season: MediaSeason, $year: Int) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { currentPage hasNextPage }
+      media(type: ANIME, isAdult: false, sort: $sort, season: $season, seasonYear: $year) { ${CARD_FIELDS} }
+    }
+  }
+`;
+
+export async function getCatalogPage(query: CatalogQuery): Promise<CatalogPage> {
+  "use cache";
+  cacheLife("hours");
+
+  const data = await anilist<{
+    Page: { pageInfo: { currentPage: number; hasNextPage: boolean }; media: MediaCard[] };
+  }>(CATALOG_QUERY, {
+    page: query.page,
+    perPage: 30,
+    sort: [query.sort, "ID"],
+    season: query.season,
+    year: query.year,
+  });
+
+  return {
+    media: data.Page.media,
+    currentPage: data.Page.pageInfo.currentPage,
+    hasNextPage: data.Page.pageInfo.hasNextPage,
+  };
+}
+
 /** Аніме-сезон за місяцем: зима — січень–березень, весна — квітень–червень і т. д. */
 export function seasonOf(date: Date): { season: Season; year: number } {
   const seasons: Season[] = ["WINTER", "SPRING", "SUMMER", "FALL"];

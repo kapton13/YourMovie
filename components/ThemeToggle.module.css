@@ -1,0 +1,48 @@
+.toggle {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  border-color: var(--accent);
+}
+
+.toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* У темній темі показуємо сонце (перейти на день), у світлій — місяць */
+.moon {
+  display: none;
+}
+
+:global(:root[data-theme="light"]) .sun {
+  display: none;
+}
+
+:global(:root[data-theme="light"]) .moon {
+  display: block;
+}
+
+@media (prefers-color-scheme: light) {
+  :global(:root:not([data-theme="dark"])) .sun {
+    display: none;
+  }
+
+  :global(:root:not([data-theme="dark"])) .moon {
+    display: block;
+  }
+}
