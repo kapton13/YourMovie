@@ -1,0 +1,70 @@
+.placeholder {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+}
+
+.login {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.loginIcon {
+  display: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* На вузьких телефонах замість напису — значок */
+@media (max-width: 400px) {
+  .login {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .loginIcon {
+    display: block;
+  }
+
+  .loginText {
+    display: none;
+  }
+}
+
+.login:hover {
+  filter: brightness(1.08);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+}
+
+.avatar:hover {
+  filter: brightness(1.08);
+}
+
+.login:focus-visible,
+.avatar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

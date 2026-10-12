@@ -105,6 +105,12 @@ a {
   gap: 20px;
 }
 
+.user-placeholder {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+}
+
 .nav {
   display: flex;
   gap: 20px;

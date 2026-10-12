@@ -1,0 +1,258 @@
+.wrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.icon {
+  font-size: 2.2rem;
+  color: var(--accent);
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.text {
+  margin-top: 8px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.text b {
+  color: var(--foreground);
+}
+
+.notice {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.input {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.input:focus-visible,
+.submit:focus-visible,
+.linkButton:focus-visible,
+.showPassword:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.passwordWrap {
+  position: relative;
+  display: block;
+}
+
+.passwordWrap .input {
+  padding-right: 92px;
+}
+
+.showPassword {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.showPassword:hover {
+  color: var(--foreground);
+}
+
+.hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.card > .hint {
+  display: block;
+  margin-top: 10px;
+}
+
+.error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.submit {
+  height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.switch {
+  margin-top: 18px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.switch a,
+.linkButton {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.linkButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.card > .linkButton {
+  margin-top: 18px;
+  font-size: 0.9rem;
+}
+
+.switch a:hover,
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.skeleton {
+  width: 100%;
+  max-width: 420px;
+  height: 380px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.details {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.details dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.details dd {
+  margin-top: 2px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary:hover {
+  border-color: var(--accent);
+}
+
+.secondary:disabled {
+  opacity: 0.6;
+}
+
+.remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.remember input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.remember .hint {
+  display: block;
+  margin-top: 2px;
+}
