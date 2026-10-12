@@ -256,3 +256,65 @@
   display: block;
   margin-top: 2px;
 }
+
+.inputBad {
+  border-color: var(--danger);
+}
+
+.hintOk {
+  color: #2f9e58;
+  font-weight: 600;
+}
+
+.hintBad {
+  color: var(--danger);
+}
+
+.cardWide {
+  max-width: 520px;
+}
+
+.profileHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profileHead .title {
+  overflow-wrap: anywhere;
+}
+
+.bigAvatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.readOnly {
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.sectionNote {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.success {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #2f9e58 16%, transparent);
+  color: #2f9e58;
+  font-size: 0.9rem;
+  font-weight: 600;
+}

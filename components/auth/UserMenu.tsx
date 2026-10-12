@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useProfile } from "./useProfile";
 import { useUser } from "./useUser";
 import styles from "./UserMenu.module.css";
 
-/** Праворуч у шапці: «Увійти» або кружечок з першою літерою пошти. */
+/** Праворуч у шапці: «Увійти» або кружечок з першою літерою нікнейму. */
 export function UserMenu() {
   const user = useUser();
+  const { profile } = useProfile();
   const pathname = usePathname();
 
   if (user === undefined) return <span className={styles.placeholder} aria-hidden="true" />;
@@ -25,9 +27,10 @@ export function UserMenu() {
     );
   }
 
-  const letter = (user.email ?? "?").trim()[0]?.toUpperCase() ?? "?";
+  const name = profile?.nickname ?? user.email ?? "?";
+  const letter = name.trim()[0]?.toUpperCase() ?? "?";
   return (
-    <Link href="/account" className={styles.avatar} title={user.email ?? "Мій акаунт"} aria-label="Мій акаунт">
+    <Link href="/account" className={styles.avatar} title={name} aria-label={`Мій профіль (${name})`}>
       {letter}
     </Link>
   );
