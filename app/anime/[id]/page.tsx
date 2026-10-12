@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
+import { EpisodeList } from "@/components/list/EpisodeList";
 import { MyListBlock } from "@/components/list/MyListBlock";
-import { getMedia, getWatchOrder, type MediaDetails } from "@/lib/anilist";
+import { UserMediaProvider } from "@/components/list/UserMediaProvider";
+import { airedEpisodeCount, getEpisodes, getMedia, getWatchOrder, type MediaDetails } from "@/lib/anilist";
 import { catalogHref } from "@/lib/catalog";
 import {
   COUNTRY_LABELS,
@@ -84,7 +86,12 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
     .filter((m): m is NonNullable<typeof m> => m != null && !m.isAdult);
 
   return (
-    <>
+    <UserMediaProvider
+      mediaId={media.id}
+      total={media.episodes}
+      airedCount={airedEpisodeCount(media)}
+      finished={media.status === "FINISHED"}
+    >
       {media.bannerImage && (
         <div
           className={styles.banner}
@@ -140,7 +147,7 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
         </div>
 
         <div className={styles.body}>
-          <MyListBlock mediaId={media.id} />
+          <MyListBlock />
           <h2 className={styles.subheading}>Опис</h2>
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => <p key={i} className={styles.paragraph}>{p}</p>)
@@ -165,6 +172,10 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
       </div>
 
       <Suspense fallback={null}>
+        <Episodes id={media.id} />
+      </Suspense>
+
+      <Suspense fallback={null}>
         <WatchOrder id={media.id} />
       </Suspense>
 
@@ -172,8 +183,16 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
         <MediaRow title="Пов'язане" items={related} label={(m) => m.relation} />
       )}
       {recommendations.length > 0 && <MediaRow title="Схожі аніме" items={recommendations} />}
-    </>
+    </UserMediaProvider>
   );
+}
+
+async function Episodes({ id }: { id: number }) {
+  const data = await getEpisodes(id).catch((error) => {
+    console.error(error);
+    return null;
+  });
+  return data ? <EpisodeList data={data} /> : null;
 }
 
 function InfoList({ media }: { media: MediaDetails }) {

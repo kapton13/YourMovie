@@ -437,3 +437,107 @@ export async function getWatchOrder(id: number): Promise<WatchOrderItem[]> {
     year == null ? Infinity : year * 10000 + (month ?? 12) * 100 + (day ?? 31);
   return [...found.values()].sort((a, b) => dateKey(a.startDate) - dateKey(b.startDate) || a.id - b.id);
 }
+
+// ---------------------------------------------------------------------------
+// Серії
+
+export type EpisodeInfo = {
+  number: number;
+  /** Назва з AniList (є не для всіх тайтлів). */
+  title: string | null;
+  /** Час виходу в секундах (Unix), якщо відомий. */
+  airingAt: number | null;
+  aired: boolean;
+};
+
+export type EpisodesData = {
+  episodes: EpisodeInfo[];
+  /** Скільки серій уже вийшло. */
+  airedCount: number;
+  /** Скільки серій буде всього, якщо відомо. */
+  total: number | null;
+};
+
+const EPISODES_QUERY = `
+  query Episodes($id: Int, $page: Int) {
+    Media(id: $id, type: ANIME) {
+      episodes
+      status
+      format
+      nextAiringEpisode { episode }
+      streamingEpisodes { title }
+    }
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      airingSchedules(mediaId: $id, sort: EPISODE_DESC) { episode airingAt }
+    }
+  }
+`;
+
+/** Скільки серій уже вийшло: для серіалів, що виходять, — до наступної серії. */
+export function airedEpisodeCount(media: {
+  status: string | null;
+  episodes: number | null;
+  nextAiringEpisode: { episode: number } | null;
+}): number {
+  if (media.nextAiringEpisode) return media.nextAiringEpisode.episode - 1;
+  if (media.status === "NOT_YET_RELEASED") return 0;
+  return media.episodes ?? 0;
+}
+
+/** «Episode 12 - Title» → [12, "Title"]. */
+function parseStreamingTitle(raw: string): [number, string | null] | null {
+  const match = /^Episode\s+(\d+)\s*(?:[-–:]\s*(.+))?$/i.exec(raw.trim());
+  if (!match) return null;
+  return [Number(match[1]), match[2]?.trim() || null];
+}
+
+const SCHEDULE_PAGES = 4; // до 200 найновіших серій із датами
+
+export async function getEpisodes(id: number): Promise<EpisodesData> {
+  "use cache";
+  cacheLife("hours");
+
+  type Response = {
+    Media: {
+      episodes: number | null;
+      status: string | null;
+      format: string | null;
+      nextAiringEpisode: { episode: number } | null;
+      streamingEpisodes: { title: string }[];
+    };
+    Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: { episode: number; airingAt: number }[] };
+  };
+
+  const first = await anilist<Response>(EPISODES_QUERY, { id, page: 1 });
+  const schedule = [...first.Page.airingSchedules];
+  let hasNext = first.Page.pageInfo.hasNextPage;
+  for (let page = 2; hasNext && page <= SCHEDULE_PAGES; page++) {
+    const next = await anilist<Response>(EPISODES_QUERY, { id, page });
+    schedule.push(...next.Page.airingSchedules);
+    hasNext = next.Page.pageInfo.hasNextPage;
+  }
+
+  const media = first.Media;
+  const airedCount = airedEpisodeCount(media);
+  const maxScheduled = Math.max(0, ...schedule.map((s) => s.episode));
+  const count = Math.max(media.episodes ?? 0, maxScheduled, airedCount);
+
+  const titles = new Map<number, string | null>();
+  for (const s of media.streamingEpisodes) {
+    const parsed = parseStreamingTitle(s.title);
+    if (parsed && !titles.has(parsed[0])) titles.set(parsed[0], parsed[1]);
+  }
+  const dates = new Map(schedule.map((s) => [s.episode, s.airingAt]));
+
+  return {
+    episodes: Array.from({ length: count }, (_, i) => ({
+      number: i + 1,
+      title: titles.get(i + 1) ?? null,
+      airingAt: dates.get(i + 1) ?? null,
+      aired: i + 1 <= airedCount,
+    })),
+    airedCount,
+    total: media.episodes,
+  };
+}

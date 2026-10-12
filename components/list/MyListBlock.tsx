@@ -2,44 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useUser } from "@/components/auth/useUser";
-import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListEntry, type ListStatus } from "@/lib/lists";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { useState } from "react";
+import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListStatus } from "@/lib/lists";
+import { useUserMedia } from "./UserMediaProvider";
 import styles from "./MyListBlock.module.css";
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** «Мій список» на сторінці аніме: додати, змінити статус, прибрати, оцінити. */
-export function MyListBlock({ mediaId }: { mediaId: number }) {
-  const user = useUser();
+export function MyListBlock() {
+  const { user, entry, saving, error, setStatus, setScore, remove: removeAll } = useUserMedia();
   const pathname = usePathname();
-  // undefined — ще завантажуємо, null — аніме немає в списку
-  const [entry, setEntry] = useState<ListEntry | null | undefined>(undefined);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    getSupabaseBrowser()
-      .from("list_entries")
-      .select("media_id, status, score, updated_at")
-      .eq("media_id", mediaId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.error(error);
-          setError("Не вдалося завантажити ваш список. Оновіть сторінку.");
-        }
-        setEntry((data as ListEntry | null) ?? null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, mediaId]);
 
   if (user === undefined || (user && entry === undefined)) {
     return <div className={`${styles.block} ${styles.loading}`} aria-busy="true" />;
@@ -53,53 +27,21 @@ export function MyListBlock({ mediaId }: { mediaId: number }) {
           <Link href={`/login?next=${encodeURIComponent(pathname ?? "/")}`} className={styles.link}>
             Увійдіть
           </Link>
-          , щоб додати аніме у свій список і поставити оцінку.
+          , щоб додати аніме у свій список, відмічати серії й ставити оцінки.
         </p>
       </div>
     );
   }
 
-  /** Зберегти зміни; при помилці повернути як було. */
-  async function save(next: Partial<Pick<ListEntry, "status" | "score">>) {
-    const previous = entry ?? null;
-    const optimistic: ListEntry = {
-      media_id: mediaId,
-      status: next.status ?? previous?.status ?? "completed",
-      score: next.score !== undefined ? next.score : (previous?.score ?? null),
-      updated_at: new Date().toISOString(),
-    };
-    setEntry(optimistic);
-    setError("");
+  function save(next: { status?: ListStatus; score?: number | null }) {
     setConfirmRemove(false);
-    setSaving(true);
-    const { data, error } = await getSupabaseBrowser()
-      .from("list_entries")
-      .upsert({ media_id: mediaId, status: optimistic.status, score: optimistic.score })
-      .select("media_id, status, score, updated_at")
-      .single();
-    setSaving(false);
-    if (error) {
-      console.error(error);
-      setEntry(previous);
-      setError("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
-      return;
-    }
-    setEntry(data as ListEntry);
+    if (next.status) setStatus(next.status);
+    if (next.score !== undefined) setScore(next.score);
   }
 
-  async function remove() {
-    const previous = entry ?? null;
-    setEntry(null);
+  function remove() {
     setConfirmRemove(false);
-    setError("");
-    setSaving(true);
-    const { error } = await getSupabaseBrowser().from("list_entries").delete().eq("media_id", mediaId);
-    setSaving(false);
-    if (error) {
-      console.error(error);
-      setEntry(previous);
-      setError("Не вдалося прибрати зі списку. Спробуйте ще раз.");
-    }
+    removeAll();
   }
 
   const status = entry?.status;
@@ -118,7 +60,7 @@ export function MyListBlock({ mediaId }: { mediaId: number }) {
 
       {confirmRemove && (
         <div className={styles.confirm} role="alertdialog" aria-label="Прибрати зі списку?">
-          <span>Прибрати це аніме зі списку разом з оцінкою?</span>
+          <span>Прибрати це аніме зі списку разом з оцінкою й відмітками серій?</span>
           <span className={styles.confirmActions}>
             <button type="button" className={styles.danger} onClick={remove}>
               Прибрати
