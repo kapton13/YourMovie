@@ -240,10 +240,13 @@
 }
 
 .episode {
+  padding: 8px 12px 8px 82px;
+}
+
+.episodeRow {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px 8px 82px;
 }
 
 .episode + .episode {
@@ -272,18 +275,110 @@
   cursor: pointer;
 }
 
-.check {
-  width: 30px;
-  height: 30px;
-  border: 2px solid var(--border);
-  border-radius: 50%;
+.rate {
+  min-width: 40px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: var(--background);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.check:hover {
-  border-color: #2f9e58;
-  background: color-mix(in srgb, #2f9e58 25%, var(--background));
+.rate:hover {
+  border-color: #e0a100;
+  color: var(--foreground);
+}
+
+.watchedButton {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #2f9e58;
+  border-radius: 8px;
+  background: transparent;
+  color: #2f9e58;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.watchedButton:hover {
+  background: #2f9e58;
+  color: #fff;
+}
+
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-left: 44px;
+}
+
+.ratingButton {
+  width: 34px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ratingButton:hover {
+  border-color: #e0a100;
+  background: #f5b301;
+  color: #1b1400;
+}
+
+.seasonDone {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #2f9e58;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seasonDone:hover {
+  text-decoration: underline;
+}
+
+.confirmAll {
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.confirmYes,
+.confirmNo {
+  margin-left: 6px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirmYes {
+  border: 0;
+  background: #2f9e58;
+  color: #fff;
+}
+
+.confirmNo {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .more {
@@ -403,7 +498,10 @@
 .tab:focus-visible,
 .plusOne:focus-visible,
 .expand:focus-visible,
-.check:focus-visible,
+.rate:focus-visible,
+.watchedButton:focus-visible,
+.ratingButton:focus-visible,
+.seasonDone:focus-visible,
 .sortButton:focus-visible,
 .waitingToggle:focus-visible {
   outline: 2px solid var(--accent);
@@ -448,6 +546,26 @@
   .episode,
   .more {
     padding-left: 12px;
+  }
+
+  .episodeRow {
+    gap: 8px;
+  }
+
+  /* На телефоні кнопка «Переглянуто» — лише галочка */
+  .watchedButton span {
+    display: none;
+  }
+
+  .rating {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding-left: 0;
+  }
+
+  .ratingButton {
+    width: auto;
+    height: 38px;
   }
 
   .grid {

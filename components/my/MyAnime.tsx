@@ -49,6 +49,10 @@ export function MyAnime() {
   const [sort, setSort] = useState<SortKey>("new");
   const [open, setOpen] = useState<number | null>(null);
   const [showWaiting, setShowWaiting] = useState(false);
+  /** Відкрита оцінка серії: «mediaId:номер». */
+  const [rating, setRating] = useState<string | null>(null);
+  /** Аніме, для якого питаємо «Відмітити весь сезон?». */
+  const [confirmAll, setConfirmAll] = useState<number | null>(null);
   // Поточний час (секунди) — фіксуємо під час завантаження, щоб «Нова серія!» не мигала.
   const [now, setNow] = useState(0);
 
@@ -143,13 +147,15 @@ export function MyAnime() {
 
   // ---- зміни ----
 
-  async function markEpisodes(item: Item, episodes: number[]) {
+  /** Відмітити серії переглянутими; з `score` — ще й оцінити (оцінена серія = переглянута). */
+  async function markEpisodes(item: Item, episodes: number[], score?: number | null) {
     if (episodes.length === 0 || !item.media) return;
     const mediaId = item.entry.media_id;
     const prevMarks = marks;
     const prevEntries = entries;
     const nextForMedia = new Map(marks.get(mediaId) ?? []);
-    for (const n of episodes) nextForMedia.set(n, { watched: true, score: nextForMedia.get(n)?.score ?? null });
+    for (const n of episodes)
+      nextForMedia.set(n, { watched: true, score: score !== undefined ? score : (nextForMedia.get(n)?.score ?? null) });
     const nextEntry = entryAfterMarks(item.entry, nextForMedia, {
       mediaId,
       total: item.media.episodes,
@@ -163,7 +169,11 @@ export function MyAnime() {
     const supabase = getSupabaseBrowser();
     const { error: marksError } = await supabase
       .from("episode_marks")
-      .upsert(episodes.map((episode) => ({ media_id: mediaId, episode, watched: true })));
+      .upsert(
+        episodes.map((episode) =>
+          score !== undefined ? { media_id: mediaId, episode, watched: true, score } : { media_id: mediaId, episode, watched: true },
+        ),
+      );
     let entryError = null;
     if (!marksError && nextEntry && nextEntry !== item.entry) {
       entryError = (
@@ -285,6 +295,33 @@ export function MyAnime() {
                       <div className={styles.progress} aria-hidden="true">
                         <span style={{ width: `${percent}%` }} />
                       </div>
+                      {left.length > 0 &&
+                        (confirmAll === id ? (
+                          <p className={styles.confirmAll}>
+                            Відмітити {left.length} {pluralEpisodes(left.length)} переглянутими?{" "}
+                            <button
+                              type="button"
+                              className={styles.confirmYes}
+                              onClick={() => (setConfirmAll(null), markEpisodes(item, left))}
+                            >
+                              Так
+                            </button>
+                            <button type="button" className={styles.confirmNo} onClick={() => setConfirmAll(null)}>
+                              Ні
+                            </button>
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.seasonDone}
+                            onClick={() => (left.length > 1 ? setConfirmAll(id) : markEpisodes(item, left))}
+                          >
+                            ✓{" "}
+                            {item.media && item.media.episodes && item.media.airedCount >= item.media.episodes
+                              ? "Переглянуто весь сезон"
+                              : "Переглянуто все, що вийшло"}
+                          </button>
+                        ))}
                       {item.media?.nextAiringEpisode && (
                         <p className={styles.next}>
                           Серія {item.media.nextAiringEpisode.episode} вийде{" "}
@@ -315,27 +352,57 @@ export function MyAnime() {
 
                   {expanded && (
                     <ol className={styles.episodes}>
-                      {left.slice(0, 50).map((n) => (
-                        <li key={n} className={styles.episode}>
-                          <span className={styles.episodeNumber}>{n}</span>
-                          <span className={styles.episodeTitle}>Серія {n}</span>
-                          {n > left[0] && (
-                            <button
-                              type="button"
-                              className={styles.upTo}
-                              onClick={() => markEpisodes(item, left.filter((x) => x <= n))}
-                            >
-                              усі до цієї
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className={styles.check}
-                            aria-label={`Відмітити серію ${n} як переглянуту`}
-                            onClick={() => markEpisodes(item, [n])}
-                          />
-                        </li>
-                      ))}
+                      {left.slice(0, 50).map((n) => {
+                        const key = `${id}:${n}`;
+                        return (
+                          <li key={n} className={styles.episode}>
+                            <div className={styles.episodeRow}>
+                              <span className={styles.episodeNumber}>{n}</span>
+                              <span className={styles.episodeTitle}>Серія {n}</span>
+                              {n > left[0] && (
+                                <button
+                                  type="button"
+                                  className={styles.upTo}
+                                  onClick={() => markEpisodes(item, left.filter((x) => x <= n))}
+                                >
+                                  усі до цієї
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className={styles.rate}
+                                aria-expanded={rating === key}
+                                aria-label={`Оцінити серію ${n}`}
+                                onClick={() => setRating(rating === key ? null : key)}
+                              >
+                                ☆
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.watchedButton}
+                                aria-label={`Серію ${n} переглянуто`}
+                                onClick={() => markEpisodes(item, [n])}
+                              >
+                                ✓ <span>Переглянуто</span>
+                              </button>
+                            </div>
+                            {rating === key && (
+                              <div className={styles.rating} role="group" aria-label={`Оцінка серії ${n}`}>
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                                  <button
+                                    key={score}
+                                    type="button"
+                                    className={styles.ratingButton}
+                                    onClick={() => (setRating(null), markEpisodes(item, [n], score))}
+                                  >
+                                    {score}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
                       {left.length > 50 && (
                         <li className={styles.more}>
                           Ще {left.length - 50} — на <Link href={`/anime/${id}`}>сторінці аніме</Link>
