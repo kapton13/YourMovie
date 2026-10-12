@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { ThemeToggle, themeInitScript } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/auth/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,6 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/catalog">Каталог</Link>
               </nav>
               <ThemeToggle />
+              <Suspense fallback={<span className="user-placeholder" aria-hidden="true" />}>
+                <UserMenu />
+              </Suspense>
             </div>
           </div>
         </header>
