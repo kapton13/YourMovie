@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { getSupabaseBrowser, setRemember } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
+import { NicknameField, type NicknameState } from "./NicknameField";
 import styles from "./auth.module.css";
 
 type Mode = "login" | "signup" | "forgot";
@@ -27,6 +28,9 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRememberChoice] = useState(true);
+  const [nickname, setNickname] = useState("");
+  const [nicknameState, setNicknameState] = useState<NicknameState>("empty");
+  const onNicknameState = useCallback((state: NicknameState) => setNicknameState(state), []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sentTo, setSentTo] = useState("");
@@ -35,6 +39,16 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
     event.preventDefault();
     setError("");
     const cleanEmail = email.trim();
+    if (mode === "signup" && nicknameState !== "free") {
+      setError(
+        nicknameState === "taken"
+          ? "Цей нікнейм уже зайнятий — спробуйте інший."
+          : nicknameState === "checking"
+            ? "Зачекайте секунду: перевіряємо нікнейм."
+            : "Вкажіть нікнейм: 3–24 символи, літери, цифри, _ . -",
+      );
+      return;
+    }
     if (mode === "signup" && password.length < MIN_PASSWORD) {
       setError(`Пароль має бути щонайменше ${MIN_PASSWORD} символів.`);
       return;
@@ -55,7 +69,10 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { emailRedirectTo: callback(next === "/account" ? "/account?welcome=1" : next) },
+          options: {
+            emailRedirectTo: callback(next === "/account" ? "/account?welcome=1" : next),
+            data: { nickname: nickname.trim() },
+          },
         });
         if (error) return setError(authErrorMessage(error));
         // Якщо пошта вже зареєстрована, Supabase не каже про це прямо (захист від перебору адрес).
@@ -123,6 +140,9 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
       )}
 
       <form className={styles.form} onSubmit={onSubmit} noValidate>
+        {mode === "signup" && (
+          <NicknameField value={nickname} onChange={setNickname} onStateChange={onNicknameState} />
+        )}
         <label className={styles.field}>
           <span>Пошта</span>
           <input
@@ -198,7 +218,7 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
           </p>
         )}
 
-        <button type="submit" className={styles.submit} disabled={busy || !email.trim() || (mode !== "forgot" && !password)}>
+        <button type="submit" className={styles.submit} disabled={busy || !email.trim() || (mode !== "forgot" && !password) || (mode === "signup" && !nickname.trim())}>
           {busy ? "Зачекайте…" : mode === "login" ? "Увійти" : mode === "signup" ? "Зареєструватися" : "Надіслати посилання"}
         </button>
       </form>
