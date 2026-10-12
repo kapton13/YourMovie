@@ -40,7 +40,7 @@ export function AccountView() {
 
   return (
     <div className={styles.card}>
-      {welcome && <p className={styles.notice}>Пошту підтверджено — ласкаво просимо до YourMovie!</p>}
+      {welcome && <p className={styles.notice}>Ласкаво просимо до YourMovie! Акаунт створено.</p>}
       <h1 className={styles.title}>Мій акаунт</h1>
       <dl className={styles.details}>
         <div>

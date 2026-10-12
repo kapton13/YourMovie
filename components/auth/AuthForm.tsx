@@ -61,6 +61,12 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         // Якщо пошта вже зареєстрована, Supabase не каже про це прямо (захист від перебору адрес).
         if (data.user && data.user.identities?.length === 0)
           return setError("Акаунт із цією поштою вже існує. Спробуйте увійти.");
+        if (data.session) {
+          // Підтвердження пошти вимкнено — людина вже в системі.
+          router.replace(next === "/account" ? "/account?welcome=1" : next);
+          router.refresh();
+          return;
+        }
         setSentTo(cleanEmail);
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
