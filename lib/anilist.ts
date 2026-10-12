@@ -541,3 +541,60 @@ export async function getEpisodes(id: number): Promise<EpisodesData> {
     total: media.episodes,
   };
 }
+
+// ---------------------------------------------------------------------------
+// «Мої аніме»: дані про кілька тайтлів одним запитом
+
+export type MyMedia = MediaCard & {
+  status: MediaStatus | null;
+  duration: number | null;
+  nextAiringEpisode: { episode: number; airingAt: number } | null;
+  /** Скільки серій уже вийшло. */
+  airedCount: number;
+  /** Коли вийшла остання серія (Unix, секунди), якщо відомо. */
+  lastAiredAt: number | null;
+};
+
+const MY_MEDIA_QUERY = `
+  query MyMedia($ids: [Int]) {
+    Page(perPage: 50) {
+      media(id_in: $ids, type: ANIME) {
+        ${CARD_FIELDS}
+        status
+        duration
+        nextAiringEpisode { episode airingAt }
+      }
+    }
+    recent: Page(perPage: 50) {
+      airingSchedules(mediaId_in: $ids, notYetAired: false, sort: TIME_DESC) { mediaId airingAt }
+    }
+  }
+`;
+
+/** До 50 тайтлів за раз (ліміт AniList); id мають бути відсортовані — так краще кешується. */
+export async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
+  "use cache";
+  cacheLife("minutes");
+
+  type Response = {
+    Page: { media: (MediaCard & Pick<MyMedia, "status" | "duration" | "nextAiringEpisode">)[] };
+    recent: { airingSchedules: { mediaId: number; airingAt: number }[] };
+  };
+  const data = await anilist<Response>(MY_MEDIA_QUERY, { ids });
+  const lastAired = new Map<number, number>();
+  for (const s of data.recent.airingSchedules) if (!lastAired.has(s.mediaId)) lastAired.set(s.mediaId, s.airingAt);
+
+  return data.Page.media.map((m) => ({
+    ...m,
+    airedCount: airedEpisodeCount(m),
+    lastAiredAt: lastAired.get(m.id) ?? null,
+  }));
+}
+
+export async function getMyMedia(ids: number[]): Promise<MyMedia[]> {
+  const unique = [...new Set(ids)].sort((a, b) => a - b);
+  const chunks: number[][] = [];
+  for (let i = 0; i < unique.length; i += 50) chunks.push(unique.slice(i, i + 50));
+  const results = await Promise.all(chunks.map((chunk) => getMyMediaChunk(chunk)));
+  return results.flat();
+}

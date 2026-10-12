@@ -105,6 +105,37 @@ a {
   gap: 20px;
 }
 
+.nav-my {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-my svg {
+  display: none;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* На телефоні «Мої аніме» — значок, «Головна» ховаємо (логотип теж веде на головну) */
+@media (max-width: 640px) {
+  .nav-my svg {
+    display: block;
+  }
+
+  .nav-my span {
+    display: none;
+  }
+
+  .nav-home {
+    display: none;
+  }
+}
+
 .user-placeholder {
   display: inline-block;
   width: 38px;
@@ -157,9 +188,19 @@ a {
   }
 }
 
-/* На дуже вузьких екранах «Головна» зайва: логотип теж веде на головну */
+/* На дуже вузьких екранах «Головна» зайва (логотип теж веде на головну), відступи менші */
 @media (max-width: 380px) {
   .nav-home {
     display: none;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+  }
+
+  .header-inner,
+  .header-actions,
+  .nav {
+    gap: 8px;
   }
 }
