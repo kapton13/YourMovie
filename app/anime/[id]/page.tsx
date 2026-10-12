@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
+import { MyListBlock } from "@/components/list/MyListBlock";
 import { getMedia, getWatchOrder, type MediaDetails } from "@/lib/anilist";
 import { catalogHref } from "@/lib/catalog";
 import {
@@ -139,6 +140,7 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
         </div>
 
         <div className={styles.body}>
+          <MyListBlock mediaId={media.id} />
           <h2 className={styles.subheading}>Опис</h2>
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => <p key={i} className={styles.paragraph}>{p}</p>)

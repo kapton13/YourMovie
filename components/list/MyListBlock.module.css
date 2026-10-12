@@ -1,0 +1,214 @@
+.block {
+  margin-top: 18px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.loading {
+  height: 132px;
+}
+
+.headRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heading {
+  font-weight: 700;
+}
+
+.muted {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.removeLink {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.removeLink:hover {
+  color: var(--danger);
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  font-size: 0.9rem;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+}
+
+.danger,
+.cancel {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.danger {
+  border: 0;
+  background: var(--danger);
+  color: #fff;
+}
+
+.cancel {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.status {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status:hover {
+  border-color: var(--accent);
+}
+
+.statusActive {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.statusDropped.statusActive {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.statusDropped:not(.statusActive):hover {
+  border-color: var(--danger);
+}
+
+.scoreRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 14px;
+}
+
+.scoreLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.scoreValue {
+  color: var(--foreground);
+}
+
+.scores {
+  display: flex;
+  gap: 4px;
+}
+
+.score {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.score:hover {
+  border-color: #e0a100;
+  color: var(--foreground);
+}
+
+.scoreFilled {
+  border-color: color-mix(in srgb, #f5b301 55%, var(--border));
+  background: color-mix(in srgb, #f5b301 22%, var(--background));
+  color: var(--foreground);
+}
+
+.scoreActive {
+  border-color: #e0a100;
+  background: #f5b301;
+  color: #1b1400;
+}
+
+.status:focus-visible,
+.score:focus-visible,
+.removeLink:focus-visible,
+.danger:focus-visible,
+.cancel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.error {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .scores {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .score {
+    width: auto;
+    height: 38px;
+    padding: 0;
+  }
+}
