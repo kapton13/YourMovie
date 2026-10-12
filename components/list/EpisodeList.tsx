@@ -66,7 +66,11 @@ export function EpisodeList({ data }: { data: EpisodesData }) {
             className={styles.bulk}
             onClick={() => (allAiredWatched ? setWatched(aired, false) : setWatched(aired.filter((n) => !marks?.get(n)?.watched), true))}
           >
-            {allAiredWatched ? "Зняти всі відмітки" : "Відмітити всі, що вийшли"}
+            {allAiredWatched
+              ? "Зняти всі відмітки"
+              : data.total && airedCount >= data.total
+                ? "✓ Переглянуто весь сезон"
+                : "✓ Переглянуто все, що вийшло"}
           </button>
         )}
       </div>
