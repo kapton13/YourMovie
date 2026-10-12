@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import type { ListEntry, ListStatus } from "@/lib/lists";
+import { entryAfterMarks } from "@/lib/listRules";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 
 export type EpisodeMark = { watched: boolean; score: number | null };
@@ -119,29 +120,8 @@ export function UserMediaProvider({
     return error ? error.message : null;
   }
 
-  /** Як має змінитися запис у списку після змін у серіях. */
-  function entryAfterMarks(base: ListEntry | null, nextMarks: Marks): ListEntry | null {
-    let watched = 0;
-    for (const [, m] of nextMarks) if (m.watched) watched++;
-    let status = base?.status ?? null;
-    let score = base?.score ?? null;
-
-    if (watched > 0 && (status === null || status === "planning")) status = "watching";
-    if (finished && total && watched >= total && (status === "watching" || status === "planning" || status === "paused"))
-      status = "completed";
-
-    if (total) {
-      const scores: number[] = [];
-      for (let n = 1; n <= total; n++) {
-        const s = nextMarks.get(n)?.score;
-        if (s) scores.push(s);
-      }
-      if (scores.length === total) score = Math.round((scores.reduce((a, b) => a + b, 0) / total) * 10) / 10;
-    }
-
-    if (status === null) return base;
-    if (base && base.status === status && base.score === score) return base;
-    return makeEntry(status, score);
+  function entryAfter(base: ListEntry | null, nextMarks: Marks): ListEntry | null {
+    return entryAfterMarks(base, nextMarks, { mediaId, total, finished });
   }
 
   const value: Context = {
@@ -178,7 +158,7 @@ export function UserMediaProvider({
       if (!current || episodes.length === 0) return;
       const nextMarks: Marks = new Map(current.marks);
       for (const n of episodes) nextMarks.set(n, { watched, score: nextMarks.get(n)?.score ?? null });
-      const nextEntry = entryAfterMarks(current.entry, nextMarks);
+      const nextEntry = entryAfter(current.entry, nextMarks);
       run({ marks: nextMarks, entry: nextEntry }, async () => {
         const { error } = await getSupabaseBrowser()
           .from("episode_marks")
@@ -194,7 +174,7 @@ export function UserMediaProvider({
       // Оцінка серії означає, що її переглянуто.
       const watched = score !== null ? true : (nextMarks.get(episode)?.watched ?? false);
       nextMarks.set(episode, { watched, score });
-      const nextEntry = entryAfterMarks(current.entry, nextMarks);
+      const nextEntry = entryAfter(current.entry, nextMarks);
       run({ marks: nextMarks, entry: nextEntry }, async () => {
         const { error } = await getSupabaseBrowser()
           .from("episode_marks")
