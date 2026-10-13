@@ -285,13 +285,18 @@ export function UserMediaProvider({
     setWatched(episodes, watched) {
       if (!current || episodes.length === 0) return;
       const partMarks: Marks = new Map(current.marks.get(part.id));
-      for (const n of episodes) partMarks.set(n, { watched, score: partMarks.get(n)?.score ?? null });
+      // Зняли відмітку «переглянуто» — оцінка серії теж зникає.
+      for (const n of episodes) partMarks.set(n, { watched, score: watched ? (partMarks.get(n)?.score ?? null) : null });
       const result = afterMarks(partMarks)!;
       run({ marks: result.marks, seasonScores: result.seasonScores, entry: result.nextEntry }, () =>
         persistAfter(result, () =>
           getSupabaseBrowser()
             .from("episode_marks")
-            .upsert(episodes.map((episode) => ({ media_id: part.id, episode, watched }))),
+            .upsert(
+              episodes.map((episode) =>
+                watched ? { media_id: part.id, episode, watched } : { media_id: part.id, episode, watched, score: null },
+              ),
+            ),
         ),
       );
     },
