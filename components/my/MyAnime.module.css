@@ -110,11 +110,98 @@
   overflow: hidden;
 }
 
-.itemMain {
+.franchiseHead {
   display: flex;
   gap: 14px;
   padding: 12px;
   align-items: center;
+}
+
+.parts {
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.part + .part {
+  border-top: 1px solid var(--border);
+}
+
+.partRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 0;
+}
+
+.partToggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0 8px 82px;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.partToggle:hover .partLabel {
+  color: var(--accent);
+}
+
+.partLabel {
+  flex-shrink: 0;
+  font-weight: 800;
+}
+
+.partTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.partCount {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.newDot {
+  flex-shrink: 0;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #2f9e58;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.chevron {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--muted);
+}
+
+.partBody {
+  padding: 0 12px 8px;
+}
+
+.partBody .seasonDone {
+  margin: 0 0 6px 70px;
+}
+
+.partBody .confirmAll {
+  margin: 0 0 6px 70px;
+}
+
+.part > .next {
+  margin: -4px 0 8px 82px;
 }
 
 .poster {
@@ -200,9 +287,10 @@
 
 .plusOne {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 14px;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 12px;
   border: 0;
   border-radius: 10px;
   background: var(--accent);
@@ -237,6 +325,7 @@
 .episodes {
   list-style: none;
   border-top: 1px solid var(--border);
+  margin: 0 -12px;
 }
 
 .episode {
@@ -519,29 +608,27 @@
     font-size: 1.5rem;
   }
 
-  .itemMain {
+  .partToggle {
     flex-wrap: wrap;
-    gap: 10px 12px;
+    gap: 2px 8px;
+    padding-left: 12px;
+  }
+
+  .partTitle {
+    order: 5;
+    flex-basis: 100%;
+  }
+
+  .partBody .seasonDone,
+  .partBody .confirmAll,
+  .part > .next {
+    margin-left: 12px;
   }
 
   .poster {
     width: 48px;
   }
 
-  .itemInfo {
-    flex-basis: calc(100% - 60px);
-  }
-
-  .itemActions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .plusOne {
-    flex-direction: row;
-    gap: 6px;
-    align-items: baseline;
-  }
 
   .episode,
   .more {

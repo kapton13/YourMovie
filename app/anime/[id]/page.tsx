@@ -4,8 +4,16 @@ import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
 import { EpisodeList } from "@/components/list/EpisodeList";
 import { MyListBlock } from "@/components/list/MyListBlock";
-import { UserMediaProvider } from "@/components/list/UserMediaProvider";
-import { airedEpisodeCount, getEpisodes, getMedia, getWatchOrder, type MediaDetails } from "@/lib/anilist";
+import { UserMediaProvider, type FranchiseContext } from "@/components/list/UserMediaProvider";
+import {
+  airedEpisodeCount,
+  getEpisodes,
+  getFranchise,
+  getMedia,
+  getWatchOrder,
+  type Franchise,
+  type MediaDetails,
+} from "@/lib/anilist";
 import { catalogHref } from "@/lib/catalog";
 import {
   COUNTRY_LABELS,
@@ -69,6 +77,13 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
   }
   if (!media) notFound();
 
+  const franchise = await getFranchise(media.id).catch((error) => {
+    console.error(error);
+    return null;
+  });
+  const partInFranchise = franchise ? [...franchise.main, ...franchise.extras].find((p) => p.id === media.id) : undefined;
+  const mainIndex = franchise ? franchise.main.findIndex((p) => p.id === media.id) : -1;
+
   const title = displayTitle(media);
   const altTitles = [media.title.romaji, media.title.native].filter((t) => t && t !== title);
   const score = formatScore(media.averageScore);
@@ -86,12 +101,7 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
     .filter((m): m is NonNullable<typeof m> => m != null && !m.isAdult);
 
   return (
-    <UserMediaProvider
-      mediaId={media.id}
-      total={media.episodes}
-      airedCount={airedEpisodeCount(media)}
-      finished={media.status === "FINISHED"}
-    >
+    <UserMediaProvider franchise={franchiseContext(media, franchise)} airedCount={airedEpisodeCount(media)}>
       {media.bannerImage && (
         <div
           className={styles.banner}
@@ -147,7 +157,26 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
         </div>
 
         <div className={styles.body}>
-          <MyListBlock />
+          {franchise && partInFranchise && franchise.main.length + franchise.extras.length > 1 && (
+            <p className={styles.franchiseNote}>
+              {franchise.key === media.id ? (
+                <>
+                  Аніме з кількох частин: {franchise.main.length + franchise.extras.length}. Ваш статус і оцінка — для
+                  всього аніме.
+                </>
+              ) : (
+                <>
+                  Частина аніме{" "}
+                  <Link href={`/anime/${franchise.key}`} className={styles.franchiseLink}>
+                    «{franchise.title}»
+                  </Link>{" "}
+                  · {partInFranchise.label}
+                  {mainIndex >= 0 ? ` (${mainIndex + 1} з ${franchise.main.length})` : " · додатково"}
+                </>
+              )}
+            </p>
+          )}
+          <MyListBlock seasonLabel={partInFranchise?.label} />
           <h2 className={styles.subheading}>Опис</h2>
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => <p key={i} className={styles.paragraph}>{p}</p>)
@@ -185,6 +214,23 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
       {recommendations.length > 0 && <MediaRow title="Схожі аніме" items={recommendations} />}
     </UserMediaProvider>
   );
+}
+
+/** Що потрібно «Моєму списку» про аніме цілком; якщо AniList не відповів — аніме з однієї частини. */
+function franchiseContext(media: MediaDetails, franchise: Franchise | null): FranchiseContext {
+  const part = { id: media.id, episodes: media.episodes, status: media.status };
+  if (!franchise) return { key: media.id, part, main: [part], allIds: [media.id] };
+  const info = (p: { id: number; episodes: number | null; status: string | null }) => ({
+    id: p.id,
+    episodes: p.episodes,
+    status: p.status,
+  });
+  return {
+    key: franchise.key,
+    part,
+    main: franchise.main.map(info),
+    allIds: [...franchise.main, ...franchise.extras].map((p) => p.id),
+  };
 }
 
 async function Episodes({ id }: { id: number }) {

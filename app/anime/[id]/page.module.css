@@ -257,3 +257,18 @@
     margin-top: 0;
   }
 }
+
+.franchiseNote {
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.franchiseLink {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.franchiseLink:hover {
+  text-decoration: underline;
+}
