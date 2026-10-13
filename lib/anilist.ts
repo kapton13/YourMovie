@@ -80,10 +80,11 @@ async function anilist<T>(query: string, variables: Record<string, unknown>, att
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ query, variables }),
   });
-  if (RETRY_STATUSES.has(res.status) && attempt < 2) {
-    // Ліміт запитів або тимчасовий збій AniList: одна повторна спроба трохи згодом.
+  if (RETRY_STATUSES.has(res.status) && attempt < 3) {
+    // Ліміт запитів або тимчасовий збій AniList: ще дві спроби трохи згодом.
     const retryAfter = Number(res.headers.get("retry-after"));
-    await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000, 3000)));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000 * attempt;
+    await new Promise((r) => setTimeout(r, Math.min(wait, 8000)));
     return anilist<T>(query, variables, attempt + 1);
   }
   const json = await res.json().catch(() => null);
@@ -386,11 +387,34 @@ export async function getMedia(id: number): Promise<MediaDetails | null> {
 
 export type WatchOrderItem = Omit<MediaCard, "startDate"> & { startDate: FuzzyDate };
 
-const CHAIN_QUERY = `
-  query Chain($ids: [Int]) {
+/** Частина аніме: сезон, фільм, OVA… */
+export type FranchisePart = WatchOrderItem & {
+  status: MediaStatus | null;
+  duration: number | null;
+  /** «Сезон 2», «Фільм», «OVA», «Спешл»… */
+  label: string;
+};
+
+/**
+ * Одне аніме з усіма частинами.
+ * `key` — id найпершої основної частини: під ним зберігається статус і оцінка всього аніме.
+ */
+export type Franchise = {
+  key: number;
+  title: string;
+  /** Основна історія (ланцюжок «попередня / наступна частина») за датою виходу. */
+  main: FranchisePart[];
+  /** Побічні історії, спешли, OVA «збоку» — за датою виходу. */
+  extras: FranchisePart[];
+};
+
+const FRANCHISE_QUERY = `
+  query Franchise($ids: [Int]) {
     Page(perPage: 50) {
       media(id_in: $ids, type: ANIME) {
         ${CARD_FIELDS}
+        status
+        duration
         startDate { year month day }
         relations { edges { relationType node { id type } } }
       }
@@ -398,44 +422,110 @@ const CHAIN_QUERY = `
   }
 `;
 
-const CHAIN_LIMIT = 40;
+const FRANCHISE_LIMIT = 60;
+const CHAIN_TYPES: RelationType[] = ["PREQUEL", "SEQUEL"];
+// Що ще належить до того самого аніме. Спін-офи, інші версії, «ті ж герої» — окремі аніме.
+const EXTRA_TYPES: RelationType[] = ["SIDE_STORY", "PARENT", "SUMMARY"];
+const SERIES_FORMATS = new Set(["TV", "TV_SHORT", "ONA"]);
+const PART_FORMAT_LABELS: Record<string, string> = {
+  MOVIE: "Фільм",
+  OVA: "OVA",
+  SPECIAL: "Спешл",
+  MUSIC: "Кліп",
+};
 
-/**
- * Усі частини основної історії (ланцюжок «попередня / наступна частина»),
- * упорядковані за датою виходу. Якщо частина одна — порожній список.
- */
-export async function getWatchOrder(id: number): Promise<WatchOrderItem[]> {
+function dateKey({ year, month, day }: FuzzyDate): number {
+  return year == null ? Infinity : year * 10000 + (month ?? 12) * 100 + (day ?? 31);
+}
+
+function byDate(a: WatchOrderItem, b: WatchOrderItem): number {
+  return dateKey(a.startDate) - dateKey(b.startDate) || a.id - b.id;
+}
+
+/** Усі частини аніме, до якого належить `id`. */
+export async function getFranchise(id: number): Promise<Franchise> {
   "use cache";
   cacheLife("days");
 
-  type ChainNode = WatchOrderItem & {
+  type Node = Omit<FranchisePart, "label"> & {
     relations: { edges: { relationType: RelationType; node: { id: number; type: string } }[] };
   };
 
-  const found = new Map<number, WatchOrderItem>();
+  const nodes = new Map<number, Node>();
   const queued = new Set([id]);
   let frontier = [id];
-
-  while (frontier.length > 0 && found.size < CHAIN_LIMIT) {
-    const data = await anilist<{ Page: { media: ChainNode[] } }>(CHAIN_QUERY, { ids: frontier });
+  while (frontier.length > 0 && nodes.size < FRANCHISE_LIMIT) {
+    const data = await anilist<{ Page: { media: Node[] } }>(FRANCHISE_QUERY, { ids: frontier });
     const next: number[] = [];
-    for (const { relations, ...media } of data.Page.media) {
-      found.set(media.id, media);
-      for (const edge of relations.edges) {
-        const isChain = edge.relationType === "PREQUEL" || edge.relationType === "SEQUEL";
-        if (isChain && edge.node.type === "ANIME" && !queued.has(edge.node.id)) {
+    for (const media of data.Page.media) {
+      nodes.set(media.id, media);
+      for (const edge of media.relations.edges) {
+        const follow = CHAIN_TYPES.includes(edge.relationType) || EXTRA_TYPES.includes(edge.relationType);
+        if (follow && edge.node.type === "ANIME" && !queued.has(edge.node.id)) {
           queued.add(edge.node.id);
           next.push(edge.node.id);
         }
       }
     }
-    frontier = next.slice(0, CHAIN_LIMIT - found.size);
+    frontier = next.slice(0, FRANCHISE_LIMIT - nodes.size);
   }
 
-  if (found.size < 2) return [];
-  const dateKey = ({ year, month, day }: FuzzyDate) =>
-    year == null ? Infinity : year * 10000 + (month ?? 12) * 100 + (day ?? 31);
-  return [...found.values()].sort((a, b) => dateKey(a.startDate) - dateKey(b.startDate) || a.id - b.id);
+  // Ланцюжки «попередня / наступна»; основний — той, де найбільше серіалів (далі — найбільше частин).
+  const chainOf = new Map<number, number>();
+  const chains: number[][] = [];
+  for (const start of nodes.keys()) {
+    if (chainOf.has(start)) continue;
+    const chain: number[] = [];
+    const stack = [start];
+    chainOf.set(start, chains.length);
+    while (stack.length) {
+      const current = stack.pop()!;
+      chain.push(current);
+      for (const edge of nodes.get(current)!.relations.edges) {
+        if (CHAIN_TYPES.includes(edge.relationType) && nodes.has(edge.node.id) && !chainOf.has(edge.node.id)) {
+          chainOf.set(edge.node.id, chains.length);
+          stack.push(edge.node.id);
+        }
+      }
+    }
+    chains.push(chain);
+  }
+  const weight = (chain: number[]) =>
+    chain.filter((n) => SERIES_FORMATS.has(nodes.get(n)!.format ?? "")).length * 1000 + chain.length;
+  const mainChain = new Set(chains.reduce((best, c) => (weight(c) > weight(best) ? c : best), chains[0] ?? [id]));
+
+  const strip = (node: Node): Omit<FranchisePart, "label"> => {
+    const part: Partial<Node> = { ...node };
+    delete part.relations;
+    return part as Omit<FranchisePart, "label">;
+  };
+  const main = [...nodes.values()].filter((n) => mainChain.has(n.id)).map(strip).sort(byDate);
+  const extras = [...nodes.values()].filter((n) => !mainChain.has(n.id)).map(strip).sort(byDate);
+
+  let season = 0;
+  const label = (part: Omit<FranchisePart, "label">, inMain: boolean): string => {
+    if (SERIES_FORMATS.has(part.format ?? "")) return inMain ? `Сезон ${++season}` : "Серіал";
+    return PART_FORMAT_LABELS[part.format ?? ""] ?? "Частина";
+  };
+  const mainParts = main.map((p) => ({ ...p, label: label(p, true) }));
+  const extraParts = extras.map((p) => ({ ...p, label: label(p, false) }));
+  const first = mainParts[0] ?? extraParts[0];
+
+  return {
+    key: first.id,
+    title: first.title.english ?? first.title.romaji ?? "Без назви",
+    main: mainParts,
+    extras: extraParts,
+  };
+}
+
+/**
+ * Усі частини основної історії, упорядковані за датою виходу.
+ * Якщо частина одна — порожній список.
+ */
+export async function getWatchOrder(id: number): Promise<FranchisePart[]> {
+  const franchise = await getFranchise(id);
+  return franchise.main.length > 1 ? franchise.main : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -597,4 +687,16 @@ export async function getMyMedia(ids: number[]): Promise<MyMedia[]> {
   for (let i = 0; i < unique.length; i += 50) chunks.push(unique.slice(i, i + 50));
   const results = await Promise.all(chunks.map((chunk) => getMyMediaChunk(chunk)));
   return results.flat();
+}
+
+/** Кілька аніме за id їхніх частин; частини одного аніме не рахуються двічі. */
+export async function getFranchises(ids: number[]): Promise<Record<number, Franchise>> {
+  const result: Record<number, Franchise> = {};
+  for (const id of ids) {
+    if (result[id]) continue;
+    const franchise = await getFranchise(id);
+    for (const part of [...franchise.main, ...franchise.extras]) result[part.id] = franchise;
+    result[id] = franchise;
+  }
+  return result;
 }

@@ -10,8 +10,9 @@ import styles from "./MyListBlock.module.css";
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** «Мій список» на сторінці аніме: додати, змінити статус, прибрати, оцінити. */
-export function MyListBlock() {
-  const { user, entry, saving, error, setStatus, setScore, remove: removeAll } = useUserMedia();
+export function MyListBlock({ seasonLabel }: { seasonLabel?: string }) {
+  const { user, entry, saving, error, setStatus, setScore, setSeasonScore, seasonScore, multipart, remove: removeAll } =
+    useUserMedia();
   const pathname = usePathname();
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -60,7 +61,7 @@ export function MyListBlock() {
 
       {confirmRemove && (
         <div className={styles.confirm} role="alertdialog" aria-label="Прибрати зі списку?">
-          <span>Прибрати це аніме зі списку разом з оцінкою й відмітками серій?</span>
+          <span>Прибрати це аніме (усі частини) зі списку разом з оцінками й відмітками серій?</span>
           <span className={styles.confirmActions}>
             <button type="button" className={styles.danger} onClick={remove}>
               Прибрати
@@ -87,35 +88,69 @@ export function MyListBlock() {
         ))}
       </div>
 
-      <div className={styles.scoreRow}>
-        <span className={styles.scoreLabel}>
-          Моя оцінка{score !== null && <b className={styles.scoreValue}> {formatUserScore(score)}</b>}
-        </span>
-        <div className={styles.scores} role="group" aria-label="Моя оцінка від 1 до 10">
-          {SCORES.map((n) => {
-            const active = score !== null && Math.round(score) === n;
-            return (
-              <button
-                key={n}
-                type="button"
-                className={`${styles.score} ${score !== null && n <= Math.round(score) ? styles.scoreFilled : ""} ${active ? styles.scoreActive : ""}`}
-                aria-pressed={active}
-                aria-label={active ? `Оцінка ${n}, натисніть, щоб прибрати` : `Оцінити на ${n}`}
-                onClick={() => save({ score: active ? null : n })}
-              >
-                {n}
-              </button>
-            );
-          })}
-        </div>
-        {!entry && <span className={styles.muted}>Оцінка додасть аніме до «Переглянуто».</span>}
-      </div>
+      <ScoreRow
+        label={multipart ? "Оцінка аніме" : "Моя оцінка"}
+        score={score}
+        onChange={(n) => save({ score: n })}
+        ariaLabel="Оцінка всього аніме від 1 до 10"
+      />
+      {multipart && (
+        <ScoreRow
+          label={`Оцінка: ${seasonLabel ?? "ця частина"}`}
+          score={seasonScore}
+          onChange={(n) => (setConfirmRemove(false), setSeasonScore(n))}
+          ariaLabel="Оцінка цієї частини від 1 до 10"
+        />
+      )}
+      {!entry && (
+        <p className={styles.muted}>
+          {multipart ? "Оцінка додасть аніме у ваш список." : "Оцінка додасть аніме до «Переглянуто»."}
+        </p>
+      )}
 
       {error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+function ScoreRow({
+  label,
+  score,
+  onChange,
+  ariaLabel,
+}: {
+  label: string;
+  score: number | null;
+  onChange: (score: number | null) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className={styles.scoreRow}>
+      <span className={styles.scoreLabel}>
+        {label}
+        {score !== null && <b className={styles.scoreValue}> {formatUserScore(score)}</b>}
+      </span>
+      <div className={styles.scores} role="group" aria-label={ariaLabel}>
+        {SCORES.map((n) => {
+          const active = score !== null && Math.round(score) === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              className={`${styles.score} ${score !== null && n <= Math.round(score) ? styles.scoreFilled : ""} ${active ? styles.scoreActive : ""}`}
+              aria-pressed={active}
+              aria-label={active ? `${label}: ${n}, натисніть, щоб прибрати` : `${label}: оцінити на ${n}`}
+              onClick={() => onChange(active ? null : n)}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

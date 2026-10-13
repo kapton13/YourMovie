@@ -3,25 +3,48 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import {
+  franchiseEntryAfter,
+  mergeStatuses,
+  seasonAverage,
+  type Mark,
+  type Marks,
+  type PartInfo,
+} from "@/lib/franchiseRules";
 import type { ListEntry, ListStatus } from "@/lib/lists";
-import { entryAfterMarks } from "@/lib/listRules";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 
-export type EpisodeMark = { watched: boolean; score: number | null };
+export type EpisodeMark = Mark;
 
-type Marks = Map<number, EpisodeMark>;
+/** Що сторінка знає про аніме, до якого належить ця частина. */
+export type FranchiseContext = {
+  /** id запису всього аніме (найперша основна частина). */
+  key: number;
+  /** Частина, сторінку якої відкрито. */
+  part: PartInfo;
+  /** Основні частини (для автостатусів і середньої оцінки). */
+  main: PartInfo[];
+  /** id усіх частин, разом із побічними. */
+  allIds: number[];
+};
 
 type Context = {
   user: User | null | undefined;
-  /** undefined — завантажуємо, null — аніме немає в списку. */
+  /** Запис усього аніме: undefined — завантажуємо, null — аніме немає в списку. */
   entry: ListEntry | null | undefined;
+  /** Відмітки серій цієї частини. */
   marks: Marks | undefined;
+  /** Оцінка цієї частини (сезону). */
+  seasonScore: number | null;
+  /** Чи має аніме кілька частин (тоді показуємо оцінку сезону окремо). */
+  multipart: boolean;
   saving: boolean;
   error: string;
   airedCount: number;
   total: number | null;
   setStatus: (status: ListStatus) => void;
   setScore: (score: number | null) => void;
+  setSeasonScore: (score: number | null) => void;
   remove: () => void;
   setWatched: (episodes: number[], watched: boolean) => void;
   rateEpisode: (episode: number, score: number | null) => void;
@@ -37,151 +60,230 @@ export function useUserMedia(): Context {
 
 const ENTRY_FIELDS = "media_id, status, score, updated_at";
 
-/**
- * Усе, що користувач позначив для одного аніме: статус, оцінка, серії.
- * Правила узгодження:
- * — відмітили серію, а аніме ще не в списку або «Планую» → «Дивлюся»;
- * — переглянули всі серії завершеного аніме → «Переглянуто»;
- * — оцінили всі серії → оцінка аніме = середнє (до десятих).
- */
+type Loaded = {
+  userId: string;
+  entry: ListEntry | null;
+  /** Відмітки серій усіх частин аніме. */
+  marks: Map<number, Marks>;
+  seasonScores: Map<number, number>;
+};
+
 export function UserMediaProvider({
-  mediaId,
-  total,
+  franchise,
   airedCount,
-  finished,
   children,
 }: {
-  mediaId: number;
-  total: number | null;
+  franchise: FranchiseContext;
   airedCount: number;
-  finished: boolean;
   children: React.ReactNode;
 }) {
   const user = useUser();
-  const [loaded, setLoaded] = useState<{ userId: string; entry: ListEntry | null; marks: Marks } | null>(null);
+  const { key, part, main, allIds } = franchise;
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const idsKey = allIds.join(",");
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     const supabase = getSupabaseBrowser();
-    Promise.all([
-      supabase.from("list_entries").select(ENTRY_FIELDS).eq("media_id", mediaId).maybeSingle(),
-      supabase.from("episode_marks").select("episode, watched, score").eq("media_id", mediaId),
-    ]).then(([entryRes, marksRes]) => {
+    const ids = idsKey.split(",").map(Number);
+    (async () => {
+      const [entriesRes, marksRes, scoresRes] = await Promise.all([
+        supabase.from("list_entries").select(ENTRY_FIELDS).in("media_id", ids),
+        supabase.from("episode_marks").select("media_id, episode, watched, score").in("media_id", ids),
+        supabase.from("season_scores").select("media_id, score").in("media_id", ids),
+      ]);
       if (cancelled) return;
-      if (entryRes.error || marksRes.error) {
-        console.error(entryRes.error ?? marksRes.error);
+      if (entriesRes.error || marksRes.error) {
+        console.error(entriesRes.error ?? marksRes.error);
         setError("Не вдалося завантажити ваш список. Оновіть сторінку.");
       }
-      const marks: Marks = new Map();
-      for (const m of (marksRes.data ?? []) as { episode: number; watched: boolean; score: number | null }[])
-        marks.set(m.episode, { watched: m.watched, score: m.score });
-      setLoaded({ userId: user.id, entry: (entryRes.data as ListEntry | null) ?? null, marks });
-    });
+      // Таблиця оцінок сезонів може ще не існувати — тоді просто без них.
+      if (scoresRes.error) console.warn(scoresRes.error);
+
+      const marks = new Map<number, Marks>();
+      for (const m of (marksRes.data ?? []) as { media_id: number; episode: number; watched: boolean; score: number | null }[]) {
+        if (!marks.has(m.media_id)) marks.set(m.media_id, new Map());
+        marks.get(m.media_id)!.set(m.episode, { watched: m.watched, score: m.score });
+      }
+      const seasonScores = new Map<number, number>();
+      for (const s of (scoresRes.data ?? []) as { media_id: number; score: number }[]) seasonScores.set(s.media_id, Number(s.score));
+
+      // Раніше кожен сезон мав свій запис — об'єднуємо в один запис усього аніме.
+      const entries = (entriesRes.data ?? []) as ListEntry[];
+      let entry = entries.find((e) => e.media_id === key) ?? null;
+      const stray = entries.filter((e) => e.media_id !== key);
+      if (stray.length > 0) {
+        const all = entry ? [entry, ...stray] : stray;
+        const merged: ListEntry = {
+          media_id: key,
+          status: mergeStatuses(all.map((e) => e.status)),
+          score: entry?.score ?? stray.find((e) => e.score !== null)?.score ?? null,
+          updated_at: new Date().toISOString(),
+        };
+        const { error: upsertError } = await supabase
+          .from("list_entries")
+          .upsert({ media_id: key, status: merged.status, score: merged.score });
+        if (!upsertError) {
+          await supabase.from("list_entries").delete().in("media_id", stray.map((e) => e.media_id));
+          entry = merged;
+        }
+      }
+      if (!cancelled) setLoaded({ userId: user.id, entry, marks, seasonScores });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [user, mediaId]);
+  }, [user, key, idsKey]);
 
   const current = user && loaded?.userId === user.id ? loaded : null;
   const entry = user === null ? null : current ? current.entry : undefined;
-  const marks = current?.marks;
-
-  function update(next: { entry?: ListEntry | null; marks?: Marks }) {
-    setLoaded((prev) => (prev ? { ...prev, ...next } : prev));
-  }
 
   /** Виконати зміну оптимістично; якщо база відмовила — повернути як було. */
-  async function run(optimistic: { entry?: ListEntry | null; marks?: Marks }, write: () => Promise<string | null>) {
+  async function run(next: Partial<Omit<Loaded, "userId">>, write: () => Promise<string | null>) {
     if (!current) return;
-    const before = { entry: current.entry, marks: current.marks };
-    update(optimistic);
+    const before = current;
+    setLoaded({ ...current, ...next });
     setError("");
     setSaving(true);
     const problem = await write();
     setSaving(false);
     if (problem) {
       console.error(problem);
-      update(before);
+      setLoaded(before);
       setError("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
     }
-  }
-
-  function makeEntry(status: ListStatus, score: number | null): ListEntry {
-    return { media_id: mediaId, status, score, updated_at: new Date().toISOString() };
   }
 
   async function saveEntry(next: ListEntry): Promise<string | null> {
     const { error } = await getSupabaseBrowser()
       .from("list_entries")
-      .upsert({ media_id: mediaId, status: next.status, score: next.score });
+      .upsert({ media_id: key, status: next.status, score: next.score });
     return error ? error.message : null;
   }
 
-  function entryAfter(base: ListEntry | null, nextMarks: Marks): ListEntry | null {
-    return entryAfterMarks(base, nextMarks, { mediaId, total, finished });
+  async function saveSeasonScore(score: number | null): Promise<string | null> {
+    const table = getSupabaseBrowser().from("season_scores");
+    const { error } =
+      score === null
+        ? await table.delete().eq("media_id", part.id)
+        : await table.upsert({ media_id: part.id, score });
+    return error ? error.message : null;
+  }
+
+  /** Після змін у серіях цієї частини: оцінка сезону й запис аніме за правилами. */
+  function afterMarks(partMarks: Marks) {
+    if (!current) return null;
+    const marks = new Map(current.marks).set(part.id, partMarks);
+    const seasonScores = new Map(current.seasonScores);
+    const average = seasonAverage(part, partMarks);
+    const seasonChanged = average !== null && average !== seasonScores.get(part.id);
+    if (seasonChanged) seasonScores.set(part.id, average);
+    const nextEntry = franchiseEntryAfter({ key, entry: current.entry, main, marks, seasonScores });
+    return { marks, seasonScores, nextEntry, seasonChanged, average };
+  }
+
+  async function persistAfter(
+    result: NonNullable<ReturnType<typeof afterMarks>>,
+    writeMarks: () => PromiseLike<{ error: { message: string } | null }>,
+  ): Promise<string | null> {
+    const { error } = await writeMarks();
+    if (error) return error.message;
+    if (result.seasonChanged) {
+      const problem = await saveSeasonScore(result.average);
+      if (problem) return problem;
+    }
+    if (result.nextEntry && result.nextEntry !== current?.entry) return saveEntry(result.nextEntry);
+    return null;
   }
 
   const value: Context = {
     user,
     entry,
-    marks,
+    marks: current?.marks.get(part.id) ?? (current ? new Map() : undefined),
+    seasonScore: current?.seasonScores.get(part.id) ?? null,
+    multipart: allIds.length > 1,
     saving,
     error,
     airedCount,
-    total,
+    total: part.episodes,
 
     setStatus(status) {
-      const next = makeEntry(status, current?.entry?.score ?? null);
+      const next: ListEntry = { media_id: key, status, score: current?.entry?.score ?? null, updated_at: new Date().toISOString() };
       run({ entry: next }, () => saveEntry(next));
     },
 
     setScore(score) {
-      const next = makeEntry(current?.entry?.status ?? "completed", score);
+      const next: ListEntry = {
+        media_id: key,
+        status: current?.entry?.status ?? "completed",
+        score,
+        updated_at: new Date().toISOString(),
+      };
       run({ entry: next }, () => saveEntry(next));
     },
 
+    setSeasonScore(score) {
+      if (!current) return;
+      const seasonScores = new Map(current.seasonScores);
+      if (score === null) seasonScores.delete(part.id);
+      else seasonScores.set(part.id, score);
+      // Оцінка сезону без статусу: для аніме з кількома частинами — «Дивлюся», для однієї — «Переглянуто».
+      const base = current.entry ?? {
+        media_id: key,
+        status: (main.length > 1 ? "watching" : "completed") as ListStatus,
+        score: null,
+        updated_at: "",
+      };
+      const nextEntry = franchiseEntryAfter({ key, entry: base, main, marks: current.marks, seasonScores });
+      run({ seasonScores, entry: nextEntry }, async () => {
+        const problem = await saveSeasonScore(score);
+        if (problem) return problem;
+        return nextEntry && (nextEntry !== current.entry || !current.entry) ? saveEntry(nextEntry) : null;
+      });
+    },
+
     remove() {
-      run({ entry: null, marks: new Map() }, async () => {
+      run({ entry: null, marks: new Map(), seasonScores: new Map() }, async () => {
         const supabase = getSupabaseBrowser();
-        const [a, b] = await Promise.all([
-          supabase.from("list_entries").delete().eq("media_id", mediaId),
-          supabase.from("episode_marks").delete().eq("media_id", mediaId),
+        const ids = allIds;
+        const results = await Promise.all([
+          supabase.from("list_entries").delete().in("media_id", ids),
+          supabase.from("episode_marks").delete().in("media_id", ids),
+          supabase.from("season_scores").delete().in("media_id", ids),
         ]);
-        return a.error?.message ?? b.error?.message ?? null;
+        return results.find((r) => r.error && r.error.code !== "PGRST205")?.error?.message ?? null;
       });
     },
 
     setWatched(episodes, watched) {
       if (!current || episodes.length === 0) return;
-      const nextMarks: Marks = new Map(current.marks);
-      for (const n of episodes) nextMarks.set(n, { watched, score: nextMarks.get(n)?.score ?? null });
-      const nextEntry = entryAfter(current.entry, nextMarks);
-      run({ marks: nextMarks, entry: nextEntry }, async () => {
-        const { error } = await getSupabaseBrowser()
-          .from("episode_marks")
-          .upsert(episodes.map((episode) => ({ media_id: mediaId, episode, watched })));
-        if (error) return error.message;
-        return nextEntry && nextEntry !== current.entry ? saveEntry(nextEntry) : null;
-      });
+      const partMarks: Marks = new Map(current.marks.get(part.id));
+      for (const n of episodes) partMarks.set(n, { watched, score: partMarks.get(n)?.score ?? null });
+      const result = afterMarks(partMarks)!;
+      run({ marks: result.marks, seasonScores: result.seasonScores, entry: result.nextEntry }, () =>
+        persistAfter(result, () =>
+          getSupabaseBrowser()
+            .from("episode_marks")
+            .upsert(episodes.map((episode) => ({ media_id: part.id, episode, watched }))),
+        ),
+      );
     },
 
     rateEpisode(episode, score) {
       if (!current) return;
-      const nextMarks: Marks = new Map(current.marks);
+      const partMarks: Marks = new Map(current.marks.get(part.id));
       // Оцінка серії означає, що її переглянуто.
-      const watched = score !== null ? true : (nextMarks.get(episode)?.watched ?? false);
-      nextMarks.set(episode, { watched, score });
-      const nextEntry = entryAfter(current.entry, nextMarks);
-      run({ marks: nextMarks, entry: nextEntry }, async () => {
-        const { error } = await getSupabaseBrowser()
-          .from("episode_marks")
-          .upsert({ media_id: mediaId, episode, watched, score });
-        if (error) return error.message;
-        return nextEntry && nextEntry !== current.entry ? saveEntry(nextEntry) : null;
-      });
+      const watched = score !== null ? true : (partMarks.get(episode)?.watched ?? false);
+      partMarks.set(episode, { watched, score });
+      const result = afterMarks(partMarks)!;
+      run({ marks: result.marks, seasonScores: result.seasonScores, entry: result.nextEntry }, () =>
+        persistAfter(result, () =>
+          getSupabaseBrowser().from("episode_marks").upsert({ media_id: part.id, episode, watched, score }),
+        ),
+      );
     },
   };
 
