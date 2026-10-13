@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ThemeToggle, themeInitScript } from "@/components/ThemeToggle";
 import { MyAnimeLink } from "@/components/auth/MyAnimeLink";
 import { UserMenu } from "@/components/auth/UserMenu";
+import { HiddenProvider } from "@/components/hidden/HiddenProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,7 +46,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </div>
         </header>
-        <main className="container main">{children}</main>
+        <HiddenProvider>
+          <main className="container main">{children}</main>
+        </HiddenProvider>
         <footer className="site-footer">
           <div className="container">
             Дані про аніме надає{" "}

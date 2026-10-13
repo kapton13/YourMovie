@@ -33,6 +33,7 @@ export function MediaRow<T extends Media>({ title, href, items, badge, label, cu
               badge={badge?.(media, index)}
               label={label?.(media)}
               current={media.id === currentId}
+              hideable={currentId === undefined}
             />
           ))}
         </div>

@@ -8,6 +8,8 @@ import { franchiseEntryAfter, mergeStatuses, seasonAverage, type Marks } from "@
 import { FORMAT_LABELS } from "@/lib/labels";
 import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListEntry, type ListStatus } from "@/lib/lists";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { useHidden } from "@/components/hidden/HiddenProvider";
+import { HiddenList } from "./HiddenList";
 import styles from "./MyAnime.module.css";
 
 type SortKey = "new" | "title" | "recent";
@@ -92,7 +94,8 @@ export function MyAnime() {
   const [media, setMedia] = useState<Map<number, MyMedia>>(new Map());
   const [loadProblem, setLoadProblem] = useState("");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<ListStatus>("watching");
+  const [tab, setTab] = useState<ListStatus | "hidden">("watching");
+  const { hiddenKeys } = useHidden();
   const [sort, setSort] = useState<SortKey>("new");
   const [openPart, setOpenPart] = useState<number | null>(null);
   const [rating, setRating] = useState<string | null>(null);
@@ -179,21 +182,81 @@ export function MyAnime() {
       setFranchises(groups);
       setEntries(list);
 
-      // Свіжі дані про вихід серій для всіх частин аніме, що «Дивлюся».
+      // Свіжі дані про вихід серій для всіх частин аніме, що «Дивлюся» або «Переглянуто».
       const partIds = new Set<number>();
       for (const e of list) {
         const f = groups[e.media_id];
-        if (f && e.status === "watching") for (const p of [...f.main, ...f.extras]) partIds.add(p.id);
+        if (f && (e.status === "watching" || e.status === "completed"))
+          for (const p of [...f.main, ...f.extras]) partIds.add(p.id);
         partIds.add(e.media_id);
       }
+      let fresh = new Map<number, MyMedia>();
       try {
         const res = await fetch(`/api/my-media?ids=${[...partIds].join(",")}`);
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as MyMedia[];
-        if (!cancelled) setMedia(new Map(data.map((m) => [m.id, m])));
+        fresh = new Map(data.map((m) => [m.id, m]));
+        if (!cancelled) setMedia(fresh);
       } catch (e) {
         console.error(e);
         if (!cancelled) setLoadProblem("Не вдалося завантажити дані з AniList. Спробуйте оновити сторінку трохи згодом.");
+        return;
+      }
+
+      // «Переглянуто», а вийшли нові серії чи сезон → назад у «Дивлюся».
+      // Усе, що вийшло до того, як аніме позначили переглянутим, вважаємо переглянутим.
+      const backfill: { media_id: number; episode: number; watched: boolean }[] = [];
+      const reopened: number[] = [];
+      for (const e of list) {
+        const f = groups[e.media_id];
+        if (e.status !== "completed" || !f) continue;
+        const completedAt = Date.parse(e.updated_at) / 1000;
+        const isNew = (id: number) => (fresh.get(id)?.lastAiredAt ?? 0) > completedAt;
+        const hasNewUnwatched = f.main.some((p) => {
+          if (!isNew(p.id)) return false;
+          const aired = fresh.get(p.id)?.airedCount ?? 0;
+          for (let n = 1; n <= aired; n++) if (!byMedia.get(p.id)?.get(n)?.watched) return true;
+          return false;
+        });
+        if (!hasNewUnwatched) continue;
+        reopened.push(e.media_id);
+        for (const p of f.main) {
+          const info = fresh.get(p.id);
+          const aired = info?.airedCount ?? p.episodes ?? 0;
+          // Для частини з новими серіями: старі серії (вийшли до позначки «Переглянуто») — переглянуті.
+          const times = new Map(info?.recentAirings ?? []);
+          const earliestKnown = Math.min(...(info?.recentAirings ?? []).map(([n]) => n), Infinity);
+          const before = (n: number) => {
+            if (!isNew(p.id)) return true;
+            const t = times.get(n);
+            return t !== undefined ? t <= completedAt : n < earliestKnown;
+          };
+          for (let n = 1; n <= aired; n++)
+            if (before(n) && !byMedia.get(p.id)?.get(n)?.watched) backfill.push({ media_id: p.id, episode: n, watched: true });
+        }
+      }
+      if (reopened.length > 0 && !cancelled) {
+        const { error: marksError } = backfill.length
+          ? await supabase.from("episode_marks").upsert(backfill)
+          : { error: null };
+        const { error: entriesError } = await supabase
+          .from("list_entries")
+          .upsert(reopened.map((key) => ({ media_id: key, status: "watching", score: list.find((x) => x.media_id === key)?.score ?? null })));
+        if (marksError || entriesError) {
+          console.error(marksError ?? entriesError);
+        } else if (!cancelled) {
+          const marksCopy = new Map(byMedia);
+          for (const b of backfill) {
+            const m = new Map(marksCopy.get(b.media_id));
+            m.set(b.episode, { watched: true, score: m.get(b.episode)?.score ?? null });
+            marksCopy.set(b.media_id, m);
+          }
+          const now = new Date().toISOString();
+          setMarks(marksCopy);
+          setEntries((current) =>
+            current?.map((x) => (reopened.includes(x.media_id) ? { ...x, status: "watching", updated_at: now } : x)),
+          );
+        }
       }
     })();
     return () => {
@@ -326,6 +389,15 @@ export function MyAnime() {
             {LIST_STATUS_LABELS[s]} <span className={styles.count}>{counts[s]}</span>
           </button>
         ))}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "hidden"}
+          className={`${styles.tab} ${styles.tabHidden} ${tab === "hidden" ? styles.tabActive : ""}`}
+          onClick={() => setTab("hidden")}
+        >
+          ✕ Не цікаво <span className={styles.count}>{hiddenKeys.size}</span>
+        </button>
       </div>
 
       {error && (
@@ -582,6 +654,8 @@ export function MyAnime() {
             </div>
           )}
         </>
+      ) : tab === "hidden" ? (
+        <HiddenList />
       ) : (
         <Grid items={items.filter((i) => i.entry.status === tab)} />
       )}
