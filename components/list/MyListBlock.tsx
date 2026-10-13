@@ -4,17 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListStatus } from "@/lib/lists";
+import { useHidden } from "@/components/hidden/HiddenProvider";
 import { useUserMedia } from "./UserMediaProvider";
 import styles from "./MyListBlock.module.css";
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** «Мій список» на сторінці аніме: додати, змінити статус, прибрати, оцінити. */
-export function MyListBlock({ seasonLabel }: { seasonLabel?: string }) {
+export function MyListBlock({
+  seasonLabel,
+  mediaId,
+  title,
+}: {
+  seasonLabel?: string;
+  mediaId: number;
+  title: string;
+}) {
   const { user, entry, saving, error, setStatus, setScore, setSeasonScore, seasonScore, multipart, remove: removeAll } =
     useUserMedia();
   const pathname = usePathname();
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmHide, setConfirmHide] = useState(false);
+  const { hiddenIds, hiddenKeys, hide, unhide } = useHidden();
 
   if (user === undefined || (user && entry === undefined)) {
     return <div className={`${styles.block} ${styles.loading}`} aria-busy="true" />;
@@ -47,6 +58,32 @@ export function MyListBlock({ seasonLabel }: { seasonLabel?: string }) {
 
   const status = entry?.status;
   const score = entry?.score ?? null;
+
+  if (hiddenIds.has(mediaId)) {
+    const key = [...hiddenKeys].find(([, ids]) => ids.includes(mediaId))?.[0] ?? mediaId;
+    return (
+      <div className={`${styles.block} ${styles.hiddenBlock}`}>
+        <p className={styles.heading}>✕ Не цікаво</p>
+        <p className={styles.muted}>
+          Ви позначили це аніме як «Не цікаво» — сайт його не показує й не рекомендує.
+        </p>
+        <button type="button" className={styles.restore} onClick={() => unhide(key)}>
+          Повернути
+        </button>
+      </div>
+    );
+  }
+
+  function notInterested() {
+    // Якщо аніме у списку — спершу питаємо, бо його буде прибрано разом з оцінками.
+    if (entry && !confirmHide) {
+      setConfirmHide(true);
+      return;
+    }
+    setConfirmHide(false);
+    if (entry) removeAll();
+    hide(mediaId, title);
+  }
 
   return (
     <div className={styles.block} aria-busy={saving}>
@@ -106,6 +143,24 @@ export function MyListBlock({ seasonLabel }: { seasonLabel?: string }) {
         <p className={styles.muted}>
           {multipart ? "Оцінка додасть аніме у ваш список." : "Оцінка додасть аніме до «Переглянуто»."}
         </p>
+      )}
+
+      {confirmHide ? (
+        <div className={styles.confirm} role="alertdialog" aria-label="Не цікаво?">
+          <span>Аніме у вашому списку. Прибрати його звідти (з оцінками й відмітками) і позначити «Не цікаво»?</span>
+          <span className={styles.confirmActions}>
+            <button type="button" className={styles.danger} onClick={notInterested}>
+              Так
+            </button>
+            <button type="button" className={styles.cancel} onClick={() => setConfirmHide(false)}>
+              Скасувати
+            </button>
+          </span>
+        </div>
+      ) : (
+        <button type="button" className={styles.notInterested} onClick={notInterested}>
+          ✕ Не цікаво
+        </button>
       )}
 
       {error && (

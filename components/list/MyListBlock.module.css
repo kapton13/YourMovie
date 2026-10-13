@@ -213,3 +213,44 @@
     padding: 0;
   }
 }
+
+.notInterested {
+  margin-top: 14px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notInterested:hover {
+  text-decoration: underline;
+}
+
+.hiddenBlock {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+.hiddenBlock .heading {
+  color: var(--danger);
+}
+
+.restore {
+  margin-top: 10px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.restore:hover {
+  border-color: var(--accent);
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { MediaCard as Media } from "@/lib/anilist";
 import { FORMAT_LABELS, formatScore } from "@/lib/labels";
+import { Hideable } from "./hidden/Hideable";
 import styles from "./MediaCard.module.css";
 
 type Props = {
@@ -11,9 +12,11 @@ type Props = {
   label?: string;
   /** Тайтл, на сторінці якого ми зараз: виділяється і не є посиланням. */
   current?: boolean;
+  /** Чи можна сховати картку хрестиком «Не цікаво» (типово — так). */
+  hideable?: boolean;
 };
 
-export function MediaCard({ media, badge, label, current }: Props) {
+export function MediaCard({ media, badge, label, current, hideable = true }: Props) {
   const title = media.title.english ?? media.title.romaji ?? "Без назви";
   const score = formatScore(media.averageScore);
   const meta = [media.format && FORMAT_LABELS[media.format], media.startDate.year ?? media.seasonYear]
@@ -48,10 +51,32 @@ export function MediaCard({ media, badge, label, current }: Props) {
       {content}
     </article>
   ) : (
-    <article className={styles.card}>
-      <Link href={`/anime/${media.id}`} className={styles.link}>
-        {content}
-      </Link>
-    </article>
+    <Wrapper enabled={hideable} mediaId={media.id} title={title}>
+      <article className={styles.card}>
+        <Link href={`/anime/${media.id}`} className={styles.link}>
+          {content}
+        </Link>
+      </article>
+    </Wrapper>
+  );
+}
+
+function Wrapper({
+  enabled,
+  mediaId,
+  title,
+  children,
+}: {
+  enabled: boolean;
+  mediaId: number;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return enabled ? (
+    <Hideable mediaId={mediaId} title={title}>
+      {children}
+    </Hideable>
+  ) : (
+    children
   );
 }

@@ -212,7 +212,31 @@ export function UserMediaProvider({
 
     setStatus(status) {
       const next: ListEntry = { media_id: key, status, score: current?.entry?.score ?? null, updated_at: new Date().toISOString() };
-      run({ entry: next }, () => saveEntry(next));
+      if (status !== "completed" || !current) {
+        run({ entry: next }, () => saveEntry(next));
+        return;
+      }
+      // «Переглянуто» вручну: усі серії, що вже вийшли, вважаємо переглянутими.
+      // Тоді з виходом нового сезону аніме саме повернеться в «Дивлюся» лише з новими серіями.
+      const marks = new Map(current.marks);
+      const rows: { media_id: number; episode: number; watched: boolean }[] = [];
+      for (const p of main) {
+        const aired = p.id === part.id ? airedCount : p.status === "FINISHED" || p.status === "CANCELLED" ? (p.episodes ?? 0) : 0;
+        const partMarks: Marks = new Map(marks.get(p.id));
+        for (let n = 1; n <= aired; n++) {
+          if (partMarks.get(n)?.watched) continue;
+          partMarks.set(n, { watched: true, score: partMarks.get(n)?.score ?? null });
+          rows.push({ media_id: p.id, episode: n, watched: true });
+        }
+        marks.set(p.id, partMarks);
+      }
+      run({ entry: next, marks }, async () => {
+        if (rows.length) {
+          const { error } = await getSupabaseBrowser().from("episode_marks").upsert(rows);
+          if (error) return error.message;
+        }
+        return saveEntry(next);
+      });
     },
 
     setScore(score) {

@@ -643,6 +643,8 @@ export type MyMedia = MediaCard & {
   airedCount: number;
   /** Коли вийшла остання серія (Unix, секунди), якщо відомо. */
   lastAiredAt: number | null;
+  /** Останні серії, що вийшли: [номер, час виходу]. */
+  recentAirings: [number, number][];
 };
 
 const MY_MEDIA_QUERY = `
@@ -656,7 +658,7 @@ const MY_MEDIA_QUERY = `
       }
     }
     recent: Page(perPage: 50) {
-      airingSchedules(mediaId_in: $ids, notYetAired: false, sort: TIME_DESC) { mediaId airingAt }
+      airingSchedules(mediaId_in: $ids, notYetAired: false, sort: TIME_DESC) { mediaId episode airingAt }
     }
   }
 `;
@@ -668,16 +670,21 @@ export async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
 
   type Response = {
     Page: { media: (MediaCard & Pick<MyMedia, "status" | "duration" | "nextAiringEpisode">)[] };
-    recent: { airingSchedules: { mediaId: number; airingAt: number }[] };
+    recent: { airingSchedules: { mediaId: number; episode: number; airingAt: number }[] };
   };
   const data = await anilist<Response>(MY_MEDIA_QUERY, { ids });
   const lastAired = new Map<number, number>();
-  for (const s of data.recent.airingSchedules) if (!lastAired.has(s.mediaId)) lastAired.set(s.mediaId, s.airingAt);
+  const airings = new Map<number, [number, number][]>();
+  for (const s of data.recent.airingSchedules) {
+    if (!lastAired.has(s.mediaId)) lastAired.set(s.mediaId, s.airingAt);
+    airings.set(s.mediaId, [...(airings.get(s.mediaId) ?? []), [s.episode, s.airingAt]]);
+  }
 
   return data.Page.media.map((m) => ({
     ...m,
     airedCount: airedEpisodeCount(m),
     lastAiredAt: lastAired.get(m.id) ?? null,
+    recentAirings: airings.get(m.id) ?? [],
   }));
 }
 

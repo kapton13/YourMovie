@@ -1,0 +1,79 @@
+.hideable {
+  position: relative;
+  min-width: 0;
+}
+
+.cross {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.hideable:hover .cross,
+.cross:focus-visible {
+  opacity: 1;
+}
+
+.cross:hover {
+  background: var(--danger);
+}
+
+.cross:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+/* На телефоні наведення немає — хрестик видно завжди, але ненав'язливо */
+@media (hover: none) {
+  .cross {
+    opacity: 0.85;
+    width: 26px;
+    height: 26px;
+  }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #1f2330;
+  color: #fff;
+  font-size: 0.9rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  transform: translateX(-50%);
+}
+
+.undo {
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  color: #8aa4ff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.undo:hover {
+  text-decoration: underline;
+}

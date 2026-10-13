@@ -4,6 +4,7 @@ import { MediaGrid } from "@/components/MediaGrid";
 import { CatalogControls } from "@/components/catalog/CatalogControls";
 import { CatalogTransitionProvider, PendingResults } from "@/components/catalog/CatalogTransition";
 import { PageLink } from "@/components/catalog/PageLink";
+import { VisibleCount } from "@/components/hidden/VisibleCount";
 import { AniListError, getCatalogPage, getFilterOptions } from "@/lib/anilist";
 import {
   PAGE_SIZE,
@@ -59,10 +60,6 @@ function ResultsSkeleton() {
   );
 }
 
-function pluralAnime(n: number): string {
-  return `${n.toLocaleString("uk-UA")} аніме`;
-}
-
 async function CatalogResults({ searchParams }: Pick<PageProps<"/catalog">, "searchParams">) {
   const query = parseCatalogParams(await searchParams);
 
@@ -93,11 +90,13 @@ async function CatalogResults({ searchParams }: Pick<PageProps<"/catalog">, "sea
 
   return (
     <>
-      <p className={styles.summary}>
-        {exactTotal !== undefined
-          ? `Знайдено ${pluralAnime(exactTotal)}`
-          : `Показано ${first}–${first + media.length - 1}`}
-      </p>
+      {exactTotal !== undefined ? (
+        <VisibleCount ids={media.map((m) => m.id)} className={styles.summary} />
+      ) : (
+        <p className={styles.summary}>
+          Показано {first}–{first + media.length - 1}
+        </p>
+      )}
       <MediaGrid items={media} />
       {(currentPage > 1 || hasNextPage) && (
         <nav className={styles.pagination} aria-label="Сторінки результатів">
