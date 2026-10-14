@@ -35,6 +35,11 @@
   gap: 24px 18px;
 }
 
+/* Сховані картки не потрапляють на сторінку, тож рахуються лише видимі */
+.limit12 > :nth-child(n + 13) {
+  display: none;
+}
+
 .empty {
   color: var(--muted);
 }

@@ -285,7 +285,8 @@ export async function getHomeSections(): Promise<HomeSections> {
   type PageData = { media: MediaCard[] };
   const data = await anilist<Record<"trending" | "seasonal" | "popular" | "top", PageData>>(
     HOME_QUERY,
-    { season: current.season, year: current.year, perPage: 12 },
+    // З запасом: на головній ховаємо те, що людина вже має в списках, а показуємо по 12.
+    { season: current.season, year: current.year, perPage: 24 },
   );
 
   return {

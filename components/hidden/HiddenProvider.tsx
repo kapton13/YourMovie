@@ -14,6 +14,10 @@ type HiddenContext = {
   loggedIn: boolean;
   hide: (mediaId: number, title: string) => Promise<boolean>;
   unhide: (key: number) => Promise<boolean>;
+  /** id частин аніме, які вже є в списках (усі статуси, крім «Планую»). */
+  listedIds: Set<number>;
+  /** Перечитати, що є в списках (головна викликає при кожному відкритті). */
+  refreshListed: () => Promise<void>;
 };
 
 const Context = createContext<HiddenContext | null>(null);
@@ -24,6 +28,8 @@ const EMPTY: HiddenContext = {
   loggedIn: false,
   hide: async () => false,
   unhide: async () => false,
+  listedIds: new Set(),
+  refreshListed: async () => {},
 };
 
 export function useHidden(): HiddenContext {
@@ -38,6 +44,9 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState<{ userId: string; rows: Row[] } | null>(null);
   const [toast, setToast] = useState<{ key: number; title: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+  const [listed, setListed] = useState<{ userId: string; ids: Set<number> } | null>(null);
+  /** Аніме (id запису) → id усіх його частин; не змінюється, тож пам'ятаємо між переходами. */
+  const franchiseParts = useRef(new Map<number, number[]>());
 
   useEffect(() => {
     if (!user) return;
@@ -55,6 +64,37 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
+  const refreshListed = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await getSupabaseBrowser().from("list_entries").select("media_id").neq("status", "planning");
+    if (error) {
+      console.warn(error);
+      return;
+    }
+    const keys = (data as { media_id: number }[]).map((r) => r.media_id);
+    const collect = () => new Set(keys.flatMap((k) => franchiseParts.current.get(k) ?? [k]));
+    setListed({ userId: user.id, ids: collect() });
+    // Сезон 2, фільм чи OVA теж належать аніме зі списку — дізнаємося всі частини.
+    const missing = keys.filter((k) => !franchiseParts.current.has(k));
+    if (missing.length === 0) return;
+    for (let i = 0; i < missing.length; i += 300) {
+      const chunk = missing.slice(i, i + 300);
+      try {
+        const res = await fetch(`/api/franchises?ids=${chunk.join(",")}`);
+        if (!res.ok) continue;
+        const franchises = (await res.json()) as Record<number, Franchise>;
+        for (const k of chunk) {
+          const f = franchises[k];
+          if (f) franchiseParts.current.set(k, [k, ...[...f.main, ...f.extras].map((p) => p.id)]);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    setListed({ userId: user.id, ids: collect() });
+  }, [user]);
+
+  const listedIds = user && listed?.userId === user.id ? listed.ids : EMPTY.listedIds;
   const rows = user && loaded?.userId === user.id ? loaded.rows : [];
   const hiddenIds = new Set(rows.map((r) => r.media_id));
   const hiddenKeys = new Map<number, number[]>();
@@ -122,7 +162,7 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <Context.Provider value={{ hiddenIds, hiddenKeys, loggedIn: Boolean(user), hide, unhide }}>
+    <Context.Provider value={{ hiddenIds, hiddenKeys, loggedIn: Boolean(user), hide, unhide, listedIds, refreshListed }}>
       {children}
       {toast && (
         <div className={styles.toast} role="status">
