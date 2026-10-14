@@ -135,7 +135,9 @@ export function ProfileView({ nickname }: { nickname: string }) {
 }
 
 function Head({ profile }: { profile: PublicProfile }) {
-  const since = new Intl.DateTimeFormat("uk-UA", { month: "long", year: "numeric" }).format(new Date(profile.created_at));
+  const since = new Intl.DateTimeFormat("uk-UA", { day: "numeric", month: "long", year: "numeric" }).format(
+    new Date(profile.created_at),
+  );
   return (
     <div className={styles.head}>
       <span className={styles.avatar} aria-hidden="true">
@@ -250,6 +252,7 @@ function Ready({
                   tip: `${longMonth(m.date)}: ${m.episodes} ${pluralEpisodes(m.episodes)}`,
                 }))}
                 caption="Скільки серій відмічено переглянутими щомісяця за останній рік"
+                dense
               />
               <p className={styles.footnote}>За датою відмітки: «Переглянуто весь сезон» записує всі серії одним днем.</p>
             </>
@@ -311,11 +314,20 @@ function Tile({ value, label }: { value: string; label: string }) {
 }
 
 /** Стовпчики однієї серії: підпис під кожним, значення — у підказці при наведенні й для читалок екрана. */
-function Columns({ bars, caption }: { bars: { label: string; value: number; tip: string }[]; caption: string }) {
+function Columns({
+  bars,
+  caption,
+  dense = false,
+}: {
+  bars: { label: string; value: number; tip: string }[];
+  caption: string;
+  /** Багато стовпчиків: на телефоні підписуємо кожен другий. */
+  dense?: boolean;
+}) {
   const max = Math.max(1, ...bars.map((b) => b.value));
   const top = bars.findIndex((b) => b.value === max);
   return (
-    <figure className={styles.columns}>
+    <figure className={`${styles.columns} ${dense ? styles.dense : ""}`}>
       <ul className={styles.columnsPlot} aria-label={caption}>
         {bars.map((b, i) => (
           <li key={i} className={styles.column} aria-label={b.tip} data-tip={b.tip} tabIndex={0}>
