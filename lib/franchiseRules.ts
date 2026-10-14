@@ -16,7 +16,7 @@ export type PartInfo = {
   aired?: number;
 };
 
-const STATUS_PRIORITY: ListStatus[] = ["watching", "paused", "planning", "completed", "dropped"];
+const STATUS_PRIORITY: ListStatus[] = ["watching", "paused", "completed", "planning", "dropped"];
 
 /** Якщо сезони одного аніме раніше мали різні статуси — який узяти для всього аніме. */
 export function mergeStatuses(statuses: ListStatus[]): ListStatus {
@@ -36,6 +36,12 @@ export function hasUnwatchedAired(main: PartInfo[], marks: Map<number, Marks>): 
     for (let n = 1; n <= airedOf(p); n++) if (!partMarks?.get(n)?.watched) return true;
     return false;
   });
+}
+
+/** Відмічено кожну серію 1…episodes (а не просто стільки відміток). */
+function allWatched(marks: Marks | undefined, episodes: number): boolean {
+  for (let n = 1; n <= episodes; n++) if (!marks?.get(n)?.watched) return false;
+  return true;
 }
 
 function watchedCount(marks: Marks | undefined): number {
@@ -96,7 +102,7 @@ export function franchiseEntryAfter(args: {
       (p) =>
         (p.status === "FINISHED" || p.status === "CANCELLED") &&
         p.episodes &&
-        watchedCount(marks.get(p.id)) >= p.episodes,
+        allWatched(marks.get(p.id), p.episodes),
     );
   if (allDone && (status === "watching" || status === "planning" || status === "paused")) status = "completed";
   if (status === "completed" && !allDone && hasUnwatchedAired(main, marks)) status = "watching";

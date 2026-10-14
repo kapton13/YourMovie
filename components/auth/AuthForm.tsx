@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { safeNext } from "@/lib/safeNext";
 import { getSupabaseBrowser, setRemember } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 import { NicknameField, type NicknameState } from "./NicknameField";
@@ -10,10 +11,6 @@ import styles from "./auth.module.css";
 
 type Mode = "login" | "signup" | "forgot";
 
-/** Куди повернути людину після входу: лише адреси нашого сайту. */
-export function safeNext(value: string | null): string {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/account";
-}
 
 const MIN_PASSWORD = 8;
 
@@ -66,6 +63,8 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         router.replace(next);
         router.refresh();
       } else if (mode === "signup") {
+        // Новий акаунт — «залишатися в системі» (а не як при минулому вході без цієї галочки).
+        setRemember(true);
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,

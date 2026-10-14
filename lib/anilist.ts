@@ -306,10 +306,63 @@ export async function getHomeSections(): Promise<HomeSections> {
   };
 }
 
+type RelationEdge = {
+  relationType: RelationType;
+  node: { id: number; type: string; format?: string | null; startDate?: FuzzyDate | null };
+};
+
+const PREVIOUS_FORMATS = new Set(["TV", "TV_SHORT", "ONA", "MOVIE"]);
+
+/**
+ * Попередня частина — щоб дійти до першого сезону:
+ * — PREQUEL, якщо це серіал чи фільм і він вийшов не пізніше (бо AniList іноді називає «попередньою»
+ *   OVA, що вийшла після першого сезону); з кількох — найраніший;
+ * — PARENT — лише для OVA, фільмів, спешлів: серіал із PARENT — це спін-оф, окреме аніме;
+ * — для фільму чи OVA, що вийшли пізніше за свою «наступну» частину-серіал, — той серіал.
+ */
+function previousPart(
+  media: { format: string | null; startDate?: { year: number | null; month?: number | null; day?: number | null } | null },
+  edges: RelationEdge[],
+): number | null {
+  const own = media.startDate ? dateKey(media.startDate) : Infinity;
+  const prequels = edges
+    .filter(
+      (e) =>
+        e.relationType === "PREQUEL" &&
+        e.node.type === "ANIME" &&
+        PREVIOUS_FORMATS.has(e.node.format ?? "") &&
+        (!e.node.startDate?.year || own === Infinity || dateKey(e.node.startDate) <= own),
+    )
+    .sort((a, b) => dateKey(a.node.startDate ?? NO_DATE) - dateKey(b.node.startDate ?? NO_DATE) || a.node.id - b.node.id);
+  if (prequels.length > 0) return prequels[0].node.id;
+  if (SERIES_FORMATS.has(media.format ?? "")) return null;
+  const parent = edges.find((e) => e.relationType === "PARENT" && e.node.type === "ANIME");
+  if (parent) return parent.node.id;
+  // Фільм-передісторія, що вийшов пізніше за серіал (JUJUTSU KAISEN 0 → «наступна» — серіал 2020 року):
+  // перша частина — той серіал.
+  const earlierSequel = edges.find(
+    (e) =>
+      e.relationType === "SEQUEL" &&
+      e.node.type === "ANIME" &&
+      SERIES_FORMATS.has(e.node.format ?? "") &&
+      e.node.startDate?.year &&
+      own !== Infinity &&
+      dateKey(e.node.startDate) < own,
+  );
+  return earlierSequel?.node.id ?? null;
+}
+
+const NO_DATE: FuzzyDate = { year: null, month: null, day: null };
+
 const ROOTS_QUERY = `
   query Roots($ids: [Int]) {
     Page(perPage: 50) {
-      media(id_in: $ids, type: ANIME) { id relations { edges { relationType node { id type } } } }
+      media(id_in: $ids, type: ANIME) {
+        id
+        format
+        startDate { year month day }
+        relations { edges { relationType node { id type format startDate { year month day } } } }
+      }
     }
   }
 `;
@@ -323,7 +376,12 @@ export async function getRoots(ids: number[]): Promise<Record<number, number>> {
   "use cache";
   cacheLife("days");
 
-  type Node = { id: number; relations: { edges: { relationType: RelationType; node: { id: number; type: string } }[] } };
+  type Node = {
+    id: number;
+    format: string | null;
+    startDate: FuzzyDate | null;
+    relations: { edges: RelationEdge[] };
+  };
   const previousOf = new Map<number, number | null>();
   const chains = new Map<number, number[]>([...new Set(ids)].map((id) => [id, [id]]));
   let walking = [...chains.keys()];
@@ -333,13 +391,7 @@ export async function getRoots(ids: number[]): Promise<Record<number, number>> {
       const chunk = unknown.slice(i, i + 50);
       const data = await anilist<{ Page: { media: Node[] } }>(ROOTS_QUERY, { ids: chunk });
       for (const id of chunk) previousOf.set(id, null);
-      for (const m of data.Page.media) {
-        const edges = m.relations.edges;
-        const previous =
-          edges.find((e) => e.relationType === "PREQUEL" && e.node.type === "ANIME") ??
-          edges.find((e) => e.relationType === "PARENT" && e.node.type === "ANIME");
-        previousOf.set(m.id, previous?.node.id ?? null);
-      }
+      for (const m of data.Page.media) previousOf.set(m.id, previousPart(m, m.relations.edges));
     }
     const next: number[] = [];
     for (const id of walking) {
@@ -474,7 +526,7 @@ const FRANCHISE_QUERY = `
         status
         duration
         startDate { year month day }
-        relations { edges { relationType node { id type } } }
+        relations { edges { relationType node { id type format startDate { year month day } } } }
       }
     }
   }
@@ -492,7 +544,7 @@ const PART_FORMAT_LABELS: Record<string, string> = {
   MUSIC: "Кліп",
 };
 
-function dateKey({ year, month, day }: FuzzyDate): number {
+function dateKey({ year, month, day }: { year: number | null; month?: number | null; day?: number | null }): number {
   return year == null ? Infinity : year * 10000 + (month ?? 12) * 100 + (day ?? 31);
 }
 
@@ -518,7 +570,9 @@ export async function getFranchise(id: number): Promise<Franchise> {
     for (const media of data.Page.media) {
       nodes.set(media.id, media);
       for (const edge of media.relations.edges) {
-        const follow = CHAIN_TYPES.includes(edge.relationType) || EXTRA_TYPES.includes(edge.relationType);
+        // Серіал із PARENT — це спін-оф (окреме аніме), а не OVA чи фільм до основного.
+        const spinOff = edge.relationType === "PARENT" && SERIES_FORMATS.has(media.format ?? "");
+        const follow = !spinOff && (CHAIN_TYPES.includes(edge.relationType) || EXTRA_TYPES.includes(edge.relationType));
         if (follow && edge.node.type === "ANIME" && !queued.has(edge.node.id)) {
           queued.add(edge.node.id);
           next.push(edge.node.id);
@@ -550,7 +604,11 @@ export async function getFranchise(id: number): Promise<Franchise> {
   }
   const weight = (chain: number[]) =>
     chain.filter((n) => SERIES_FORMATS.has(nodes.get(n)!.format ?? "")).length * 1000 + chain.length;
-  const mainChain = new Set(chains.reduce((best, c) => (weight(c) > weight(best) ? c : best), chains[0] ?? [id]));
+  // Рівні ланцюжки — найраніший, потім найменший id: результат не залежить від того, з якої частини почали.
+  const earliest = (chain: number[]) => Math.min(...chain.map((n) => dateKey(nodes.get(n)!.startDate)));
+  const better = (a: number[], b: number[]) =>
+    weight(a) - weight(b) || earliest(b) - earliest(a) || Math.min(...b) - Math.min(...a);
+  const mainChain = new Set(chains.reduce((best, c) => (better(c, best) > 0 ? c : best), chains[0] ?? [id]));
 
   const strip = (node: Node): Omit<FranchisePart, "label"> => {
     const part: Partial<Node> = { ...node };
@@ -568,6 +626,8 @@ export async function getFranchise(id: number): Promise<Franchise> {
   const mainParts = main.map((p) => ({ ...p, label: label(p, true) }));
   const extraParts = extras.map((p) => ({ ...p, label: label(p, false) }));
   const first = mainParts[0] ?? extraParts[0];
+  // AniList такого id не знає (видалено чи об'єднано з іншим).
+  if (!first) throw new AniListError(404, `media ${id} not found`);
 
   return {
     key: first.id,
@@ -755,13 +815,22 @@ export async function getMyMedia(ids: number[]): Promise<MyMedia[]> {
 }
 
 /** Кілька аніме за id їхніх частин; частини одного аніме не рахуються двічі. */
-export async function getFranchises(ids: number[]): Promise<Record<number, Franchise>> {
+export async function getFranchises(ids: number[], budgetMs = 8000): Promise<Record<number, Franchise>> {
   const result: Record<number, Franchise> = {};
+  const started = Date.now();
   for (const id of ids) {
     if (result[id]) continue;
-    const franchise = await getFranchise(id);
-    for (const part of [...franchise.main, ...franchise.extras]) result[part.id] = franchise;
-    result[id] = franchise;
+    // Довгий список уперше: віддаємо те, що встигли (решта — наступного разу, вже з кешу).
+    if (Date.now() - started > budgetMs) break;
+    try {
+      const franchise = await getFranchise(id);
+      for (const part of [...franchise.main, ...franchise.extras]) result[part.id] = franchise;
+      result[id] = franchise;
+    } catch (error) {
+      console.error(error);
+      // Ліміт запитів AniList — далі теж не вийде; невідомий id — просто пропускаємо.
+      if (error instanceof AniListError && error.status === 429) break;
+    }
   }
   return result;
 }
@@ -796,7 +865,7 @@ const REC_CARD_FIELDS = `
   genres
   isAdult
   tags { name rank }
-  relations { edges { relationType node { id type } } }
+  relations { edges { relationType node { id type format startDate { year month day } } } }
 `;
 
 const REC_SEEDS_QUERY = `
@@ -825,16 +894,12 @@ const REC_CARDS_QUERY = `
 
 type RawRecCard = Omit<RecCard, "previous" | "tags"> & {
   tags: RecTag[] | null;
-  relations: { edges: { relationType: RelationType; node: { id: number; type: string } }[] } | null;
+  relations: { edges: RelationEdge[] } | null;
 };
 
 function toRecCard(raw: RawRecCard): RecCard {
   const { relations, ...card } = raw;
-  const edges = relations?.edges ?? [];
-  const previous =
-    edges.find((e) => e.relationType === "PREQUEL" && e.node.type === "ANIME") ??
-    edges.find((e) => e.relationType === "PARENT" && e.node.type === "ANIME");
-  return { ...card, tags: raw.tags ?? [], previous: previous?.node.id ?? null };
+  return { ...card, tags: raw.tags ?? [], previous: previousPart(raw, relations?.edges ?? []) };
 }
 
 /**
@@ -867,7 +932,13 @@ async function inChunks(ids: number[], size: number, load: (chunk: number[]) => 
 export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
   prune(seedMemo);
   prune(cardMemo);
-  const missing = [...new Set(ids)].filter((id) => !fresh(seedMemo, id));
+  // Збираємо результат тут, а не з пам'яті: інший запит може її тим часом почистити.
+  const found = new Map<number, RecSeed | null>();
+  for (const id of new Set(ids)) {
+    const hit = fresh(seedMemo, id);
+    if (hit) found.set(id, hit.seed);
+  }
+  const missing = [...new Set(ids)].filter((id) => !found.has(id));
   await inChunks(missing, 25, async (chunk) => {
     type Raw = {
       id: number;
@@ -878,41 +949,48 @@ export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
     };
     const data = await anilist<{ Page: { media: Raw[] } }>(REC_SEEDS_QUERY, { ids: chunk });
     const at = Date.now();
-    for (const id of chunk) seedMemo.set(id, { at, seed: null });
+    for (const id of chunk) {
+      seedMemo.set(id, { at, seed: null });
+      found.set(id, null);
+    }
     for (const m of data.Page.media) {
       const recs = m.recommendations.nodes
         .filter((n) => n.mediaRecommendation)
         .map((n) => ({ rating: n.rating, media: toRecCard(n.mediaRecommendation!) }));
       for (const r of recs) cardMemo.set(r.media.id, { at, card: r.media });
-      seedMemo.set(m.id, {
-        at,
-        seed: {
-          id: m.id,
-          title: m.title.english ?? m.title.romaji ?? "Без назви",
-          genres: m.genres,
-          tags: m.tags ?? [],
-          recs,
-        },
-      });
+      const seed: RecSeed = {
+        id: m.id,
+        title: m.title.english ?? m.title.romaji ?? "Без назви",
+        genres: m.genres,
+        tags: m.tags ?? [],
+        recs,
+      };
+      seedMemo.set(m.id, { at, seed });
+      found.set(m.id, seed);
     }
   });
-  return ids.map((id) => seedMemo.get(id)?.seed).filter((s): s is RecSeed => Boolean(s));
+  return ids.map((id) => found.get(id)).filter((s): s is RecSeed => Boolean(s));
 }
 
 /** Картки аніме для рекомендацій (щоб дійти до першого сезону). */
 export async function getRecCards(ids: number[]): Promise<Map<number, RecCard>> {
   prune(cardMemo);
-  const missing = [...new Set(ids)].filter((id) => !fresh(cardMemo, id));
+  const result = new Map<number, RecCard>();
+  const missing: number[] = [];
+  for (const id of new Set(ids)) {
+    const hit = fresh(cardMemo, id);
+    if (!hit) missing.push(id);
+    else if (hit.card) result.set(id, hit.card);
+  }
   await inChunks(missing, 50, async (chunk) => {
     const data = await anilist<{ Page: { media: RawRecCard[] } }>(REC_CARDS_QUERY, { ids: chunk });
     const at = Date.now();
     for (const id of chunk) cardMemo.set(id, { at, card: null });
-    for (const m of data.Page.media) cardMemo.set(m.id, { at, card: toRecCard(m) });
+    for (const m of data.Page.media) {
+      const card = toRecCard(m);
+      cardMemo.set(m.id, { at, card });
+      result.set(m.id, card);
+    }
   });
-  const result = new Map<number, RecCard>();
-  for (const id of ids) {
-    const card = cardMemo.get(id)?.card;
-    if (card) result.set(id, card);
-  }
   return result;
 }

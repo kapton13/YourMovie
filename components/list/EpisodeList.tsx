@@ -36,7 +36,9 @@ export function EpisodeList({ data }: { data: EpisodesData }) {
   const range = chosenRange ?? Math.floor((firstUnwatched - 1) / RANGE);
   const [rating, setRating] = useState<number | null>(null);
 
-  if (episodes.length <= 1) return null;
+  if (episodes.length === 0) return null;
+  // Фільм чи спешл з однієї серії: лише один рядок, без масових кнопок і смуги прогресу.
+  const single = episodes.length === 1;
 
   const loggedIn = Boolean(user);
   const ready = loggedIn && marks !== undefined;
@@ -53,14 +55,14 @@ export function EpisodeList({ data }: { data: EpisodesData }) {
   return (
     <section className={styles.section} aria-busy={saving}>
       <div className={styles.header}>
-        <h2 className={styles.heading}>Серії</h2>
-        {ready && (
+        <h2 className={styles.heading}>{single ? "Перегляд" : "Серії"}</h2>
+        {ready && !single && (
           <span className={styles.progressText}>
             переглянуто <b>{watchedCount}</b> з {airedCount}
             {data.total && data.total > airedCount ? ` (усього буде ${data.total})` : ""}
           </span>
         )}
-        {ready && aired.length > 0 && (
+        {ready && !single && aired.length > 0 && (
           <button
             type="button"
             className={styles.bulk}
@@ -75,7 +77,7 @@ export function EpisodeList({ data }: { data: EpisodesData }) {
         )}
       </div>
 
-      {ready && (
+      {ready && !single && (
         <div className={styles.progress} role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Прогрес перегляду">
           <span style={{ width: `${percent}%` }} />
         </div>

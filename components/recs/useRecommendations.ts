@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { useUser } from "@/components/auth/useUser";
 import type { ListStatus } from "@/lib/lists";
 import type { RecEntry, RecommendationsResult } from "@/lib/recommendations";
@@ -49,24 +48,26 @@ async function load(): Promise<RecommendationsResult> {
 /** Рекомендації для того, хто ввійшов (рахуються на сервері за його списками). */
 export function useRecommendations(): State {
   const user = useUser();
-  const [loaded, setLoaded] = useState<{ user: User; state: State } | null>(null);
+  // Порівнюємо за id: після оновлення входу (раз на годину) приходить новий об'єкт того самого користувача.
+  const userId = user?.id;
+  const [loaded, setLoaded] = useState<{ userId: string; state: State } | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
     load()
-      .then((result) => !cancelled && setLoaded({ user, state: { kind: "ready", result } }))
+      .then((result) => !cancelled && setLoaded({ userId, state: { kind: "ready", result } }))
       .catch((error) => {
         console.error(error);
-        if (!cancelled) setLoaded({ user, state: { kind: "error" } });
+        if (!cancelled) setLoaded({ userId, state: { kind: "error" } });
       });
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
 
   if (user === undefined) return { kind: "checking" };
   if (user === null) return { kind: "guest" };
-  if (loaded?.user !== user) return { kind: "loading" };
+  if (loaded?.userId !== user.id) return { kind: "loading" };
   return loaded.state;
 }

@@ -80,7 +80,8 @@ export function Recommendations() {
   const { items, basedOn } = state.result;
   // Те, що людина щойно сховала чи додала в списки, теж прибираємо — і з лічильників.
   const visible = items.filter((i) => !hiddenIds.has(i.media.id) && !listedIds.has(i.media.id));
-  const genres = [...new Set(visible.flatMap((i) => i.media.genres))].sort((a, b) =>
+  // Обраний жанр лишається у списку, навіть якщо його останнє аніме щойно сховали, — щоб фільтр можна було скинути.
+  const genres = [...new Set([...visible.flatMap((i) => i.media.genres), ...(genre ? [genre] : [])])].sort((a, b) =>
     (GENRE_LABELS[a] ?? a).localeCompare(GENRE_LABELS[b] ?? b, "uk"),
   );
   const filtered = visible.filter((i) => matches(i, kind, airing, genre));
