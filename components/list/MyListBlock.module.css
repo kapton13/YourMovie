@@ -168,9 +168,19 @@
   cursor: pointer;
 }
 
-.score:hover {
+.score:hover:not(:disabled) {
   border-color: #e0a100;
   color: var(--foreground);
+}
+
+.score:disabled {
+  cursor: default;
+}
+
+.autoNote {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .scoreFilled {

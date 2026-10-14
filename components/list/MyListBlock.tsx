@@ -20,7 +20,7 @@ export function MyListBlock({
   mediaId: number;
   title: string;
 }) {
-  const { user, entry, saving, error, setStatus, setScore, setSeasonScore, seasonScore, multipart, remove: removeAll } =
+  const { user, entry, saving, error, setStatus, setScore, setSeasonScore, seasonScore, seasonAuto, scoreAuto, multipart, remove: removeAll } =
     useUserMedia();
   const pathname = usePathname();
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -130,6 +130,13 @@ export function MyListBlock({
         score={score}
         onChange={(n) => save({ score: n })}
         ariaLabel="Оцінка всього аніме від 1 до 10"
+        auto={
+          scoreAuto
+            ? multipart
+              ? "Середнє оцінок усіх сезонів. Щоб змінити — змініть оцінку сезону."
+              : "Середнє оцінок усіх серій. Щоб змінити — змініть оцінку серії."
+            : undefined
+        }
       />
       {multipart && (
         <ScoreRow
@@ -137,6 +144,7 @@ export function MyListBlock({
           score={seasonScore}
           onChange={(n) => (setConfirmRemove(false), setSeasonScore(n))}
           ariaLabel="Оцінка цієї частини від 1 до 10"
+          auto={seasonAuto ? "Середнє оцінок усіх серій. Щоб змінити — змініть оцінку серії." : undefined}
         />
       )}
       {!entry && (
@@ -177,11 +185,14 @@ function ScoreRow({
   score,
   onChange,
   ariaLabel,
+  auto,
 }: {
   label: string;
   score: number | null;
   onChange: (score: number | null) => void;
   ariaLabel: string;
+  /** Оцінка рахується сама — пояснення замість ручного вибору. */
+  auto?: string;
 }) {
   return (
     <div className={styles.scoreRow}>
@@ -198,7 +209,10 @@ function ScoreRow({
               type="button"
               className={`${styles.score} ${score !== null && n <= Math.round(score) ? styles.scoreFilled : ""} ${active ? styles.scoreActive : ""}`}
               aria-pressed={active}
-              aria-label={active ? `${label}: ${n}, натисніть, щоб прибрати` : `${label}: оцінити на ${n}`}
+              aria-label={
+                auto ? `${label}: ${n}` : active ? `${label}: ${n}, натисніть, щоб прибрати` : `${label}: оцінити на ${n}`
+              }
+              disabled={Boolean(auto)}
               onClick={() => onChange(active ? null : n)}
             >
               {n}
@@ -206,6 +220,7 @@ function ScoreRow({
           );
         })}
       </div>
+      {auto && <p className={styles.autoNote}>{auto}</p>}
     </div>
   );
 }
