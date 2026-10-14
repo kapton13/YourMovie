@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { NAME_MAX_LENGTH, PHONE_PATTERN, countryOptions, nameProblem, type Profile } from "@/lib/profile";
+import { NAME_MAX_LENGTH, PHONE_PATTERN, cleanName, countryOptions, nameProblem, type Profile } from "@/lib/profile";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { NicknameField, type NicknameState } from "./NicknameField";
 import { notifyProfileChanged, useProfile } from "./useProfile";
@@ -113,7 +113,6 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
       setMessage({ ok: false, text: nameError });
       return;
     }
-    const cleanName = (value: string) => value.trim().replace(/\s+/g, " ") || null;
     const cleanPhone = phone.trim();
     if (cleanPhone && !PHONE_PATTERN.test(cleanPhone)) {
       setMessage({ ok: false, text: "Телефон: лише цифри, пробіли, дужки, дефіс і «+» на початку." });
@@ -124,9 +123,9 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
       .from("profiles")
       .update({
         nickname: nickname.trim(),
-        last_name: cleanName(lastName),
-        first_name: cleanName(firstName),
-        middle_name: cleanName(middleName),
+        last_name: cleanName(lastName) || null,
+        first_name: cleanName(firstName) || null,
+        middle_name: cleanName(middleName) || null,
         phone: cleanPhone || null,
         country: country || null,
       })
@@ -180,7 +179,9 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
           <input
             type="text"
             autoComplete={autoComplete}
-            maxLength={NAME_MAX_LENGTH}
+            // Із запасом: рідкісні ієрогліфи браузер рахує за два знаки; точну довжину перевіряємо нижче.
+            maxLength={NAME_MAX_LENGTH * 2}
+            dir="auto"
             value={value}
             onChange={(e) => (setValue(e.target.value), setMessage(null))}
             className={styles.input}

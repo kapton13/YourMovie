@@ -28,6 +28,15 @@ export function MyListBlock({
   const { hiddenIds, hiddenKeys, hide, unhide } = useHidden();
 
   if (user === undefined || (user && entry === undefined)) {
+    // Не вдалося завантажити — кажемо про це, а не крутимо завантаження без кінця.
+    if (error)
+      return (
+        <div className={styles.block}>
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        </div>
+      );
     return <div className={`${styles.block} ${styles.loading}`} aria-busy="true" />;
   }
 

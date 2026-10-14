@@ -94,6 +94,8 @@ export function MyAnime() {
   const [media, setMedia] = useState<Map<number, MyMedia>>(new Map());
   const [loadProblem, setLoadProblem] = useState("");
   const [error, setError] = useState("");
+  // Збільшуємо, щоб перечитати все з бази (після невдалого збереження частина могла записатися).
+  const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<ListStatus | "hidden">("watching");
   const { hiddenKeys } = useHidden();
   const [sort, setSort] = useState<SortKey>("new");
@@ -234,7 +236,7 @@ export function MyAnime() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, version]);
 
   const items: Item[] = useMemo(
     () =>
@@ -338,6 +340,7 @@ export function MyAnime() {
       setMarks(before.marks);
       setSeasonScores(before.seasonScores);
       setEntries(before.entries);
+      setVersion((v) => v + 1);
       setError("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
     }
   }

@@ -23,12 +23,13 @@ export function NicknameField({
   const nick = value.trim();
   const problem = nick ? nicknameProblem(nick) : "";
   // Що відомо одразу, без запиту до бази.
+  // Поточний нік — завжди «той самий», навіть якщо це автоматичний «User12».
   const instant: NicknameState | null = !nick
     ? "empty"
-    : problem
-      ? "invalid"
-      : current && nick.toLowerCase() === current.toLowerCase()
-        ? "same"
+    : current && nick.toLowerCase() === current.toLowerCase()
+      ? "same"
+      : problem
+        ? "invalid"
         : null;
   // Відповідь бази для конкретного ніку (стара відповідь до нового ніку не застосовується).
   const [checked, setChecked] = useState<{ nick: string; free: boolean } | null>(null);

@@ -6,6 +6,7 @@ import { useUser } from "@/components/auth/useUser";
 import {
   animeAverage,
   franchiseEntryAfter,
+  hasUnwatchedAired,
   mergeStatuses,
   seasonAverage,
   type Mark,
@@ -90,6 +91,8 @@ export function UserMediaProvider({
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Збільшуємо, щоб перечитати дані з бази (після невдалого збереження).
+  const [version, setVersion] = useState(0);
   const idsKey = allIds.join(",");
 
   useEffect(() => {
@@ -105,8 +108,10 @@ export function UserMediaProvider({
       ]);
       if (cancelled) return;
       if (entriesRes.error || marksRes.error) {
+        // Без даних нічого не даємо змінювати — інакше збереження затерло б справжні оцінки.
         console.error(entriesRes.error ?? marksRes.error);
         setError("Не вдалося завантажити ваш список. Оновіть сторінку.");
+        return;
       }
       // Таблиця оцінок сезонів може ще не існувати — тоді просто без них.
       if (scoresRes.error) console.warn(scoresRes.error);
@@ -155,6 +160,13 @@ export function UserMediaProvider({
           .upsert({ media_id: key, status: entry.status, score: average });
         if (!entryError) entry = { ...entry, score: average };
       }
+      // «Переглянуто», а вийшла нова серія чи є невідмічена → «Дивлюся».
+      if (entry?.status === "completed" && hasUnwatchedAired(main, marks)) {
+        const { error: entryError } = await supabase
+          .from("list_entries")
+          .upsert({ media_id: key, status: "watching", score: entry.score });
+        if (!entryError) entry = { ...entry, status: "watching" };
+      }
       if (!cancelled) setLoaded({ userId: user.id, entry, marks, seasonScores });
     })();
     return () => {
@@ -162,7 +174,7 @@ export function UserMediaProvider({
     };
     // part і main приходять із сервера разом з idsKey — окремо не змінюються.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, key, idsKey]);
+  }, [user, key, idsKey, version]);
 
   const current = user && loaded?.userId === user.id ? loaded : null;
   const entry = user === null ? null : current ? current.entry : undefined;
@@ -178,7 +190,9 @@ export function UserMediaProvider({
     setSaving(false);
     if (problem) {
       console.error(problem);
+      // Частину могло вже бути збережено — показуємо як було й перечитуємо з бази, як є насправді.
       setLoaded(before);
+      setVersion((v) => v + 1);
       setError("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
     }
   }
@@ -267,7 +281,8 @@ export function UserMediaProvider({
       const complete = (airedOther: Map<number, number>) => {
         const marks = new Map(base.marks);
         const rows: { media_id: number; episode: number; watched: boolean }[] = [];
-        for (const p of main) {
+        // Невідомо, з чого складається аніме, — відмічаємо хоча б відкриту частину.
+        for (const p of main.length > 0 ? main : [part]) {
           const aired =
             p.id === part.id
               ? airedCount
@@ -296,10 +311,19 @@ export function UserMediaProvider({
         complete(new Map());
         return;
       }
+      setSaving(true);
       fetch(`/api/my-media?ids=${airing.map((p) => p.id).join(",")}`)
-        .then((res) => (res.ok ? res.json() : []))
-        .catch(() => [])
-        .then((data: { id: number; airedCount: number }[]) => complete(new Map(data.map((m) => [m.id, m.airedCount]))));
+        .then((res) => {
+          if (!res.ok) throw new Error(`my-media ${res.status}`);
+          return res.json() as Promise<{ id: number; airedCount: number }[]>;
+        })
+        .then((data) => complete(new Map(data.map((m) => [m.id, m.airedCount]))))
+        .catch((e) => {
+          // Не знаємо, скільки серій вийшло в інших сезонах, — не ставимо «Переглянуто» навмання.
+          console.error(e);
+          setSaving(false);
+          setError("Не вдалося дізнатися про інші сезони в AniList. Спробуйте ще раз трохи згодом.");
+        });
     },
 
     setScore(score) {

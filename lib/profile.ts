@@ -20,14 +20,30 @@ export const PHONE_PATTERN = /^\+?[0-9 ()-]{6,20}$/;
 /** Прізвище, ім'я, по батькові: до 50 символів (те саме обмеження в базі). */
 export const NAME_MAX_LENGTH = 50;
 
-/** Літери будь-якої абетки, апостроф, дефіс, крапка й пробіли між словами («Квітка-Основ'яненко»). */
-const NAME_PATTERN = /^[\p{L}\p{M}'’ʼ.-]+( [\p{L}\p{M}'’ʼ.-]+)*$/u;
+/**
+ * Імена будь-якою мовою: літери будь-якої абетки з діакритикою (é, ễ, ё, ї, огласовки івриту, знаки
+ * деванагарі й тайської), невидимі з'єднувачі перської та індійських мов, апострофи (O’Brien, Ів'ян,
+ * ʻOkina), дефіси, крапки, «·» і «・» (ジョン・スミス) та одиночні пробіли між словами.
+ */
+const NAME_CHAR = "[\\p{L}\\p{M}\\u200C\\u200D'’ʼ‘`´ʹ՚׳״.·・‐‑–-]";
+const NAME_PATTERN = new RegExp(`^${NAME_CHAR}+( ${NAME_CHAR}+)*$`, "u");
+
+/** Ім'я в одному вигляді: та сама форма літер (NFC), без зайвих пробілів (зокрема нерозривних). */
+export function cleanName(value: string): string {
+  return value.normalize("NFC").replace(/\s+/g, " ").trim();
+}
+
+/** Довжина в символах так, як рахує база (емодзі чи рідкісний ієрогліф — один символ). */
+export function nameLength(value: string): number {
+  return [...cleanName(value)].length;
+}
 
 export function nameProblem(value: string, label: string): string {
-  const clean = value.trim();
+  const clean = cleanName(value);
   if (!clean) return "";
-  if (clean.length > NAME_MAX_LENGTH) return `${label}: не довше за ${NAME_MAX_LENGTH} символів.`;
-  if (!NAME_PATTERN.test(clean.replace(/\s+/g, " "))) return `${label}: лише літери, апостроф, дефіс і пробіл.`;
+  if (nameLength(clean) > NAME_MAX_LENGTH) return `${label}: не довше за ${NAME_MAX_LENGTH} символів.`;
+  if (!NAME_PATTERN.test(clean) || !/\p{L}/u.test(clean))
+    return `${label}: лише літери (будь-якою мовою), апостроф, дефіс, крапка й пробіл.`;
   return "";
 }
 
@@ -36,6 +52,7 @@ export function nicknameProblem(nickname: string): string {
   if (value.length < 3) return "Нікнейм — щонайменше 3 символи.";
   if (value.length > 24) return "Нікнейм — не довше за 24 символи.";
   if (!NICKNAME_PATTERN.test(value)) return "Лише літери, цифри та символи _ . - (без пробілів).";
+  if (/^user[0-9]+$/i.test(value)) return "Ніки «User» + цифри сайт видає автоматично — оберіть інший.";
   return "";
 }
 
