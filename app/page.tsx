@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { HomeSearch } from "@/components/HomeSearch";
 import { MediaRow } from "@/components/MediaRow";
 import { SkipListed } from "@/components/hidden/SkipListed";
+import { ForYouRow } from "@/components/recs/ForYouRow";
 import { getHomeSections } from "@/lib/anilist";
 import { catalogHref } from "@/lib/catalog";
 import { SEASON_LABELS } from "@/lib/labels";
@@ -41,6 +42,7 @@ async function HomeSections() {
   const seasonTitle = `${SEASON_LABELS[data.season.season]} ${data.season.year}`;
   return (
     <>
+      <ForYouRow />
       <MediaRow
         title="Зараз у тренді"
         href={catalogHref({ sort: "trending" })}

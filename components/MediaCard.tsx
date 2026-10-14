@@ -10,13 +10,15 @@ type Props = {
   badge?: string;
   /** Підпис над назвою, напр. тип зв'язку («Спін-оф»). */
   label?: string;
+  /** Примітка під карткою, напр. чому порадили. */
+  note?: string;
   /** Тайтл, на сторінці якого ми зараз: виділяється і не є посиланням. */
   current?: boolean;
   /** Чи можна сховати картку хрестиком «Не цікаво» (типово — так). */
   hideable?: boolean;
 };
 
-export function MediaCard({ media, badge, label, current, hideable = true }: Props) {
+export function MediaCard({ media, badge, label, note, current, hideable = true }: Props) {
   const title = media.title.english ?? media.title.romaji ?? "Без назви";
   const score = formatScore(media.averageScore);
   const meta = [media.format && FORMAT_LABELS[media.format], media.startDate.year ?? media.seasonYear]
@@ -43,6 +45,11 @@ export function MediaCard({ media, badge, label, current, hideable = true }: Pro
         {title}
       </h3>
       {meta && <p className={styles.meta}>{meta}</p>}
+      {note && (
+        <p className={styles.note} title={note}>
+          {note}
+        </p>
+      )}
     </>
   );
 
@@ -51,7 +58,7 @@ export function MediaCard({ media, badge, label, current, hideable = true }: Pro
       {content}
     </article>
   ) : (
-    <Wrapper enabled={hideable} mediaId={media.id} title={title}>
+    <Wrapper enabled={hideable} mediaId={media.id} rootId={media.rootId} title={title}>
       <article className={styles.card}>
         <Link href={`/anime/${media.id}`} className={styles.link}>
           {content}
@@ -64,16 +71,18 @@ export function MediaCard({ media, badge, label, current, hideable = true }: Pro
 function Wrapper({
   enabled,
   mediaId,
+  rootId,
   title,
   children,
 }: {
   enabled: boolean;
   mediaId: number;
+  rootId?: number;
   title: string;
   children: React.ReactNode;
 }) {
   return enabled ? (
-    <Hideable mediaId={mediaId} title={title}>
+    <Hideable mediaId={mediaId} rootId={rootId} title={title}>
       {children}
     </Hideable>
   ) : (

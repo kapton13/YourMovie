@@ -1,0 +1,159 @@
+.title {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.lead {
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.hint {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  line-height: 1.5;
+}
+
+.hint a,
+.empty a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.empty {
+  margin-top: 24px;
+  padding: 28px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ---- Фільтри ---- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+  margin-top: 20px;
+}
+
+.filterLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.segment {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segment:hover {
+  color: var(--foreground);
+}
+
+.segmentActive {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.segmentActive:hover {
+  color: #fff;
+}
+
+.segment:focus-visible,
+.select:focus-visible,
+.more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.select {
+  height: 42px;
+  min-width: 180px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.more {
+  display: block;
+  margin: 28px auto 0;
+  padding: 10px 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.more:hover {
+  border-color: var(--accent);
+}
+
+/* ---- Поки завантажується ---- */
+
+.gridSkeleton {
+  height: 420px;
+  margin-top: 24px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.rowSkeleton {
+  height: 300px;
+  margin-top: 40px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .filters {
+    gap: 12px;
+  }
+
+  .genre,
+  .select {
+    width: 100%;
+  }
+
+  .rowSkeleton {
+    height: 250px;
+  }
+}

@@ -8,13 +8,34 @@ import type { ListEntry, ListStatus } from "./lists";
 
 export type Mark = { watched: boolean; score: number | null };
 export type Marks = Map<number, Mark>;
-export type PartInfo = { id: number; episodes: number | null; status: string | null };
+export type PartInfo = {
+  id: number;
+  episodes: number | null;
+  status: string | null;
+  /** Скільки серій уже вийшло, якщо відомо (для частин, що виходять). */
+  aired?: number;
+};
 
 const STATUS_PRIORITY: ListStatus[] = ["watching", "paused", "planning", "completed", "dropped"];
 
 /** Якщо сезони одного аніме раніше мали різні статуси — який узяти для всього аніме. */
 export function mergeStatuses(statuses: ListStatus[]): ListStatus {
   return STATUS_PRIORITY.find((s) => statuses.includes(s)) ?? "planning";
+}
+
+/** Скільки серій частини точно вже вийшло. */
+function airedOf(p: PartInfo): number {
+  if (p.aired !== undefined) return p.aired;
+  return p.status === "FINISHED" || p.status === "CANCELLED" ? (p.episodes ?? 0) : 0;
+}
+
+/** Є серія, що вже вийшла, але не відмічена переглянутою. */
+export function hasUnwatchedAired(main: PartInfo[], marks: Map<number, Marks>): boolean {
+  return main.some((p) => {
+    const partMarks = marks.get(p.id);
+    for (let n = 1; n <= airedOf(p); n++) if (!partMarks?.get(n)?.watched) return true;
+    return false;
+  });
 }
 
 function watchedCount(marks: Marks | undefined): number {
@@ -46,7 +67,8 @@ export function animeAverage(main: PartInfo[], seasonScores: Map<number, number>
 /**
  * Після змін у серіях або оцінках сезонів:
  * — є переглянуті серії, а аніме ще не в списку або «Планую» → «Дивлюся»;
- * — усі основні частини вийшли повністю й переглянуті → «Переглянуто»;
+ * — усі основні частини вийшли повністю й переглянуті → «Переглянуто» (лише так — оцінка «Переглянуто» не ставить);
+ * — «Переглянуто», а є серія, що вже вийшла й не відмічена → «Дивлюся»;
  * — оцінено всі основні частини → оцінка аніме = середнє оцінок сезонів (має перевагу над ручною);
  * — сезон перестав бути оціненим, а оцінка аніме була саме тим середнім (`before`) → прибираємо її.
  * Повертає той самий `entry`, якщо змінювати нічого не треба.
@@ -77,6 +99,7 @@ export function franchiseEntryAfter(args: {
         watchedCount(marks.get(p.id)) >= p.episodes,
     );
   if (allDone && (status === "watching" || status === "planning" || status === "paused")) status = "completed";
+  if (status === "completed" && !allDone && hasUnwatchedAired(main, marks)) status = "watching";
 
   const average = animeAverage(main, seasonScores);
   if (average !== null) score = average;
