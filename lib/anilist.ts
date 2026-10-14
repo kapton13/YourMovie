@@ -708,3 +708,154 @@ export async function getFranchises(ids: number[]): Promise<Record<number, Franc
   }
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// Рекомендації: «схожі» від глядачів AniList для аніме користувача
+
+export type RecTag = { name: string; rank: number };
+
+export type RecCard = MediaCard & {
+  status: MediaStatus | null;
+  popularity: number | null;
+  genres: string[];
+  tags: RecTag[];
+  isAdult: boolean;
+  /** Попередня частина (PREQUEL або PARENT), щоб радити аніме з першого сезону. */
+  previous: number | null;
+};
+
+export type RecSeed = {
+  id: number;
+  title: string;
+  genres: string[];
+  tags: RecTag[];
+  recs: { rating: number; media: RecCard }[];
+};
+
+const REC_CARD_FIELDS = `
+  ${CARD_FIELDS}
+  status
+  popularity
+  genres
+  isAdult
+  tags { name rank }
+  relations { edges { relationType node { id type } } }
+`;
+
+const REC_SEEDS_QUERY = `
+  query RecSeeds($ids: [Int]) {
+    Page(perPage: 50) {
+      media(id_in: $ids, type: ANIME) {
+        id
+        title { romaji english }
+        genres
+        tags { name rank }
+        recommendations(sort: RATING_DESC, perPage: 20) {
+          nodes { rating mediaRecommendation { ${REC_CARD_FIELDS} } }
+        }
+      }
+    }
+  }
+`;
+
+const REC_CARDS_QUERY = `
+  query RecCards($ids: [Int]) {
+    Page(perPage: 50) {
+      media(id_in: $ids, type: ANIME) { ${REC_CARD_FIELDS} }
+    }
+  }
+`;
+
+type RawRecCard = Omit<RecCard, "previous" | "tags"> & {
+  tags: RecTag[] | null;
+  relations: { edges: { relationType: RelationType; node: { id: number; type: string } }[] } | null;
+};
+
+function toRecCard(raw: RawRecCard): RecCard {
+  const { relations, ...card } = raw;
+  const edges = relations?.edges ?? [];
+  const previous =
+    edges.find((e) => e.relationType === "PREQUEL" && e.node.type === "ANIME") ??
+    edges.find((e) => e.relationType === "PARENT" && e.node.type === "ANIME");
+  return { ...card, tags: raw.tags ?? [], previous: previous?.node.id ?? null };
+}
+
+/**
+ * Пам'ять сервера на кілька годин: «схожі» змінюються повільно, а в кожного користувача свій набір
+ * аніме — тож пам'ятаємо кожне аніме окремо й догружаємо лише те, чого бракує.
+ */
+const REC_TTL = 6 * 60 * 60 * 1000;
+const seedMemo = new Map<number, { at: number; seed: RecSeed | null }>();
+const cardMemo = new Map<number, { at: number; card: RecCard | null }>();
+
+/** Щоб пам'ять не росла без кінця: забуваємо застаріле, а якщо й того мало — усе. */
+function prune(memo: Map<number, { at: number }>) {
+  if (memo.size < 20000) return;
+  for (const [id, hit] of memo) if (Date.now() - hit.at >= REC_TTL) memo.delete(id);
+  if (memo.size >= 20000) memo.clear();
+}
+
+function fresh<T extends { at: number }>(memo: Map<number, T>, id: number): T | undefined {
+  const hit = memo.get(id);
+  return hit && Date.now() - hit.at < REC_TTL ? hit : undefined;
+}
+
+async function inChunks(ids: number[], size: number, load: (chunk: number[]) => Promise<void>) {
+  const chunks: number[][] = [];
+  for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
+  await Promise.all(chunks.map(load));
+}
+
+/** «Схожі» для аніме користувача (по 25 за запит — так відповідь AniList не надто велика). */
+export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
+  prune(seedMemo);
+  prune(cardMemo);
+  const missing = [...new Set(ids)].filter((id) => !fresh(seedMemo, id));
+  await inChunks(missing, 25, async (chunk) => {
+    type Raw = {
+      id: number;
+      title: { romaji: string | null; english: string | null };
+      genres: string[];
+      tags: RecTag[] | null;
+      recommendations: { nodes: { rating: number; mediaRecommendation: RawRecCard | null }[] };
+    };
+    const data = await anilist<{ Page: { media: Raw[] } }>(REC_SEEDS_QUERY, { ids: chunk });
+    const at = Date.now();
+    for (const id of chunk) seedMemo.set(id, { at, seed: null });
+    for (const m of data.Page.media) {
+      const recs = m.recommendations.nodes
+        .filter((n) => n.mediaRecommendation)
+        .map((n) => ({ rating: n.rating, media: toRecCard(n.mediaRecommendation!) }));
+      for (const r of recs) cardMemo.set(r.media.id, { at, card: r.media });
+      seedMemo.set(m.id, {
+        at,
+        seed: {
+          id: m.id,
+          title: m.title.english ?? m.title.romaji ?? "Без назви",
+          genres: m.genres,
+          tags: m.tags ?? [],
+          recs,
+        },
+      });
+    }
+  });
+  return ids.map((id) => seedMemo.get(id)?.seed).filter((s): s is RecSeed => Boolean(s));
+}
+
+/** Картки аніме для рекомендацій (щоб дійти до першого сезону). */
+export async function getRecCards(ids: number[]): Promise<Map<number, RecCard>> {
+  prune(cardMemo);
+  const missing = [...new Set(ids)].filter((id) => !fresh(cardMemo, id));
+  await inChunks(missing, 50, async (chunk) => {
+    const data = await anilist<{ Page: { media: RawRecCard[] } }>(REC_CARDS_QUERY, { ids: chunk });
+    const at = Date.now();
+    for (const id of chunk) cardMemo.set(id, { at, card: null });
+    for (const m of data.Page.media) cardMemo.set(m.id, { at, card: toRecCard(m) });
+  });
+  const result = new Map<number, RecCard>();
+  for (const id of ids) {
+    const card = cardMemo.get(id)?.card;
+    if (card) result.set(id, card);
+  }
+  return result;
+}

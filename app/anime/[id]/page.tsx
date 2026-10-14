@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
+import { SkipListed } from "@/components/hidden/SkipListed";
 import { EpisodeList } from "@/components/list/EpisodeList";
 import { MyListBlock } from "@/components/list/MyListBlock";
 import { UserMediaProvider, type FranchiseContext } from "@/components/list/UserMediaProvider";
@@ -211,7 +212,12 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
       {related.length > 0 && (
         <MediaRow title="Пов'язане" items={related} label={(m) => m.relation} />
       )}
-      {recommendations.length > 0 && <MediaRow title="Схожі аніме" items={recommendations} />}
+      {recommendations.length > 0 && (
+        // Те, що людина вже дивиться чи подивилася, у «Схожих» не показуємо.
+        <SkipListed>
+          <MediaRow title="Схожі аніме" items={recommendations} />
+        </SkipListed>
+      )}
     </UserMediaProvider>
   );
 }

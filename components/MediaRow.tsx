@@ -10,12 +10,13 @@ type Props<T extends Media> = {
   items: T[];
   badge?: (media: T, index: number) => string | undefined;
   label?: (media: T) => string | undefined;
+  note?: (media: T) => string | undefined;
   currentId?: number;
   /** Скільки карток показати; решта — запас на випадок, якщо частину сховано. */
   limit?: number;
 };
 
-export function MediaRow<T extends Media>({ title, href, items, badge, label, currentId, limit }: Props<T>) {
+export function MediaRow<T extends Media>({ title, href, items, badge, label, note, currentId, limit }: Props<T>) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -34,6 +35,7 @@ export function MediaRow<T extends Media>({ title, href, items, badge, label, cu
               media={media}
               badge={badge?.(media, index)}
               label={label?.(media)}
+              note={note?.(media)}
               current={media.id === currentId}
               hideable={currentId === undefined}
             />

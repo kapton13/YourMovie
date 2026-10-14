@@ -98,6 +98,17 @@
   color: var(--accent);
 }
 
+.note {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .label + .title {
   margin-top: 2px;
 }
