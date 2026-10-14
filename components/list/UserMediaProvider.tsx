@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import {
+  animeAverage,
   franchiseEntryAfter,
   mergeStatuses,
   seasonAverage,
@@ -36,6 +37,10 @@ type Context = {
   marks: Marks | undefined;
   /** Оцінка цієї частини (сезону). */
   seasonScore: number | null;
+  /** Оцінку сезону пораховано із серій (оцінено всі) — вручну її не змінити. */
+  seasonAuto: boolean;
+  /** Оцінку аніме пораховано із сезонів (оцінено всі) — вручну її не змінити. */
+  scoreAuto: boolean;
   /** Чи має аніме кілька частин (тоді показуємо оцінку сезону окремо). */
   multipart: boolean;
   saving: boolean;
@@ -131,11 +136,29 @@ export function UserMediaProvider({
           entry = merged;
         }
       }
+
+      // Оцінки серій і сезонів мають перевагу над ручними: виправляємо, якщо раніше було інакше.
+      const parts = main.some((p) => p.id === part.id) ? main : [...main, part];
+      for (const p of parts) {
+        const average = seasonAverage(p, marks.get(p.id));
+        if (average === null || average === seasonScores.get(p.id)) continue;
+        const { error: scoreError } = await supabase.from("season_scores").upsert({ media_id: p.id, score: average });
+        if (!scoreError) seasonScores.set(p.id, average);
+      }
+      const average = animeAverage(main, seasonScores);
+      if (entry && average !== null && entry.score !== average) {
+        const { error: entryError } = await supabase
+          .from("list_entries")
+          .upsert({ media_id: key, status: entry.status, score: average });
+        if (!entryError) entry = { ...entry, score: average };
+      }
       if (!cancelled) setLoaded({ userId: user.id, entry, marks, seasonScores });
     })();
     return () => {
       cancelled = true;
     };
+    // part і main приходять із сервера разом з idsKey — окремо не змінюються.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, key, idsKey]);
 
   const current = user && loaded?.userId === user.id ? loaded : null;
@@ -178,10 +201,23 @@ export function UserMediaProvider({
     if (!current) return null;
     const marks = new Map(current.marks).set(part.id, partMarks);
     const seasonScores = new Map(current.seasonScores);
-    const average = seasonAverage(part, partMarks);
-    const seasonChanged = average !== null && average !== seasonScores.get(part.id);
-    if (seasonChanged) seasonScores.set(part.id, average);
-    const nextEntry = franchiseEntryAfter({ key, entry: current.entry, main, marks, seasonScores });
+    const stored = seasonScores.get(part.id) ?? null;
+    const previous = seasonAverage(part, current.marks.get(part.id));
+    // Оцінено всі серії → оцінка сезону = середнє. Перестали бути оціненими всі, а оцінка
+    // сезону була саме тим середнім (не ручна) → прибираємо її.
+    let average = seasonAverage(part, partMarks);
+    if (average === null && (previous === null || stored !== previous)) average = stored;
+    const seasonChanged = average !== stored;
+    if (average === null) seasonScores.delete(part.id);
+    else seasonScores.set(part.id, average);
+    const nextEntry = franchiseEntryAfter({
+      key,
+      entry: current.entry,
+      main,
+      marks,
+      seasonScores,
+      before: current.seasonScores,
+    });
     return { marks, seasonScores, nextEntry, seasonChanged, average };
   }
 
@@ -199,11 +235,17 @@ export function UserMediaProvider({
     return null;
   }
 
+  const partMarks = current?.marks.get(part.id);
+  const seasonAuto = seasonAverage(part, partMarks) !== null;
+  const autoScore = current ? animeAverage(main, current.seasonScores) : null;
+
   const value: Context = {
     user,
     entry,
     marks: current?.marks.get(part.id) ?? (current ? new Map() : undefined),
     seasonScore: current?.seasonScores.get(part.id) ?? null,
+    seasonAuto,
+    scoreAuto: autoScore !== null,
     multipart: allIds.length > 1,
     saving,
     error,
@@ -240,6 +282,8 @@ export function UserMediaProvider({
     },
 
     setScore(score) {
+      // Оцінено всі сезони — оцінка аніме рахується сама.
+      if (autoScore !== null) return;
       const next: ListEntry = {
         media_id: key,
         status: current?.entry?.status ?? "completed",
@@ -250,7 +294,8 @@ export function UserMediaProvider({
     },
 
     setSeasonScore(score) {
-      if (!current) return;
+      // Оцінено всі серії — оцінка сезону рахується сама.
+      if (!current || seasonAuto) return;
       const seasonScores = new Map(current.seasonScores);
       if (score === null) seasonScores.delete(part.id);
       else seasonScores.set(part.id, score);
@@ -261,7 +306,14 @@ export function UserMediaProvider({
         score: null,
         updated_at: "",
       };
-      const nextEntry = franchiseEntryAfter({ key, entry: base, main, marks: current.marks, seasonScores });
+      const nextEntry = franchiseEntryAfter({
+        key,
+        entry: base,
+        main,
+        marks: current.marks,
+        seasonScores,
+        before: current.seasonScores,
+      });
       run({ seasonScores, entry: nextEntry }, async () => {
         const problem = await saveSeasonScore(score);
         if (problem) return problem;

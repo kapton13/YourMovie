@@ -25,7 +25,7 @@ function watchedCount(marks: Marks | undefined): number {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-/** Середнє оцінок серій частини, якщо оцінено всі її серії. */
+/** Середнє оцінок серій частини, якщо оцінено всі її серії (тоді воно має перевагу над ручною оцінкою сезону). */
 export function seasonAverage(part: PartInfo, marks: Marks | undefined): number | null {
   if (!part.episodes || !marks) return null;
   const scores: number[] = [];
@@ -37,11 +37,18 @@ export function seasonAverage(part: PartInfo, marks: Marks | undefined): number 
   return round1(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
+/** Середнє оцінок сезонів, якщо оцінено кожну основну частину (вручну чи через серії). */
+export function animeAverage(main: PartInfo[], seasonScores: Map<number, number>): number | null {
+  if (main.length === 0 || !main.every((p) => seasonScores.has(p.id))) return null;
+  return round1(main.reduce((sum, p) => sum + seasonScores.get(p.id)!, 0) / main.length);
+}
+
 /**
  * Після змін у серіях або оцінках сезонів:
  * — є переглянуті серії, а аніме ще не в списку або «Планую» → «Дивлюся»;
  * — усі основні частини вийшли повністю й переглянуті → «Переглянуто»;
- * — оцінено всі основні частини → оцінка аніме = середнє оцінок сезонів.
+ * — оцінено всі основні частини → оцінка аніме = середнє оцінок сезонів (має перевагу над ручною);
+ * — сезон перестав бути оціненим, а оцінка аніме була саме тим середнім (`before`) → прибираємо її.
  * Повертає той самий `entry`, якщо змінювати нічого не треба.
  */
 export function franchiseEntryAfter(args: {
@@ -50,8 +57,10 @@ export function franchiseEntryAfter(args: {
   main: PartInfo[];
   marks: Map<number, Marks>;
   seasonScores: Map<number, number>;
+  /** Оцінки сезонів до зміни — щоб прибрати застаріле середнє. */
+  before?: Map<number, number>;
 }): ListEntry | null {
-  const { key, entry, main, marks, seasonScores } = args;
+  const { key, entry, main, marks, seasonScores, before } = args;
   let status: ListStatus | null = entry?.status ?? null;
   let score = entry?.score ?? null;
 
@@ -69,8 +78,9 @@ export function franchiseEntryAfter(args: {
     );
   if (allDone && (status === "watching" || status === "planning" || status === "paused")) status = "completed";
 
-  if (main.length > 0 && main.every((p) => seasonScores.has(p.id)))
-    score = round1(main.reduce((sum, p) => sum + seasonScores.get(p.id)!, 0) / main.length);
+  const average = animeAverage(main, seasonScores);
+  if (average !== null) score = average;
+  else if (before && score !== null && score === animeAverage(main, before)) score = null;
 
   if (status === null) return entry;
   if (entry && entry.status === status && entry.score === score) return entry;
