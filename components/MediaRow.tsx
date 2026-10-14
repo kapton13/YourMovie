@@ -11,9 +11,11 @@ type Props<T extends Media> = {
   badge?: (media: T, index: number) => string | undefined;
   label?: (media: T) => string | undefined;
   currentId?: number;
+  /** Скільки карток показати; решта — запас на випадок, якщо частину сховано. */
+  limit?: number;
 };
 
-export function MediaRow<T extends Media>({ title, href, items, badge, label, currentId }: Props<T>) {
+export function MediaRow<T extends Media>({ title, href, items, badge, label, currentId, limit }: Props<T>) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -25,7 +27,7 @@ export function MediaRow<T extends Media>({ title, href, items, badge, label, cu
         )}
       </div>
       {items.length > 0 ? (
-        <div className={styles.row}>
+        <div className={`${styles.row} ${limit === 12 ? styles.limit12 : ""}`}>
           {items.map((media, index) => (
             <MediaCard
               key={media.id}
