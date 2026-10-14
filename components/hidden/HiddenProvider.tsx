@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useUser } from "@/components/auth/useUser";
 import type { Franchise } from "@/lib/anilist";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { selectAll } from "@/lib/supabase/selectAll";
 import styles from "./Hidden.module.css";
 
 type HiddenContext = {
@@ -51,10 +52,14 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    getSupabaseBrowser()
-      .from("hidden_media")
-      .select("media_id, franchise_key")
-      .then(({ data, error }) => {
+    selectAll((from, to) =>
+      getSupabaseBrowser()
+        .from("hidden_media")
+        .select("media_id, franchise_key")
+        .eq("user_id", user.id)
+        .order("media_id")
+        .range(from, to),
+    ).then(({ data, error }) => {
         if (cancelled) return;
         if (error) console.warn(error);
         setLoaded({ userId: user.id, rows: (data ?? []) as Row[] });
@@ -66,7 +71,15 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
 
   const refreshListed = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await getSupabaseBrowser().from("list_entries").select("media_id").neq("status", "planning");
+    const { data, error } = await selectAll((from, to) =>
+      getSupabaseBrowser()
+        .from("list_entries")
+        .select("media_id")
+        .eq("user_id", user.id)
+        .neq("status", "planning")
+        .order("media_id")
+        .range(from, to),
+    );
     if (error) {
       console.warn(error);
       return;

@@ -46,6 +46,8 @@ export type Profile = {
   first_name?: string | null;
   middle_name?: string | null;
   phone: string | null;
+  /** Відкритий профіль (`/u/нікнейм` бачать усі). Немає, якщо базу ще не оновлено. */
+  is_public?: boolean;
   country: string | null;
 };
 

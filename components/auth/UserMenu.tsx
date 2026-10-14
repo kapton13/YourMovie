@@ -30,7 +30,12 @@ export function UserMenu() {
   const name = profile?.nickname ?? user.email ?? "?";
   const letter = name.trim()[0]?.toUpperCase() ?? "?";
   return (
-    <Link href="/account" className={styles.avatar} title={name} aria-label={`Мій профіль (${name})`}>
+    <Link
+      href={profile ? `/u/${encodeURIComponent(profile.nickname)}` : "/account"}
+      className={styles.avatar}
+      title={name}
+      aria-label={`Мій профіль (${name})`}
+    >
       {letter}
     </Link>
   );

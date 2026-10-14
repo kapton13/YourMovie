@@ -8,6 +8,7 @@ import { franchiseEntryAfter, hasUnwatchedAired, mergeStatuses, seasonAverage, t
 import { FORMAT_LABELS } from "@/lib/labels";
 import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListEntry, type ListStatus } from "@/lib/lists";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { selectAll } from "@/lib/supabase/selectAll";
 import { useHidden } from "@/components/hidden/HiddenProvider";
 import { HiddenList } from "./HiddenList";
 import styles from "./MyAnime.module.css";
@@ -112,9 +113,29 @@ export function MyAnime() {
     const supabase = getSupabaseBrowser();
     (async () => {
       const [entriesRes, marksRes, scoresRes] = await Promise.all([
-        supabase.from("list_entries").select("media_id, status, score, updated_at").order("updated_at", { ascending: false }),
-        supabase.from("episode_marks").select("media_id, episode, watched, score"),
-        supabase.from("season_scores").select("media_id, score"),
+        // Лише свої: відкриті профілі інших людей теж можна читати.
+        // Порціями: у великого списку відміток серій більше за 1000 (ліміт одного запиту).
+        selectAll((from, to) =>
+          supabase
+            .from("list_entries")
+            .select("media_id, status, score, updated_at")
+            .eq("user_id", user.id)
+            .order("updated_at", { ascending: false })
+            .order("media_id")
+            .range(from, to),
+        ),
+        selectAll((from, to) =>
+          supabase
+            .from("episode_marks")
+            .select("media_id, episode, watched, score")
+            .eq("user_id", user.id)
+            .order("media_id")
+            .order("episode")
+            .range(from, to),
+        ),
+        selectAll((from, to) =>
+          supabase.from("season_scores").select("media_id, score").eq("user_id", user.id).order("media_id").range(from, to),
+        ),
       ]);
       if (cancelled) return;
       if (entriesRes.error || marksRes.error) {

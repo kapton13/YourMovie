@@ -102,9 +102,10 @@ export function UserMediaProvider({
     const ids = idsKey.split(",").map(Number);
     (async () => {
       const [entriesRes, marksRes, scoresRes] = await Promise.all([
-        supabase.from("list_entries").select(ENTRY_FIELDS).in("media_id", ids),
-        supabase.from("episode_marks").select("media_id, episode, watched, score").in("media_id", ids),
-        supabase.from("season_scores").select("media_id, score").in("media_id", ids),
+        // Лише свої: відкриті профілі інших людей теж можна читати.
+        supabase.from("list_entries").select(ENTRY_FIELDS).eq("user_id", user.id).in("media_id", ids),
+        supabase.from("episode_marks").select("media_id, episode, watched, score").eq("user_id", user.id).in("media_id", ids),
+        supabase.from("season_scores").select("media_id, score").eq("user_id", user.id).in("media_id", ids),
       ]);
       if (cancelled) return;
       if (entriesRes.error || marksRes.error) {
