@@ -83,7 +83,10 @@ export function UserMediaProvider({
   children: React.ReactNode;
 }) {
   const user = useUser();
-  const { key, part, main, allIds } = franchise;
+  const { key, part: partInfo, main: mainInfo, allIds } = franchise;
+  // Скільки серій уже вийшло, ми знаємо точно лише для відкритої частини.
+  const part = { ...partInfo, aired: airedCount };
+  const main = mainInfo.map((p) => (p.id === part.id ? part : p));
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -260,36 +263,53 @@ export function UserMediaProvider({
       }
       // «Переглянуто» вручну: усі серії, що вже вийшли, вважаємо переглянутими.
       // Тоді з виходом нового сезону аніме саме повернеться в «Дивлюся» лише з новими серіями.
-      const marks = new Map(current.marks);
-      const rows: { media_id: number; episode: number; watched: boolean }[] = [];
-      for (const p of main) {
-        const aired = p.id === part.id ? airedCount : p.status === "FINISHED" || p.status === "CANCELLED" ? (p.episodes ?? 0) : 0;
-        const partMarks: Marks = new Map(marks.get(p.id));
-        for (let n = 1; n <= aired; n++) {
-          if (partMarks.get(n)?.watched) continue;
-          partMarks.set(n, { watched: true, score: partMarks.get(n)?.score ?? null });
-          rows.push({ media_id: p.id, episode: n, watched: true });
+      const base = current;
+      const complete = (airedOther: Map<number, number>) => {
+        const marks = new Map(base.marks);
+        const rows: { media_id: number; episode: number; watched: boolean }[] = [];
+        for (const p of main) {
+          const aired =
+            p.id === part.id
+              ? airedCount
+              : (airedOther.get(p.id) ?? (p.status === "FINISHED" || p.status === "CANCELLED" ? (p.episodes ?? 0) : 0));
+          const partMarks: Marks = new Map(marks.get(p.id));
+          for (let n = 1; n <= aired; n++) {
+            if (partMarks.get(n)?.watched) continue;
+            partMarks.set(n, { watched: true, score: partMarks.get(n)?.score ?? null });
+            rows.push({ media_id: p.id, episode: n, watched: true });
+          }
+          marks.set(p.id, partMarks);
         }
-        marks.set(p.id, partMarks);
+        run({ entry: next, marks }, async () => {
+          if (rows.length) {
+            const { error } = await getSupabaseBrowser().from("episode_marks").upsert(rows);
+            if (error) return error.message;
+          }
+          return saveEntry(next);
+        });
+      };
+      // Інші сезони, що зараз виходять: скільки серій уже вийшло, дізнаємося в AniList.
+      const airing = main.filter(
+        (p) => p.id !== part.id && p.status !== "FINISHED" && p.status !== "CANCELLED" && p.status !== "NOT_YET_RELEASED",
+      );
+      if (airing.length === 0) {
+        complete(new Map());
+        return;
       }
-      run({ entry: next, marks }, async () => {
-        if (rows.length) {
-          const { error } = await getSupabaseBrowser().from("episode_marks").upsert(rows);
-          if (error) return error.message;
-        }
-        return saveEntry(next);
-      });
+      fetch(`/api/my-media?ids=${airing.map((p) => p.id).join(",")}`)
+        .then((res) => (res.ok ? res.json() : []))
+        .catch(() => [])
+        .then((data: { id: number; airedCount: number }[]) => complete(new Map(data.map((m) => [m.id, m.airedCount]))));
     },
 
     setScore(score) {
       // Оцінено всі сезони — оцінка аніме рахується сама.
-      if (autoScore !== null) return;
-      const next: ListEntry = {
-        media_id: key,
-        status: current?.entry?.status ?? "completed",
-        score,
-        updated_at: new Date().toISOString(),
-      };
+      if (autoScore !== null || !current) return;
+      // Оцінка сама «Переглянуто» не ставить: нове аніме — у «Дивлюся» (якщо не все вже переглянуто).
+      const base: ListEntry = current.entry ?? { media_id: key, status: "watching", score: null, updated_at: "" };
+      const next =
+        franchiseEntryAfter({ key, entry: { ...base, score }, main, marks: current.marks, seasonScores: current.seasonScores }) ??
+        base;
       run({ entry: next }, () => saveEntry(next));
     },
 
@@ -299,13 +319,8 @@ export function UserMediaProvider({
       const seasonScores = new Map(current.seasonScores);
       if (score === null) seasonScores.delete(part.id);
       else seasonScores.set(part.id, score);
-      // Оцінка сезону без статусу: для аніме з кількома частинами — «Дивлюся», для однієї — «Переглянуто».
-      const base = current.entry ?? {
-        media_id: key,
-        status: (main.length > 1 ? "watching" : "completed") as ListStatus,
-        score: null,
-        updated_at: "",
-      };
+      // Оцінка сама «Переглянуто» не ставить: нове аніме — у «Дивлюся».
+      const base = current.entry ?? { media_id: key, status: "watching" as ListStatus, score: null, updated_at: "" };
       const nextEntry = franchiseEntryAfter({
         key,
         entry: base,

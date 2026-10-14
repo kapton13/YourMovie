@@ -8,10 +8,22 @@ import styles from "./Hidden.module.css";
  * Картка аніме з червоним хрестиком «Не цікаво»; сховані картки не показуються зовсім.
  * Усередині `SkipListed` (головна) не показуються й аніме, які вже є в списках.
  */
-export function Hideable({ mediaId, title, children }: { mediaId: number; title: string; children: React.ReactNode }) {
+export function Hideable({
+  mediaId,
+  rootId,
+  title,
+  children,
+}: {
+  mediaId: number;
+  /** Перша частина аніме (якщо відома): сезон 3 ховається, коли в списку саме аніме. */
+  rootId?: number;
+  title: string;
+  children: React.ReactNode;
+}) {
   const { hiddenIds, listedIds, loggedIn, hide } = useHidden();
   const skipListed = useSkipListed();
-  if (hiddenIds.has(mediaId) || (skipListed && listedIds.has(mediaId))) return null;
+  const ids = rootId && rootId !== mediaId ? [mediaId, rootId] : [mediaId];
+  if (ids.some((id) => hiddenIds.has(id) || (skipListed && listedIds.has(id)))) return null;
   return (
     <div className={styles.hideable}>
       {children}

@@ -105,13 +105,15 @@ a {
   gap: 20px;
 }
 
-.nav-my {
+.nav-my,
+.nav-catalog {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.nav-my svg {
+.nav-my svg,
+.nav-catalog svg {
   display: none;
   width: 22px;
   height: 22px;
@@ -119,6 +121,7 @@ a {
   stroke: currentColor;
   stroke-width: 2;
   stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 /* На телефоні «Мої аніме» — значок, «Головна» ховаємо (логотип теж веде на головну) */
@@ -189,13 +192,22 @@ a {
 }
 
 /* На дуже вузьких екранах «Головна» зайва (логотип теж веде на головну), відступи менші */
-@media (max-width: 380px) {
+@media (max-width: 420px) {
   .nav-home {
     display: none;
   }
 
   .logo {
     font-size: 1.1rem;
+  }
+
+  /* Каталог — значком, щоб уся шапка вмістилася */
+  .nav-catalog svg {
+    display: block;
+  }
+
+  .nav-catalog span {
+    display: none;
   }
 
   .header-inner,

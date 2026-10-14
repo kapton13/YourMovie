@@ -36,7 +36,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/" className="nav-home">
                   Головна
                 </Link>
-                <Link href="/catalog">Каталог</Link>
+                <Link href="/catalog" className="nav-catalog" aria-label="Каталог">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M20 20l-4-4" />
+                  </svg>
+                  <span>Каталог</span>
+                </Link>
                 <MyAnimeLink />
                 <RecommendationsLink />
               </nav>

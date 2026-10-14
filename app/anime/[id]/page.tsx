@@ -11,6 +11,7 @@ import {
   getEpisodes,
   getFranchise,
   getMedia,
+  getRoots,
   getWatchOrder,
   type Franchise,
   type MediaDetails,
@@ -97,9 +98,15 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
   const related = media.relations.edges
     .filter((edge) => edge.node.type === "ANIME" && RELATION_LABELS[edge.relationType])
     .map((edge) => ({ ...edge.node, relation: RELATION_LABELS[edge.relationType]! }));
-  const recommendations = media.recommendations.nodes
+  const similar = media.recommendations.nodes
     .map((node) => node.mediaRecommendation)
     .filter((m): m is NonNullable<typeof m> => m != null && !m.isAdult);
+  // Перша частина кожного схожого аніме — щоб сховати й сезон 2 того, що вже є в списках.
+  const roots = await getRoots(similar.map((m) => m.id).sort((a, b) => a - b)).catch((error) => {
+    console.error(error);
+    return {} as Record<number, number>;
+  });
+  const recommendations = similar.map((m) => ({ ...m, rootId: roots[m.id] ?? m.id }));
 
   return (
     <UserMediaProvider franchise={franchiseContext(media, franchise)} airedCount={airedEpisodeCount(media)}>
@@ -225,7 +232,9 @@ async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
 /** Що потрібно «Моєму списку» про аніме цілком; якщо AniList не відповів — аніме з однієї частини. */
 function franchiseContext(media: MediaDetails, franchise: Franchise | null): FranchiseContext {
   const part = { id: media.id, episodes: media.episodes, status: media.status };
-  if (!franchise) return { key: media.id, part, main: [part], allIds: [media.id] };
+  // AniList не відповів — не знаємо інших сезонів, тож не робимо висновків про все аніме
+  // (без автостатусу «Переглянуто» й без оцінки аніме із сезону).
+  if (!franchise) return { key: media.id, part, main: [], allIds: [media.id] };
   const info = (p: { id: number; episodes: number | null; status: string | null }) => ({
     id: p.id,
     episodes: p.episodes,
