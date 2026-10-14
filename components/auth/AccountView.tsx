@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { NAME_MAX_LENGTH, PHONE_PATTERN, cleanName, countryOptions, nameProblem, type Profile } from "@/lib/profile";
+import {
+  NAME_MAX_LENGTH,
+  PHONE_PATTERN,
+  cleanName,
+  cleanNickname,
+  countryOptions,
+  nameProblem,
+  type Profile,
+} from "@/lib/profile";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { NicknameField, type NicknameState } from "./NicknameField";
 import { notifyProfileChanged, useProfile } from "./useProfile";
@@ -90,7 +98,7 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
   const countries = useMemo(() => countryOptions(), []);
 
   const changed =
-    nickname.trim() !== profile.nickname ||
+    cleanNickname(nickname) !== profile.nickname ||
     lastName.trim() !== (profile.last_name ?? "") ||
     firstName.trim() !== (profile.first_name ?? "") ||
     middleName.trim() !== (profile.middle_name ?? "") ||
@@ -122,7 +130,7 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
     const { error } = await getSupabaseBrowser()
       .from("profiles")
       .update({
-        nickname: nickname.trim(),
+        nickname: cleanNickname(nickname),
         last_name: cleanName(lastName) || null,
         first_name: cleanName(firstName) || null,
         middle_name: cleanName(middleName) || null,
