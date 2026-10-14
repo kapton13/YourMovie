@@ -1,0 +1,388 @@
+.skeleton {
+  height: 480px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.message {
+  max-width: 640px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.message .title {
+  color: var(--foreground);
+}
+
+/* ---- Шапка профілю ---- */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.since {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ownBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 0.92rem;
+}
+
+.ownBar > span {
+  flex: 1 1 260px;
+}
+
+.ownButton {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ownButton:hover {
+  border-color: var(--accent);
+}
+
+/* ---- Підсумки ---- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.tileValue {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tileLabel {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---- Графіки ---- */
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.panelWide {
+  grid-column: 1 / -1;
+}
+
+.panelTitle {
+  margin-bottom: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.footnote {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.columns {
+  margin: 0;
+}
+
+.columnsPlot {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 170px;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.column {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+  outline: none;
+}
+
+.columnValue {
+  min-height: 1.2em;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.columnBar {
+  width: min(100%, 28px);
+  min-height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+}
+
+.columnLabel {
+  position: absolute;
+  bottom: -20px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.columnsPlot {
+  margin-bottom: 22px;
+}
+
+/* Підказка при наведенні (і при фокусі з клавіатури) */
+.column:hover .columnBar,
+.column:focus-visible .columnBar {
+  filter: brightness(1.15);
+}
+
+.column:hover::after,
+.column:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.column:first-child:hover::after,
+.column:first-child:focus-visible::after {
+  left: 0;
+  transform: none;
+}
+
+.column:last-child:hover::after,
+.column:last-child:focus-visible::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.genres {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.genre {
+  display: grid;
+  /* Підпис справа — сталої ширини, щоб однакова кількість давала однакову смужку */
+  grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) 8.5em;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.genreName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.genreTrack {
+  height: 12px;
+}
+
+.genreBar {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+
+.genreValue {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.genreScore {
+  color: var(--foreground);
+}
+
+/* ---- Списки ---- */
+
+.lists {
+  margin-top: 32px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tab {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--foreground);
+}
+
+.tabActive {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tabActive:hover {
+  color: #fff;
+}
+
+.tabCount {
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.lists .empty {
+  margin-top: 20px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tab:focus-visible,
+.ownButton:focus-visible,
+.column:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+
+  .tileValue {
+    font-size: 1.4rem;
+  }
+
+  .genre {
+    grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) 8.5em;
+    gap: 8px;
+  }
+
+  /* 12 місяців не вміщаються — підписуємо кожен другий (поточний — завжди) */
+  .dense .column:nth-child(odd) .columnLabel {
+    visibility: hidden;
+  }
+
+  .columnLabel {
+    font-size: 0.65rem;
+  }
+}

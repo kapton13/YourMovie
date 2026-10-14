@@ -66,6 +66,8 @@ export function AccountView() {
         </div>
       </div>
 
+      {profile && <PublicSwitch profile={profile} onSaved={reload} />}
+
       {profile ? (
         <ProfileForm key={profile.id} profile={profile} email={user.email ?? ""} onSaved={reload} />
       ) : (
@@ -80,6 +82,58 @@ export function AccountView() {
           {busy ? "Виходимо…" : "Вийти"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** «Відкритий профіль»: чи бачать інші мою статистику й списки (за замовчуванням — ні). */
+function PublicSwitch({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
+  const [value, setValue] = useState(Boolean(profile.is_public));
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState("");
+  const link = `/u/${encodeURIComponent(profile.nickname)}`;
+
+  async function toggle(next: boolean) {
+    setValue(next);
+    setSaving(true);
+    setProblem("");
+    const { error } = await getSupabaseBrowser().from("profiles").update({ is_public: next }).eq("id", profile.id);
+    setSaving(false);
+    if (error) {
+      console.error(error);
+      setValue(!next);
+      setProblem(
+        error.code === "PGRST204"
+          ? "Базу ще не оновлено для відкритих профілів — потрібно запустити SQL з файлу 008."
+          : "Не вдалося зберегти. Спробуйте ще раз.",
+      );
+      return;
+    }
+    onSaved();
+    notifyProfileChanged();
+  }
+
+  return (
+    <div className={styles.publicBox}>
+      <label className={styles.remember}>
+        <input type="checkbox" checked={value} disabled={saving} onChange={(e) => toggle(e.target.checked)} />
+        <span>
+          Відкритий профіль
+          <span className={styles.hint}>
+            {value
+              ? "Статистику й списки бачать усі, хто має посилання. Пошта, ПІБ, телефон і країна — лише ваші."
+              : "Статистику й списки бачите лише ви."}
+          </span>
+        </span>
+      </label>
+      <Link href={link} className={styles.profileLink}>
+        Мій профіль і статистика →
+      </Link>
+      {problem && (
+        <p className={styles.error} role="alert">
+          {problem}
+        </p>
+      )}
     </div>
   );
 }

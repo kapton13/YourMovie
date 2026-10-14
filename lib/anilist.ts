@@ -756,6 +756,7 @@ export async function getEpisodes(id: number): Promise<EpisodesData> {
 export type MyMedia = MediaCard & {
   status: MediaStatus | null;
   duration: number | null;
+  genres: string[];
   nextAiringEpisode: { episode: number; airingAt: number } | null;
   /** Скільки серій уже вийшло. */
   airedCount: number;
@@ -772,6 +773,7 @@ const MY_MEDIA_QUERY = `
         ${CARD_FIELDS}
         status
         duration
+        genres
         nextAiringEpisode { episode airingAt }
       }
     }
@@ -787,7 +789,7 @@ export async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
   cacheLife("minutes");
 
   type Response = {
-    Page: { media: (MediaCard & Pick<MyMedia, "status" | "duration" | "nextAiringEpisode">)[] };
+    Page: { media: (MediaCard & Pick<MyMedia, "status" | "duration" | "genres" | "nextAiringEpisode">)[] };
     recent: { airingSchedules: { mediaId: number; episode: number; airingAt: number }[] };
   };
   const data = await anilist<Response>(MY_MEDIA_QUERY, { ids });
