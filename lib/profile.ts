@@ -7,12 +7,29 @@ export type Profile = {
   id: string;
   user_number: number;
   nickname: string;
-  full_name: string | null;
+  /** Прізвище, ім'я, по батькові — окремо (до 50 символів кожне). Немає, якщо базу ще не оновлено. */
+  last_name?: string | null;
+  first_name?: string | null;
+  middle_name?: string | null;
   phone: string | null;
   country: string | null;
 };
 
 export const PHONE_PATTERN = /^\+?[0-9 ()-]{6,20}$/;
+
+/** Прізвище, ім'я, по батькові: до 50 символів (те саме обмеження в базі). */
+export const NAME_MAX_LENGTH = 50;
+
+/** Літери будь-якої абетки, апостроф, дефіс, крапка й пробіли між словами («Квітка-Основ'яненко»). */
+const NAME_PATTERN = /^[\p{L}\p{M}'’ʼ.-]+( [\p{L}\p{M}'’ʼ.-]+)*$/u;
+
+export function nameProblem(value: string, label: string): string {
+  const clean = value.trim();
+  if (!clean) return "";
+  if (clean.length > NAME_MAX_LENGTH) return `${label}: не довше за ${NAME_MAX_LENGTH} символів.`;
+  if (!NAME_PATTERN.test(clean.replace(/\s+/g, " "))) return `${label}: лише літери, апостроф, дефіс і пробіл.`;
+  return "";
+}
 
 export function nicknameProblem(nickname: string): string {
   const value = nickname.trim();

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { PHONE_PATTERN, countryOptions, type Profile } from "@/lib/profile";
+import { NAME_MAX_LENGTH, PHONE_PATTERN, countryOptions, nameProblem, type Profile } from "@/lib/profile";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { NicknameField, type NicknameState } from "./NicknameField";
 import { notifyProfileChanged, useProfile } from "./useProfile";
@@ -80,7 +80,9 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
   const [nickname, setNickname] = useState(profile.nickname);
   const [nicknameState, setNicknameState] = useState<NicknameState>("same");
   const onNicknameState = useCallback((state: NicknameState) => setNicknameState(state), []);
-  const [fullName, setFullName] = useState(profile.full_name ?? "");
+  const [lastName, setLastName] = useState(profile.last_name ?? "");
+  const [firstName, setFirstName] = useState(profile.first_name ?? "");
+  const [middleName, setMiddleName] = useState(profile.middle_name ?? "");
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [country, setCountry] = useState(profile.country ?? "");
   const [saving, setSaving] = useState(false);
@@ -89,7 +91,9 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
 
   const changed =
     nickname.trim() !== profile.nickname ||
-    fullName.trim() !== (profile.full_name ?? "") ||
+    lastName.trim() !== (profile.last_name ?? "") ||
+    firstName.trim() !== (profile.first_name ?? "") ||
+    middleName.trim() !== (profile.middle_name ?? "") ||
     phone.trim() !== (profile.phone ?? "") ||
     country !== (profile.country ?? "");
 
@@ -103,6 +107,13 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
       });
       return;
     }
+    const nameError =
+      nameProblem(lastName, "Прізвище") || nameProblem(firstName, "Ім’я") || nameProblem(middleName, "По батькові");
+    if (nameError) {
+      setMessage({ ok: false, text: nameError });
+      return;
+    }
+    const cleanName = (value: string) => value.trim().replace(/\s+/g, " ") || null;
     const cleanPhone = phone.trim();
     if (cleanPhone && !PHONE_PATTERN.test(cleanPhone)) {
       setMessage({ ok: false, text: "Телефон: лише цифри, пробіли, дужки, дефіс і «+» на початку." });
@@ -113,7 +124,9 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
       .from("profiles")
       .update({
         nickname: nickname.trim(),
-        full_name: fullName.trim() || null,
+        last_name: cleanName(lastName),
+        first_name: cleanName(firstName),
+        middle_name: cleanName(middleName),
         phone: cleanPhone || null,
         country: country || null,
       })
@@ -128,7 +141,9 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
             ? "Цей нікнейм щойно зайняли — спробуйте інший."
             : error.code === "23514"
               ? "Деякі поля заповнено неправильно."
-              : "Не вдалося зберегти. Спробуйте ще раз.",
+              : error.code === "PGRST204"
+                ? "Базу ще не оновлено для окремих полів ПІБ — потрібно запустити SQL з файлу 005."
+                : "Не вдалося зберегти. Спробуйте ще раз.",
       });
       return;
     }
@@ -153,17 +168,25 @@ function ProfileForm({ profile, email, onSaved }: { profile: Profile; email: str
 
       <p className={styles.sectionNote}>Ці дані необов’язкові й видні лише вам.</p>
 
-      <label className={styles.field}>
-        <span>Прізвище, ім’я, по батькові</span>
-        <input
-          type="text"
-          autoComplete="name"
-          maxLength={100}
-          value={fullName}
-          onChange={(e) => (setFullName(e.target.value), setMessage(null))}
-          className={styles.input}
-        />
-      </label>
+      {(
+        [
+          ["Прізвище", lastName, setLastName, "family-name"],
+          ["Ім’я", firstName, setFirstName, "given-name"],
+          ["По батькові", middleName, setMiddleName, "additional-name"],
+        ] as const
+      ).map(([label, value, setValue, autoComplete]) => (
+        <label key={label} className={styles.field}>
+          <span>{label}</span>
+          <input
+            type="text"
+            autoComplete={autoComplete}
+            maxLength={NAME_MAX_LENGTH}
+            value={value}
+            onChange={(e) => (setValue(e.target.value), setMessage(null))}
+            className={styles.input}
+          />
+        </label>
+      ))}
 
       <label className={styles.field}>
         <span>Телефон</span>

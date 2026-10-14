@@ -31,7 +31,8 @@ export function useProfile(): { profile: Profile | null | undefined; reload: () 
     let cancelled = false;
     getSupabaseBrowser()
       .from("profiles")
-      .select("id, user_number, nickname, full_name, phone, country")
+      // Усі поля: так сторінка працює й до оновлення бази (поки немає окремих полів ПІБ).
+      .select("*")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
