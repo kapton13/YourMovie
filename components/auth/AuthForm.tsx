@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { cleanNickname } from "@/lib/profile";
 import { safeNext } from "@/lib/safeNext";
 import { getSupabaseBrowser, setRemember } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
@@ -70,7 +71,7 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
           password,
           options: {
             emailRedirectTo: callback(next === "/account" ? "/account?welcome=1" : next),
-            data: { nickname: nickname.trim() },
+            data: { nickname: cleanNickname(nickname) },
           },
         });
         if (error) return setError(authErrorMessage(error));

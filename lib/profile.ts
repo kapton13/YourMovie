@@ -1,7 +1,41 @@
-/** Нікнейм: 3–24 символи — латиниця, кирилиця, цифри, _ . - (те саме правило перевіряє база). */
-export const NICKNAME_PATTERN = /^[A-Za-z0-9_.А-Яа-яЁёІіЇїЄєҐґ-]{3,24}$/;
+/**
+ * Нікнейм: 3–24 символи — літери будь-якої мови, але однієї абетки (щоб «Аdmin» з кириличною «А» не
+ * видавав себе за «Admin»), а також цифри та _ . -. Ті самі діапазони перевіряє база
+ * (`supabase/007_international_nicknames.sql`, функція `nickname_valid`) — змінювати разом.
+ * Японська — кандзі + хірагана + катакана разом; корейська — хангиль + ханча.
+ */
+export const NICKNAME_SCRIPTS: { name: string; ranges: string }[] = [
+  { name: "латиниця", ranges: "A-Za-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u024F\\u1E00-\\u1EFF\\u0300-\\u036F" },
+  { name: "кирилиця", ranges: "\\u0400-\\u052F\\u0300-\\u036F" },
+  { name: "грецька", ranges: "\\u0370-\\u03FF\\u1F00-\\u1FFF\\u0300-\\u036F" },
+  { name: "вірменська", ranges: "\\u0531-\\u058F" },
+  { name: "грузинська", ranges: "\\u10A0-\\u10FF\\u1C90-\\u1CBF" },
+  { name: "іврит", ranges: "\\u0590-\\u05FF" },
+  { name: "арабська", ranges: "\\u0600-\\u06FF\\u0750-\\u077F\\u200C" },
+  { name: "деванагарі", ranges: "\\u0900-\\u097F\\u200C\\u200D" },
+  { name: "бенгальська", ranges: "\\u0980-\\u09FF\\u200C\\u200D" },
+  { name: "гурмукхі", ranges: "\\u0A00-\\u0A7F\\u200C\\u200D" },
+  { name: "гуджараті", ranges: "\\u0A80-\\u0AFF\\u200C\\u200D" },
+  { name: "тамільська", ranges: "\\u0B80-\\u0BFF\\u200C\\u200D" },
+  { name: "телугу", ranges: "\\u0C00-\\u0C7F\\u200C\\u200D" },
+  { name: "каннада", ranges: "\\u0C80-\\u0CFF\\u200C\\u200D" },
+  { name: "малаялам", ranges: "\\u0D00-\\u0D7F\\u200C\\u200D" },
+  { name: "тайська", ranges: "\\u0E00-\\u0E7F" },
+  { name: "лаоська", ranges: "\\u0E80-\\u0EFF" },
+  { name: "японська / китайська", ranges: "\\u3040-\\u309F\\u30A0-\\u30FF\\u3400-\\u4DBF\\u4E00-\\u9FFF" },
+  { name: "корейська", ranges: "\\uAC00-\\uD7AF\\u1100-\\u11FF\\u3130-\\u318F\\u4E00-\\u9FFF" },
+];
 
-export const NICKNAME_RULES = "3–24 символи: літери, цифри, _ . -";
+const NICKNAME_COMMON = "0-9_.\\-";
+const NICKNAME_PATTERNS = NICKNAME_SCRIPTS.map((s) => new RegExp(`^[${NICKNAME_COMMON}${s.ranges}]+$`, "u"));
+const NICKNAME_ANY = new RegExp(`^[${NICKNAME_COMMON}${NICKNAME_SCRIPTS.map((s) => s.ranges).join("")}]+$`, "u");
+
+export const NICKNAME_RULES = "3–24 символи: літери однієї абетки (будь-якою мовою), цифри, _ . -";
+
+/** Нікнейм в одному вигляді: та сама форма літер (NFC), без пробілів по краях. */
+export function cleanNickname(value: string): string {
+  return value.normalize("NFC").trim();
+}
 
 export type Profile = {
   id: string;
@@ -48,10 +82,14 @@ export function nameProblem(value: string, label: string): string {
 }
 
 export function nicknameProblem(nickname: string): string {
-  const value = nickname.trim();
-  if (value.length < 3) return "Нікнейм — щонайменше 3 символи.";
-  if (value.length > 24) return "Нікнейм — не довше за 24 символи.";
-  if (!NICKNAME_PATTERN.test(value)) return "Лише літери, цифри та символи _ . - (без пробілів).";
+  const value = cleanNickname(nickname);
+  const length = [...value].length;
+  if (length < 3) return "Нікнейм — щонайменше 3 символи.";
+  if (length > 24) return "Нікнейм — не довше за 24 символи.";
+  if (!NICKNAME_PATTERNS.some((p) => p.test(value)))
+    return NICKNAME_ANY.test(value)
+      ? "Літери лише однієї абетки — не змішуйте, наприклад, латиницю з кирилицею."
+      : "Лише літери, цифри та символи _ . - (без пробілів).";
   if (/^user[0-9]+$/i.test(value)) return "Ніки «User» + цифри сайт видає автоматично — оберіть інший.";
   return "";
 }

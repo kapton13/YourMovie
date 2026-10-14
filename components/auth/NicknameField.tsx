@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NICKNAME_RULES, nicknameProblem } from "@/lib/profile";
+import { NICKNAME_RULES, cleanNickname, nicknameProblem } from "@/lib/profile";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import styles from "./auth.module.css";
 
@@ -20,7 +20,7 @@ export function NicknameField({
   /** Поточний нік (у профілі): його не вважаємо «зайнятим». */
   current?: string;
 }) {
-  const nick = value.trim();
+  const nick = cleanNickname(value);
   const problem = nick ? nicknameProblem(nick) : "";
   // Що відомо одразу, без запиту до бази.
   // Поточний нік — завжди «той самий», навіть якщо це автоматичний «User12».
@@ -74,7 +74,9 @@ export function NicknameField({
         autoComplete="username"
         autoCapitalize="off"
         spellCheck={false}
-        maxLength={24}
+        // Із запасом: літери з окремими значками браузер рахує за кілька знаків; точну довжину перевіряємо нижче.
+        maxLength={48}
+        dir="auto"
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
