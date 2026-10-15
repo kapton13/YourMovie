@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "Ajustes del perfil — YourMovie" },
+  title: "Mi perfil",
+  notLoggedIn: "No has iniciado sesión.",
+  login: "Inicia sesión",
+  or: "o",
+  signup: "regístrate",
+  welcome: "¡Te damos la bienvenida a YourMovie! Tu cuenta se ha creado.",
+  userNumber: "Usuario n.º {n}",
+  since: "con nosotros desde el {date}",
+  loadError: "No se pudo cargar el perfil. Actualiza la página.",
+  changePassword: "Cambiar contraseña",
+  signOut: "Cerrar sesión",
+  signingOut: "Cerrando sesión…",
+  public: {
+    label: "Perfil público",
+    on: "Cualquiera con el enlace puede ver tus estadísticas y listas. Tu correo, nombre completo, teléfono y país siguen siendo privados.",
+    off: "Solo tú puedes ver tus estadísticas y listas.",
+    link: "Mi perfil y estadísticas →",
+    dbOutdated: "La base de datos aún no está actualizada para los perfiles públicos: ejecuta el SQL del archivo 008.",
+  },
+  language: {
+    hint: "El sitio se abrirá en este idioma en todos tus dispositivos.",
+  },
+  form: {
+    email: "Correo electrónico",
+    privateNote: "Estos datos son opcionales y solo los ves tú.",
+    lastName: "Apellidos",
+    firstName: "Nombre",
+    middleName: "Segundo nombre",
+    phone: "Teléfono",
+    phonePlaceholder: "+1 555 123 4567",
+    country: "País",
+    noCountry: "Sin especificar",
+    saving: "Guardando…",
+    save: "Guardar cambios",
+    noChanges: "Sin cambios",
+    saved: "Guardado.",
+  },
+  errors: {
+    nicknameTaken: "Este nombre de usuario ya está en uso.",
+    checkNickname: "Revisa el nombre de usuario.",
+    nameTooLong: "{label}: no más de {n} caracteres.",
+    nameChars: "{label}: solo letras (de cualquier idioma), apóstrofo, guion, punto y espacio.",
+    phone: "Teléfono: solo números, espacios, paréntesis, guiones y un «+» al principio.",
+    nicknameJustTaken: "Alguien acaba de elegir este nombre de usuario. Prueba con otro.",
+    invalidFields: "Algunos campos no están bien rellenados.",
+    dbOutdated: "La base de datos aún no está actualizada para los campos de nombre separados: ejecuta el SQL del archivo 005.",
+    saveFailed: "No se pudo guardar. Inténtalo de nuevo.",
+  },
+};
+
+export default account;

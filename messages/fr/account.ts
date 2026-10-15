@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "Paramètres du profil — YourMovie" },
+  title: "Mon profil",
+  notLoggedIn: "Vous n’êtes pas connecté.",
+  login: "Se connecter",
+  or: "ou",
+  signup: "s’inscrire",
+  welcome: "Bienvenue sur YourMovie ! Votre compte a été créé.",
+  userNumber: "Utilisateur n° {n}",
+  since: "parmi nous depuis le {date}",
+  loadError: "Impossible de charger le profil. Actualisez la page.",
+  changePassword: "Changer le mot de passe",
+  signOut: "Se déconnecter",
+  signingOut: "Déconnexion…",
+  public: {
+    label: "Profil public",
+    on: "Toute personne disposant du lien peut voir vos statistiques et vos listes. Votre e-mail, vos nom et prénoms, votre téléphone et votre pays restent privés.",
+    off: "Vous seul pouvez voir vos statistiques et vos listes.",
+    link: "Mon profil et mes statistiques →",
+    dbOutdated: "La base de données n’a pas encore été mise à jour pour les profils publics : exécutez le SQL du fichier 008.",
+  },
+  language: {
+    hint: "Le site s’ouvrira dans cette langue sur tous vos appareils.",
+  },
+  form: {
+    email: "E-mail",
+    privateNote: "Ces informations sont facultatives et visibles uniquement par vous.",
+    lastName: "Nom",
+    firstName: "Prénom",
+    middleName: "Deuxième prénom",
+    phone: "Téléphone",
+    phonePlaceholder: "+1 555 123 4567",
+    country: "Pays",
+    noCountry: "Non précisé",
+    saving: "Enregistrement…",
+    save: "Enregistrer les modifications",
+    noChanges: "Aucune modification",
+    saved: "Enregistré.",
+  },
+  errors: {
+    nicknameTaken: "Ce pseudo est déjà pris.",
+    checkNickname: "Vérifiez le pseudo.",
+    nameTooLong: "{label} : {n} caractères maximum.",
+    nameChars: "{label} : uniquement des lettres (de n’importe quelle langue), l’apostrophe, le trait d’union, le point et l’espace.",
+    phone: "Téléphone : uniquement des chiffres, des espaces, des parenthèses, des tirets et un « + » au début.",
+    nicknameJustTaken: "Quelqu’un vient de prendre ce pseudo : essayez-en un autre.",
+    invalidFields: "Certains champs sont mal remplis.",
+    dbOutdated: "La base de données n’a pas encore été mise à jour pour les champs de nom séparés : exécutez le SQL du fichier 005.",
+    saveFailed: "Impossible d’enregistrer. Veuillez réessayer.",
+  },
+};
+
+export default account;

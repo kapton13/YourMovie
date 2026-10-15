@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "Profileinstellungen — YourMovie" },
+  title: "Mein Profil",
+  notLoggedIn: "Du bist nicht angemeldet.",
+  login: "Anmelden",
+  or: "oder",
+  signup: "registrieren",
+  welcome: "Willkommen bei YourMovie! Dein Konto wurde erstellt.",
+  userNumber: "Nutzer #{n}",
+  since: "dabei seit dem {date}",
+  loadError: "Das Profil konnte nicht geladen werden. Lade die Seite neu.",
+  changePassword: "Passwort ändern",
+  signOut: "Abmelden",
+  signingOut: "Wird abgemeldet…",
+  public: {
+    label: "Öffentliches Profil",
+    on: "Alle mit dem Link können deine Statistiken und Listen sehen. E-Mail-Adresse, vollständiger Name, Telefonnummer und Land bleiben privat.",
+    off: "Nur du siehst deine Statistiken und Listen.",
+    link: "Mein Profil und Statistiken →",
+    dbOutdated: "Die Datenbank ist noch nicht für öffentliche Profile aktualisiert — führe das SQL aus Datei 008 aus.",
+  },
+  language: {
+    hint: "Die Website öffnet sich auf all deinen Geräten in dieser Sprache.",
+  },
+  form: {
+    email: "E-Mail",
+    privateNote: "Diese Angaben sind freiwillig und nur für dich sichtbar.",
+    lastName: "Nachname",
+    firstName: "Vorname",
+    middleName: "Zweiter Vorname",
+    phone: "Telefon",
+    phonePlaceholder: "+1 555 123 4567",
+    country: "Land",
+    noCountry: "Keine Angabe",
+    saving: "Wird gespeichert…",
+    save: "Änderungen speichern",
+    noChanges: "Keine Änderungen",
+    saved: "Gespeichert.",
+  },
+  errors: {
+    nicknameTaken: "Dieser Nickname ist schon vergeben.",
+    checkNickname: "Prüfe den Nickname.",
+    nameTooLong: "{label}: höchstens {n} Zeichen.",
+    nameChars: "{label}: nur Buchstaben (beliebige Sprache), Apostroph, Bindestrich, Punkt und Leerzeichen.",
+    phone: "Telefon: nur Ziffern, Leerzeichen, Klammern, Bindestriche und ein „+“ am Anfang.",
+    nicknameJustTaken: "Jemand hat sich diesen Nickname gerade geschnappt — versuch einen anderen.",
+    invalidFields: "Einige Felder sind nicht richtig ausgefüllt.",
+    dbOutdated: "Die Datenbank ist noch nicht für getrennte Namensfelder aktualisiert — führe das SQL aus Datei 005 aus.",
+    saveFailed: "Speichern fehlgeschlagen. Versuch es noch einmal.",
+  },
+};
+
+export default account;

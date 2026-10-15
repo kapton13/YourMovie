@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "프로필 설정 — YourMovie" },
+  title: "내 프로필",
+  notLoggedIn: "로그인하지 않은 상태예요.",
+  login: "로그인",
+  or: "또는",
+  signup: "회원가입",
+  welcome: "YourMovie에 오신 것을 환영해요! 계정이 만들어졌어요.",
+  userNumber: "사용자 #{n}",
+  since: "{date}부터 함께하는 중",
+  loadError: "프로필을 불러오지 못했어요. 페이지를 새로고침해 주세요.",
+  changePassword: "비밀번호 변경",
+  signOut: "로그아웃",
+  signingOut: "로그아웃 중…",
+  public: {
+    label: "공개 프로필",
+    on: "링크가 있는 누구나 내 통계와 목록을 볼 수 있어요. 이메일, 이름, 전화번호, 국가는 공개되지 않아요.",
+    off: "통계와 목록은 나만 볼 수 있어요.",
+    link: "내 프로필과 통계 →",
+    dbOutdated: "데이터베이스가 아직 공개 프로필용으로 업데이트되지 않았어요. 008 파일의 SQL을 실행해 주세요.",
+  },
+  language: {
+    hint: "모든 기기에서 이 언어로 사이트가 열려요.",
+  },
+  form: {
+    email: "이메일",
+    privateNote: "선택 입력 항목이며 나만 볼 수 있어요.",
+    lastName: "성",
+    firstName: "이름",
+    middleName: "중간 이름",
+    phone: "전화번호",
+    phonePlaceholder: "+1 555 123 4567",
+    country: "국가",
+    noCountry: "선택 안 함",
+    saving: "저장 중…",
+    save: "변경 사항 저장",
+    noChanges: "변경 사항 없음",
+    saved: "저장했어요.",
+  },
+  errors: {
+    nicknameTaken: "이미 사용 중인 닉네임이에요.",
+    checkNickname: "닉네임을 확인해 주세요.",
+    nameTooLong: "{label}: {n}자 이하로 입력해 주세요.",
+    nameChars: "{label}: 문자(언어 무관), 아포스트로피, 하이픈, 마침표, 공백만 쓸 수 있어요.",
+    phone: "전화번호: 숫자, 공백, 괄호, 하이픈, 맨 앞의 ‘+’만 쓸 수 있어요.",
+    nicknameJustTaken: "방금 다른 사람이 이 닉네임을 가져갔어요. 다른 닉네임을 입력해 주세요.",
+    invalidFields: "잘못 입력된 항목이 있어요.",
+    dbOutdated: "데이터베이스가 아직 이름 항목 분리용으로 업데이트되지 않았어요. 005 파일의 SQL을 실행해 주세요.",
+    saveFailed: "저장하지 못했어요. 다시 시도해 주세요.",
+  },
+};
+
+export default account;

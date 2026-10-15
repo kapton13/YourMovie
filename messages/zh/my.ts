@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "我的动画",
+  metaTitle: "我的动画 — YourMovie",
+  loggedOut: { text: "{link}后即可查看你的列表、新剧集和观看进度。", link: "登录" },
+  loadError: "无法加载你的列表，请刷新页面。",
+  franchisesSlow: "AniList 目前响应较慢，各季可能暂时无法归为一组。请稍后刷新页面。",
+  animeNumber: "动画 #{id}",
+  tabsLabel: "列表",
+  statuses: {
+    watching: "在看",
+    planning: "想看",
+    completed: "看过",
+    paused: "搁置",
+    dropped: "抛弃",
+  },
+  sort: {
+    label: "排序：",
+    new: "新剧集",
+    title: "标题",
+    recent: "最近更改",
+  },
+  empty: {
+    watching: "状态为“在看”的动画会显示在这里。去{link}找一部，标记看过的第一集吧。",
+    catalogLink: "动画库",
+    caughtUp: "你已经追上所有进度了。一有新剧集播出，动画就会出现在这里。",
+    grid: "这里暂时还没有内容。",
+  },
+  newEpisode: "有新剧集！",
+  newDot: "新",
+  left: { one: "还剩 {episodes}", other: "还剩 {episodes}" },
+  loading: "加载中…",
+  myScore: "我的评分 ★ {score}",
+  duration: { hours: "{h} 小时", minutes: "{m} 分钟", hoursMinutes: "{h} 小时 {m} 分钟" },
+  plusOneLabel: "将第 {n} 集（{part}）标记为已看",
+  episodeNo: "#{n}",
+  nextEpisode: "第 {n} 集将于 {date} 播出",
+  confirmAll: "将 {episodes}全部标记为已看？",
+  seasonDone: "本季已全部看完",
+  airedDone: "已播出的全部看完",
+  episode: "第 {n} 集",
+  upTo: "看到这一集",
+  rateLabel: "为第 {n} 集评分",
+  watchedLabel: "第 {n} 集已看",
+  watched: "已看",
+  ratingLabel: "第 {n} 集评分",
+  more: { text: "还有 {n} 集，请前往{link}", link: "该季页面" },
+  waiting: {
+    toggle: "等待新剧集（{n}）",
+    next: "{part} 第 {n} 集 — {date}",
+    unknown: "新剧集的播出日期暂未公布",
+  },
+  parts: { one: "{n} 部分", other: "{n} 部分" },
+  extras: " + {n} 番外",
+};
+
+export default my;

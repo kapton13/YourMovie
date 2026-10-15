@@ -3,6 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { useHydrated } from "@/components/useHydrated";
 import {
   animeAverage,
   franchiseEntryAfter,
@@ -63,9 +64,23 @@ const UserMediaContext = createContext<Context | null>(null);
 
 export function useUserMedia(): Context {
   const context = useContext(UserMediaContext);
+  const hydrated = useHydrated();
   if (!context) throw new Error("useUserMedia: UserMediaProvider is missing");
-  return context;
+  // Блок серій приходить пізніше: поки він оживає, показуємо те, що бачив сервер («ще завантажуємо»).
+  return hydrated ? context : { ...context, ...SERVER_STATE };
 }
+
+/** Стан до завантаження — такий самий, як під час відмальовування на сервері. */
+const SERVER_STATE = {
+  user: undefined,
+  entry: undefined,
+  marks: undefined,
+  seasonScore: null,
+  seasonAuto: false,
+  scoreAuto: false,
+  saving: false,
+  error: null,
+} satisfies Partial<Context>;
 
 const ENTRY_FIELDS = "media_id, status, score, updated_at";
 

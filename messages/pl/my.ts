@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Moje anime",
+  metaTitle: "Moje anime — YourMovie",
+  loggedOut: { text: "{link}, aby zobaczyć swoje listy, nowe odcinki i postęp.", link: "Zaloguj się" },
+  loadError: "Nie udało się wczytać twojej listy. Odśwież stronę.",
+  franchisesSlow: "AniList odpowiada teraz wolno, więc sezony mogą nie być pogrupowane. Odśwież stronę za chwilę.",
+  animeNumber: "Anime #{id}",
+  tabsLabel: "Listy",
+  statuses: {
+    watching: "Oglądam",
+    planning: "Planuję",
+    completed: "Obejrzane",
+    paused: "Wstrzymane",
+    dropped: "Porzucone",
+  },
+  sort: {
+    label: "Sortuj:",
+    new: "nowe odcinki",
+    title: "tytuł",
+    recent: "ostatnia zmiana",
+  },
+  empty: {
+    watching: "Tutaj pojawią się anime ze statusem „Oglądam”. Znajdź coś w {link} i oznacz pierwszy odcinek.",
+    catalogLink: "katalogu",
+    caughtUp: "Wszystko na bieżąco. Gdy tylko wyjdzie nowy odcinek, anime pojawi się tutaj.",
+    grid: "Na razie nic tu nie ma.",
+  },
+  newEpisode: "Nowy odcinek!",
+  newDot: "nowy",
+  left: { one: "został {episodes}", few: "zostały {episodes}", many: "zostało {episodes}", other: "zostało {episodes}" },
+  loading: "ładowanie…",
+  myScore: "moja ocena ★ {score}",
+  duration: { hours: "{h} godz.", minutes: "{m} min", hoursMinutes: "{h} godz. {m} min" },
+  plusOneLabel: "Oznacz odcinek {n} ({part}) jako obejrzany",
+  episodeNo: "#{n}",
+  nextEpisode: "Odcinek {n} wyjdzie {date}",
+  confirmAll: "Oznaczyć jako obejrzane: {episodes}?",
+  seasonDone: "Cały sezon obejrzany",
+  airedDone: "Wszystko, co wyszło, obejrzane",
+  episode: "Odcinek {n}",
+  upTo: "wszystkie do tego",
+  rateLabel: "Oceń odcinek {n}",
+  watchedLabel: "Odcinek {n} obejrzany",
+  watched: "Obejrzane",
+  ratingLabel: "Ocena odcinka {n}",
+  more: { text: "Jeszcze {n} na {link}", link: "stronie sezonu" },
+  waiting: {
+    toggle: "Czekają na nowe odcinki ({n})",
+    next: "{part}, odcinek {n} — {date}",
+    unknown: "brak daty nowych odcinków",
+  },
+  parts: { one: "{n} część", few: "{n} części", many: "{n} części", other: "{n} części" },
+  extras: " + {n} dod.",
+};
+
+export default my;

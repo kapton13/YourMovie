@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "Ustawienia profilu — YourMovie" },
+  title: "Mój profil",
+  notLoggedIn: "Nie zalogowano się.",
+  login: "Zaloguj się",
+  or: "lub",
+  signup: "zarejestruj się",
+  welcome: "Witaj w YourMovie! Twoje konto zostało utworzone.",
+  userNumber: "Użytkownik #{n}",
+  since: "z nami od {date}",
+  loadError: "Nie udało się wczytać profilu. Odśwież stronę.",
+  changePassword: "Zmień hasło",
+  signOut: "Wyloguj się",
+  signingOut: "Wylogowywanie…",
+  public: {
+    label: "Profil publiczny",
+    on: "Każdy, kto ma link, widzi twoje statystyki i listy. Twój e-mail, imię i nazwisko, telefon i kraj pozostają prywatne.",
+    off: "Tylko ty widzisz swoje statystyki i listy.",
+    link: "Mój profil i statystyki →",
+    dbOutdated: "Baza danych nie została jeszcze zaktualizowana pod profile publiczne — uruchom SQL z pliku 008.",
+  },
+  language: {
+    hint: "Strona będzie otwierać się w tym języku na wszystkich twoich urządzeniach.",
+  },
+  form: {
+    email: "E-mail",
+    privateNote: "Te dane są opcjonalne i widzisz je tylko ty.",
+    lastName: "Nazwisko",
+    firstName: "Imię",
+    middleName: "Drugie imię",
+    phone: "Telefon",
+    phonePlaceholder: "+1 555 123 4567",
+    country: "Kraj",
+    noCountry: "Nie podano",
+    saving: "Zapisywanie…",
+    save: "Zapisz zmiany",
+    noChanges: "Brak zmian",
+    saved: "Zapisano.",
+  },
+  errors: {
+    nicknameTaken: "Ten nick jest już zajęty.",
+    checkNickname: "Sprawdź nick.",
+    nameTooLong: "{label}: najwyżej {n} znaków.",
+    nameChars: "{label}: tylko litery (w dowolnym języku), apostrof, łącznik, kropka i spacja.",
+    phone: "Telefon: tylko cyfry, spacje, nawiasy, łączniki i „+” na początku.",
+    nicknameJustTaken: "Ktoś właśnie zajął ten nick — wybierz inny.",
+    invalidFields: "Niektóre pola są wypełnione niepoprawnie.",
+    dbOutdated: "Baza danych nie została jeszcze zaktualizowana pod osobne pola imienia i nazwiska — uruchom SQL z pliku 005.",
+    saveFailed: "Nie udało się zapisać. Spróbuj ponownie.",
+  },
+};
+
+export default account;

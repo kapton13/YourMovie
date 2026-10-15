@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "个人资料设置 — YourMovie" },
+  title: "我的资料",
+  notLoggedIn: "你尚未登录。",
+  login: "登录",
+  or: "或",
+  signup: "注册",
+  welcome: "欢迎来到 YourMovie！你的账号已创建。",
+  userNumber: "第 {n} 位用户",
+  since: "{date} 加入",
+  loadError: "无法加载个人资料，请刷新页面。",
+  changePassword: "修改密码",
+  signOut: "退出登录",
+  signingOut: "正在退出…",
+  public: {
+    label: "公开主页",
+    on: "任何拥有链接的人都能看到你的统计和列表。你的邮箱、姓名、电话和国家/地区仍然保密。",
+    off: "只有你自己能看到你的统计和列表。",
+    link: "我的主页和统计 →",
+    dbOutdated: "数据库尚未更新以支持公开主页——请运行 008 号文件中的 SQL。",
+  },
+  language: {
+    hint: "你的所有设备都会以此语言打开网站。",
+  },
+  form: {
+    email: "邮箱",
+    privateNote: "以下信息为选填，仅你自己可见。",
+    lastName: "姓",
+    firstName: "名",
+    middleName: "中间名",
+    phone: "电话",
+    phonePlaceholder: "+86 138 0013 8000",
+    country: "国家/地区",
+    noCountry: "未填写",
+    saving: "保存中…",
+    save: "保存更改",
+    noChanges: "没有更改",
+    saved: "已保存。",
+  },
+  errors: {
+    nicknameTaken: "该昵称已被占用。",
+    checkNickname: "请检查昵称。",
+    nameTooLong: "{label}：不能超过 {n} 个字符。",
+    nameChars: "{label}：只能包含字母（任意语言）、撇号、连字符、句点和空格。",
+    phone: "电话：只能包含数字、空格、括号、连字符和开头的“+”。",
+    nicknameJustTaken: "这个昵称刚刚被别人占用了，请换一个。",
+    invalidFields: "部分字段填写有误。",
+    dbOutdated: "数据库尚未更新以支持分开的姓名字段——请运行 005 号文件中的 SQL。",
+    saveFailed: "保存失败，请重试。",
+  },
+};
+
+export default account;

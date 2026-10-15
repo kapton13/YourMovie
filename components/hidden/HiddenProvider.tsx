@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { useHydrated } from "@/components/useHydrated";
 import type { Franchise } from "@/lib/anilist";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
@@ -35,7 +36,10 @@ const EMPTY: HiddenContext = {
 };
 
 export function useHidden(): HiddenContext {
-  return useContext(Context) ?? EMPTY;
+  const context = useContext(Context) ?? EMPTY;
+  const hydrated = useHydrated();
+  // Картки, що приходять пізніше за цей стан, спершу мають збігтися із сервером (нічого не сховано).
+  return hydrated ? context : { ...context, hiddenIds: EMPTY.hiddenIds, hiddenKeys: EMPTY.hiddenKeys, listedIds: EMPTY.listedIds, loggedIn: false };
 }
 
 type Row = { media_id: number; franchise_key: number };

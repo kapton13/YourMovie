@@ -1,7 +1,16 @@
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
+import de from "./de";
 import en from "./en";
+import es from "./es";
+import fr from "./fr";
+import ja from "./ja";
+import ko from "./ko";
+import pl from "./pl";
+import pt from "./pt";
 import ru from "./ru";
+import tr from "./tr";
 import uk from "./uk";
+import zh from "./zh";
 
 /** Повний набір текстів сайту — за зразком англійського словника. */
 export type Messages = typeof en;
@@ -11,7 +20,7 @@ type DeepPartial<T> = { [K in keyof T]?: T[K] extends string ? string : T[K] ext
 /**
  * Словники мов. Нова мова може бути неповною (`DeepPartial`): чого бракує — береться з англійської.
  */
-const dictionaries: Record<Locale, DeepPartial<Messages>> = { en, uk, ru };
+const dictionaries: Record<Locale, DeepPartial<Messages>> = { en, uk, ru, es, pt, fr, de, pl, tr, ja, ko, zh };
 
 function merge<T>(base: T, extra: unknown): T {
   if (!extra || typeof extra !== "object" || typeof base !== "object" || base === null) return (extra ?? base) as T;

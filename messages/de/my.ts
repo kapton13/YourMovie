@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Meine Anime",
+  metaTitle: "Meine Anime — YourMovie",
+  loggedOut: { text: "{link}, um deine Listen, neue Folgen und deinen Fortschritt zu sehen.", link: "Melde dich an" },
+  loadError: "Deine Liste konnte nicht geladen werden. Lade die Seite neu.",
+  franchisesSlow: "AniList antwortet gerade langsam, daher sind die Staffeln eventuell nicht gruppiert. Lade die Seite bitte etwas später neu.",
+  animeNumber: "Anime #{id}",
+  tabsLabel: "Listen",
+  statuses: {
+    watching: "Schaue ich",
+    planning: "Geplant",
+    completed: "Gesehen",
+    paused: "Pausiert",
+    dropped: "Abgebrochen",
+  },
+  sort: {
+    label: "Sortieren nach:",
+    new: "neuen Folgen",
+    title: "Titel",
+    recent: "letzter Änderung",
+  },
+  empty: {
+    watching: "Hier erscheinen Anime mit dem Status „Schaue ich“. Such dir etwas im {link} aus und hak die erste Folge ab.",
+    catalogLink: "Katalog",
+    caughtUp: "Du bist auf dem neuesten Stand. Sobald eine neue Folge erscheint, taucht der Anime hier auf.",
+    grid: "Hier ist noch nichts.",
+  },
+  newEpisode: "Neue Folge!",
+  newDot: "neu",
+  left: { one: "noch {episodes}", other: "noch {episodes}" },
+  loading: "wird geladen…",
+  myScore: "meine Bewertung ★ {score}",
+  duration: { hours: "{h} Std.", minutes: "{m} Min.", hoursMinutes: "{h} Std. {m} Min." },
+  plusOneLabel: "Folge {n} ({part}) als gesehen abhaken",
+  episodeNo: "#{n}",
+  nextEpisode: "Folge {n} erscheint am {date}",
+  confirmAll: "{episodes} als gesehen abhaken?",
+  seasonDone: "Ganze Staffel gesehen",
+  airedDone: "Alles Erschienene gesehen",
+  episode: "Folge {n}",
+  upTo: "alle bis zu dieser",
+  rateLabel: "Folge {n} bewerten",
+  watchedLabel: "Folge {n} gesehen",
+  watched: "Gesehen",
+  ratingLabel: "Bewertung für Folge {n}",
+  more: { text: "{n} weitere auf der {link}", link: "Staffelseite" },
+  waiting: {
+    toggle: "Warte auf neue Folgen ({n})",
+    next: "{part}, Folge {n} — {date}",
+    unknown: "noch kein Termin für neue Folgen",
+  },
+  parts: { one: "{n} Teil", other: "{n} Teile" },
+  extras: " + {n} Extra",
+};
+
+export default my;

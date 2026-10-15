@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Meus animes",
+  metaTitle: "Meus animes — YourMovie",
+  loggedOut: { text: "{link} para ver suas listas, novos episódios e seu progresso.", link: "Entre" },
+  loadError: "Não foi possível carregar sua lista. Atualize a página.",
+  franchisesSlow: "O AniList está respondendo devagar agora, então as temporadas podem não estar agrupadas. Atualize a página daqui a pouco.",
+  animeNumber: "Anime #{id}",
+  tabsLabel: "Listas",
+  statuses: {
+    watching: "Assistindo",
+    planning: "Quero assistir",
+    completed: "Assistido",
+    paused: "Em pausa",
+    dropped: "Abandonado",
+  },
+  sort: {
+    label: "Ordenar por:",
+    new: "novos episódios",
+    title: "título",
+    recent: "última alteração",
+  },
+  empty: {
+    watching: "Os animes com o status “Assistindo” aparecerão aqui. Encontre algo no {link} e marque o primeiro episódio.",
+    catalogLink: "catálogo",
+    caughtUp: "Você está em dia. Assim que sair um episódio novo, o anime aparecerá aqui.",
+    grid: "Nada por aqui ainda.",
+  },
+  newEpisode: "Episódio novo!",
+  newDot: "novo",
+  left: { one: "falta {episodes}", other: "faltam {episodes}" },
+  loading: "carregando…",
+  myScore: "minha nota ★ {score}",
+  duration: { hours: "{h} h", minutes: "{m} min", hoursMinutes: "{h} h {m} min" },
+  plusOneLabel: "Marcar o episódio {n} ({part}) como assistido",
+  episodeNo: "#{n}",
+  nextEpisode: "Episódio {n} sai em {date}",
+  confirmAll: "Marcar como assistido: {episodes}?",
+  seasonDone: "Assisti à temporada inteira",
+  airedDone: "Assisti a tudo o que saiu",
+  episode: "Episódio {n}",
+  upTo: "todos até este",
+  rateLabel: "Avaliar o episódio {n}",
+  watchedLabel: "Episódio {n} assistido",
+  watched: "Assistido",
+  ratingLabel: "Nota do episódio {n}",
+  more: { text: "Mais {n} na {link}", link: "página da temporada" },
+  waiting: {
+    toggle: "Aguardando novos episódios ({n})",
+    next: "{part}, episódio {n} — {date}",
+    unknown: "ainda sem data para novos episódios",
+  },
+  parts: { one: "{n} parte", other: "{n} partes" },
+  extras: " + {n} extra",
+};
+
+export default my;

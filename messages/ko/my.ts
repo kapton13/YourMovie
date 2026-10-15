@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "내 애니",
+  metaTitle: "내 애니 — YourMovie",
+  loggedOut: { text: "{link}하면 내 목록, 새 에피소드, 시청 진행도를 볼 수 있어요.", link: "로그인" },
+  loadError: "목록을 불러오지 못했어요. 페이지를 새로고침해 주세요.",
+  franchisesSlow: "지금 AniList 응답이 느려서 시즌이 하나로 묶이지 않을 수 있어요. 잠시 후 페이지를 새로고침해 주세요.",
+  animeNumber: "애니 #{id}",
+  tabsLabel: "목록",
+  statuses: {
+    watching: "보는 중",
+    planning: "볼 예정",
+    completed: "시청 완료",
+    paused: "보류",
+    dropped: "하차",
+  },
+  sort: {
+    label: "정렬:",
+    new: "새 에피소드",
+    title: "제목",
+    recent: "최근 변경",
+  },
+  empty: {
+    watching: "‘보는 중’ 상태인 애니가 여기에 표시돼요. {link}에서 작품을 찾아 1화를 체크해 보세요.",
+    catalogLink: "카탈로그",
+    caughtUp: "모두 따라잡았어요. 새 에피소드가 나오면 여기에 바로 표시돼요.",
+    grid: "아직 아무것도 없어요.",
+  },
+  newEpisode: "새 에피소드!",
+  newDot: "NEW",
+  left: { one: "{episodes} 남음", other: "{episodes} 남음" },
+  loading: "불러오는 중…",
+  myScore: "내 평점 ★ {score}",
+  duration: { hours: "{h}시간", minutes: "{m}분", hoursMinutes: "{h}시간 {m}분" },
+  plusOneLabel: "{n}화({part})를 시청으로 체크",
+  episodeNo: "{n}화",
+  nextEpisode: "{n}화 방영: {date}",
+  confirmAll: "{episodes}를 모두 시청으로 체크할까요?",
+  seasonDone: "시즌 전체를 봤어요",
+  airedDone: "방영분을 다 봤어요",
+  episode: "{n}화",
+  upTo: "여기까지 모두",
+  rateLabel: "{n}화 평점 매기기",
+  watchedLabel: "{n}화 시청함",
+  watched: "시청함",
+  ratingLabel: "{n}화 평점",
+  more: { text: "나머지 {n}화는 {link}에서", link: "시즌 페이지" },
+  waiting: {
+    toggle: "새 에피소드 기다리는 중 ({n})",
+    next: "{part} {n}화 — {date}",
+    unknown: "새 에피소드 방영일 미정",
+  },
+  parts: { one: "{n}개 파트", other: "{n}개 파트" },
+  extras: " + 번외 {n}개",
+};
+
+export default my;

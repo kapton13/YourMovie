@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "マイアニメ",
+  metaTitle: "マイアニメ — YourMovie",
+  loggedOut: { text: "{link}すると、リストや新しいエピソード、視聴の進み具合を確認できます。", link: "ログイン" },
+  loadError: "リストを読み込めませんでした。ページを再読み込みしてください。",
+  franchisesSlow: "現在AniListの応答が遅いため、シーズンがまとめて表示されない場合があります。しばらくしてからページを再読み込みしてください。",
+  animeNumber: "アニメ #{id}",
+  tabsLabel: "リスト",
+  statuses: {
+    watching: "視聴中",
+    planning: "視聴予定",
+    completed: "視聴完了",
+    paused: "一時中断",
+    dropped: "視聴中止",
+  },
+  sort: {
+    label: "並び替え：",
+    new: "新しいエピソード",
+    title: "タイトル",
+    recent: "最近の変更",
+  },
+  empty: {
+    watching: "ステータスが「視聴中」のアニメがここに表示されます。{link}で作品を探して、第1話をチェックしてみましょう。",
+    catalogLink: "カタログ",
+    caughtUp: "すべて視聴済みです。新しいエピソードが配信されると、ここに表示されます。",
+    grid: "まだ何もありません。",
+  },
+  newEpisode: "新しいエピソード！",
+  newDot: "新着",
+  left: { one: "残り{episodes}", other: "残り{episodes}" },
+  loading: "読み込み中…",
+  myScore: "自分の評価 ★ {score}",
+  duration: { hours: "{h}時間", minutes: "{m}分", hoursMinutes: "{h}時間{m}分" },
+  plusOneLabel: "第{n}話（{part}）を視聴済みにする",
+  episodeNo: "#{n}",
+  nextEpisode: "第{n}話は{date}に放送",
+  confirmAll: "{episodes}を視聴済みにしますか？",
+  seasonDone: "シーズンをすべて視聴済み",
+  airedDone: "放送済みをすべて視聴済み",
+  episode: "第{n}話",
+  upTo: "この話まで全部",
+  rateLabel: "第{n}話を評価する",
+  watchedLabel: "第{n}話は視聴済み",
+  watched: "視聴済み",
+  ratingLabel: "第{n}話の評価",
+  more: { text: "残り{n}話は{link}で", link: "シーズンのページ" },
+  waiting: {
+    toggle: "新しいエピソード待ち（{n}）",
+    next: "{part} 第{n}話 — {date}",
+    unknown: "次の話の放送日はまだ未定です",
+  },
+  parts: { one: "{n}パート", other: "{n}パート" },
+  extras: " + 番外編{n}",
+};
+
+export default my;

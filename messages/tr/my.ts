@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Animelerim",
+  metaTitle: "Animelerim — YourMovie",
+  loggedOut: { text: "{link} ve listelerini, yeni bölümleri, ilerlemeni gör.", link: "Giriş yap" },
+  loadError: "Listen yüklenemedi. Sayfayı yenile.",
+  franchisesSlow: "AniList şu an yavaş yanıt veriyor, bu yüzden sezonlar gruplanmamış olabilir. Biraz sonra sayfayı yenile.",
+  animeNumber: "Anime #{id}",
+  tabsLabel: "Listeler",
+  statuses: {
+    watching: "İzleniyor",
+    planning: "İzlenecek",
+    completed: "Tamamlandı",
+    paused: "Beklemede",
+    dropped: "Bırakıldı",
+  },
+  sort: {
+    label: "Sırala:",
+    new: "yeni bölümler",
+    title: "ad",
+    recent: "son değişiklik",
+  },
+  empty: {
+    watching: "“İzleniyor” durumundaki animeler burada görünecek. {link} bir şey bul ve ilk bölümü işaretle.",
+    catalogLink: "Katalogda",
+    caughtUp: "Yayınlananların hepsini izledin. Yeni bölüm çıkar çıkmaz anime burada görünecek.",
+    grid: "Burada henüz bir şey yok.",
+  },
+  newEpisode: "Yeni bölüm!",
+  newDot: "yeni",
+  left: { one: "{episodes} kaldı", other: "{episodes} kaldı" },
+  loading: "yükleniyor…",
+  myScore: "puanım ★ {score}",
+  duration: { hours: "{h} sa", minutes: "{m} dk", hoursMinutes: "{h} sa {m} dk" },
+  plusOneLabel: "{n}. bölümü ({part}) izlendi olarak işaretle",
+  episodeNo: "#{n}",
+  nextEpisode: "{n}. bölüm {date} tarihinde yayınlanacak",
+  confirmAll: "{episodes} izlendi olarak işaretlensin mi?",
+  seasonDone: "Tüm sezon izlendi",
+  airedDone: "Yayınlananların hepsi izlendi",
+  episode: "{n}. bölüm",
+  upTo: "buna kadar hepsi",
+  rateLabel: "{n}. bölümü puanla",
+  watchedLabel: "{n}. bölüm izlendi",
+  watched: "İzlendi",
+  ratingLabel: "{n}. bölümün puanı",
+  more: { text: "Kalan {n} bölüm {link}", link: "sezon sayfasında" },
+  waiting: {
+    toggle: "Yeni bölüm bekleyenler ({n})",
+    next: "{part}, {n}. bölüm — {date}",
+    unknown: "yeni bölümler için henüz tarih yok",
+  },
+  parts: { one: "{n} kısım", other: "{n} kısım" },
+  extras: " + {n} ek",
+};
+
+export default my;
