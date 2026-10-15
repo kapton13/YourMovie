@@ -9,7 +9,9 @@ const profile: Messages["profile"] = {
   error: {
     title: "Nie udało się wczytać profilu",
     text: "Odśwież stronę za chwilę.",
+    retry: "Spróbuj ponownie",
   },
+  mediaFailed: "Nie udało się wczytać danych anime z AniList, więc godziny, gatunki i plakaty są na razie niedostępne.",
   closed: "🔒 Ten profil jest prywatny — {nickname} nie udostępnia swoich list.",
   since: "z nami od {date}",
   own: {

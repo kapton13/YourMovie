@@ -7,7 +7,9 @@ const profile = {
   error: {
     title: "Couldn’t load the profile",
     text: "Please refresh the page a little later.",
+    retry: "Try again",
   },
+  mediaFailed: "Couldn’t load anime details from AniList, so hours, genres and posters are missing for now.",
   closed: "🔒 This profile is private — {nickname} doesn’t share their lists.",
   since: "member since {date}",
   own: {

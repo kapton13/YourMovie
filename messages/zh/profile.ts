@@ -9,7 +9,9 @@ const profile: Messages["profile"] = {
   error: {
     title: "无法加载主页",
     text: "请稍后刷新页面。",
+    retry: "重试",
   },
+  mediaFailed: "无法从 AniList 加载动画信息，暂时无法显示观看时长、类型和海报。",
   closed: "🔒 该主页未公开——{nickname} 没有公开自己的列表。",
   since: "{date} 加入",
   own: {

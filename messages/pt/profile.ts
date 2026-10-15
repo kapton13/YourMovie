@@ -9,7 +9,9 @@ const profile: Messages["profile"] = {
   error: {
     title: "Não foi possível carregar o perfil",
     text: "Atualize a página daqui a pouco.",
+    retry: "Tentar de novo",
   },
+  mediaFailed: "Não foi possível carregar os dados dos animes do AniList, então horas, gêneros e pôsteres ainda não aparecem.",
   closed: "🔒 Este perfil é privado — {nickname} não compartilha suas listas.",
   since: "membro desde {date}",
   own: {

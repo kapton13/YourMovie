@@ -9,7 +9,9 @@ const profile: Messages["profile"] = {
   error: {
     title: "프로필을 불러오지 못했어요",
     text: "잠시 후 페이지를 새로고침해 주세요.",
+    retry: "다시 시도",
   },
+  mediaFailed: "AniList에서 애니 정보를 불러오지 못해 시청 시간, 장르, 포스터를 지금은 표시할 수 없어요.",
   closed: "🔒 비공개 프로필이에요. {nickname} 님은 목록을 공개하지 않았어요.",
   since: "{date} 가입",
   own: {
