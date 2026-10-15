@@ -1,7 +1,7 @@
 const list = {
   statuses: {
     watching: "Watching",
-    planning: "Plan to watch",
+    planning: "Planning",
     completed: "Completed",
     paused: "On hold",
     dropped: "Dropped",
