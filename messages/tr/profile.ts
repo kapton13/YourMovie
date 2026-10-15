@@ -9,7 +9,9 @@ const profile: Messages["profile"] = {
   error: {
     title: "Profil yüklenemedi",
     text: "Biraz sonra sayfayı yenile.",
+    retry: "Tekrar dene",
   },
+  mediaFailed: "Anime bilgileri AniList’ten yüklenemedi; saatler, türler ve afişler şimdilik gösterilemiyor.",
   closed: "🔒 Bu profil gizli — {nickname} listelerini paylaşmıyor.",
   since: "{date} tarihinden beri üye",
   own: {

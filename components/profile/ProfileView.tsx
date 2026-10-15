@@ -30,6 +30,8 @@ type Loaded =
       entries: (StatsEntry & { updated_at: string })[];
       stats: ProfileStats;
       media: Map<number, MyMedia>;
+      /** AniList не відповів: статистика лише з бази (без годин, жанрів і постерів). */
+      mediaFailed: boolean;
     };
 
 const MEDIA_CHUNK = 200;
@@ -39,7 +41,9 @@ async function loadMedia(ids: number[]): Promise<Map<number, MyMedia>> {
   const unique = [...new Set(ids)].sort((a, b) => a - b);
   const result = new Map<number, MyMedia>();
   for (let i = 0; i < unique.length; i += MEDIA_CHUNK) {
-    const res = await fetch(`/api/my-media?ids=${unique.slice(i, i + MEDIA_CHUNK).join(",")}`);
+    const res = await fetch(`/api/my-media?ids=${unique.slice(i, i + MEDIA_CHUNK).join(",")}`, {
+      signal: AbortSignal.timeout(30000),
+    });
     if (!res.ok) throw new Error(`my-media ${res.status}`);
     for (const m of (await res.json()) as MyMedia[]) result.set(m.id, m);
   }
@@ -58,7 +62,9 @@ export function ProfileView({ nickname }: { nickname: string }) {
   const user = useUser();
   const userId = user === undefined ? undefined : (user?.id ?? null);
   const [loaded, setLoaded] = useState<{ key: string; data: Loaded } | null>(null);
-  const loadKey = `${nickname}|${userId}`;
+  /** «Спробувати ще раз» — новий номер спроби запускає завантаження наново. */
+  const [attempt, setAttempt] = useState(0);
+  const loadKey = `${nickname}|${userId}|${attempt}`;
 
   useEffect(() => {
     // Чекаємо, доки стане відомо, чи людина ввійшла: від цього залежить, чи бачить вона свій закритий профіль.
@@ -66,7 +72,7 @@ export function ProfileView({ nickname }: { nickname: string }) {
     let cancelled = false;
     const supabase = getSupabaseBrowser();
     const done = (data: Loaded) => !cancelled && setLoaded({ key: loadKey, data });
-    (async () => {
+    const load = async () => {
       const { data: rows, error } = await supabase.rpc("profile_by_nickname", { nick: nickname });
       if (error) return done({ kind: "error" });
       const profile = (rows as PublicProfile[] | null)?.[0];
@@ -99,14 +105,22 @@ export function ProfileView({ nickname }: { nickname: string }) {
         score: e.score === null ? null : Number(e.score),
       }));
       const marks = marksRes.data as StatsMark[];
+      // Без AniList профіль усе одно показуємо: кількість аніме, серій і оцінки є в базі.
+      let media = new Map<number, MyMedia>();
+      let mediaFailed = false;
       try {
-        const media = await loadMedia([...entries.map((e) => e.media_id), ...marks.map((m) => m.media_id)]);
-        done({ kind: "ready", profile, entries, media, stats: computeStats(entries, marks, media, new Date()) });
+        media = await loadMedia([...entries.map((e) => e.media_id), ...marks.map((m) => m.media_id)]);
       } catch (e) {
         console.error(e);
-        done({ kind: "error" });
+        mediaFailed = true;
       }
-    })();
+      done({ kind: "ready", profile, entries, media, mediaFailed, stats: computeStats(entries, marks, media, new Date()) });
+    };
+    // Обірваний зв'язок тощо — показуємо помилку з кнопкою, а не вічне завантаження.
+    load().catch((e) => {
+      console.error(e);
+      done({ kind: "error" });
+    });
     return () => {
       cancelled = true;
     };
@@ -127,6 +141,9 @@ export function ProfileView({ nickname }: { nickname: string }) {
       <div className={styles.message}>
         <h1 className={styles.title}>{m.profile.error.title}</h1>
         <p>{m.profile.error.text}</p>
+        <button type="button" className={styles.ownButton} onClick={() => setAttempt((n) => n + 1)}>
+          {m.profile.error.retry}
+        </button>
       </div>
     );
   if (data.kind === "closed")
@@ -138,7 +155,17 @@ export function ProfileView({ nickname }: { nickname: string }) {
     );
 
   const own = user?.id === data.profile.id;
-  return <Ready profile={data.profile} entries={data.entries} stats={data.stats} media={data.media} own={own} />;
+  return (
+    <Ready
+      profile={data.profile}
+      entries={data.entries}
+      stats={data.stats}
+      media={data.media}
+      own={own}
+      mediaFailed={data.mediaFailed}
+      retry={() => setAttempt((n) => n + 1)}
+    />
+  );
 }
 
 function Head({ profile }: { profile: PublicProfile }) {
@@ -167,12 +194,16 @@ function Ready({
   stats,
   media,
   own,
+  mediaFailed,
+  retry,
 }: {
   profile: PublicProfile;
   entries: (StatsEntry & { updated_at: string })[];
   stats: ProfileStats;
   media: Map<number, MyMedia>;
   own: boolean;
+  mediaFailed: boolean;
+  retry: () => void;
 }) {
   const { m, fmt, count, intl } = useI18n();
   const scoreText = useScoreText();
@@ -224,11 +255,20 @@ function Ready({
         </div>
       )}
 
+      {mediaFailed && (
+        <div className={styles.ownBar} role="status">
+          <span>{m.profile.mediaFailed}</span>
+          <button type="button" className={styles.ownButton} onClick={retry}>
+            {m.profile.error.retry}
+          </button>
+        </div>
+      )}
+
       <section className={styles.tiles} aria-label={m.profile.tiles.label}>
         <Tile value={total.toLocaleString(intl)} label={m.profile.tiles.anime} />
         <Tile value={stats.episodes.toLocaleString(intl)} label={m.profile.tiles.episodes} />
         <Tile
-          value={hours.toLocaleString(intl)}
+          value={mediaFailed ? "—" : hours.toLocaleString(intl)}
           label={
             hours >= 24
               ? fmt(m.profile.tiles.hoursDays, { days: Math.round(hours / 24).toLocaleString(intl) })

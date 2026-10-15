@@ -9,7 +9,9 @@ const profile: Messages["profile"] = {
   error: {
     title: "プロフィールを読み込めませんでした",
     text: "しばらくしてからページを再読み込みしてください。",
+    retry: "再試行",
   },
+  mediaFailed: "AniListからアニメ情報を読み込めなかったため、視聴時間・ジャンル・ポスターは現在表示できません。",
   closed: "🔒 このプロフィールは非公開です。{nickname}さんはリストを公開していません。",
   since: "{date}から利用",
   own: {
