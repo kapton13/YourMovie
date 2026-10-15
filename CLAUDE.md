@@ -55,6 +55,13 @@
 - `/u/<нікнейм>` — `components/profile/ProfileView.tsx` (браузер читає `profile_by_nickname`, списки й відмітки; дані AniList — `/api/my-media`), статистика — `lib/stats.ts`.
 - Відкритий профіль (`profiles.is_public`, SQL `008`): списки, відмітки й оцінки сезонів читаються всіма; «Не цікаво», ПІБ, телефон, країна, пошта — ніколи. **Тому кожен запит своїх списків має `.eq("user_id", user.id)`**, а великі вибірки — через `selectAll` (ліміт 1000 рядків).
 
+## Мови (як влаштовано)
+- Мови — `lib/i18n/config.ts` (`LOCALES`, `LOCALE_INFO`: назва, код для Intl, напрям письма). Сторінки — під `app/[lang]/…`; `proxy.ts` додає мову до адрес без неї (з cookie `ym-lang` або англійську).
+- Тексти — словники `messages/<мова>/<розділ>.ts` (common, labels, home, catalog, anime, list, my, hidden, recs, profile, auth, account). Англійський — зразок і запасний; `uk`/`ru` типізовані `Messages[...]` і мусять бути повні; нова мова може бути неповною (чого бракує — англійською).
+- **Додати мову:** скопіювати `messages/en/` у `messages/<код>/`, перекласти, зареєструвати в `messages/index.ts` і в `LOCALES`/`LOCALE_INFO` (для мов справа наліво — `dir: "rtl"` і перевірити верстку).
+- У компонентах: клієнтські — `useI18n()` (`m`, `fmt`, `count`, `intl`, `href`), `Link` і `useLocaleRouter()` з `components/i18n/I18nProvider`; серверні — `await getI18n()` з `lib/i18n/server`. Ніякого тексту в коді, дати й числа — через `Intl` з `intl`, множина — `count(m.common.episodes, n)`. Підписи частин аніме — `partLabel(part, m)`.
+- Вибір мови: перемикач у шапці й «Мова сайту» в налаштуваннях (`useSwitchLanguage`), зберігається в cookie і `profiles.language` (SQL `009`), мова профілю діє на всіх пристроях.
+
 ## Команди
 - `npm run dev` — локальний запуск; `npm run build` — збірка; `npm run lint` — перевірка коду.
 - `npm run update-titles` — оновити словник назв для пошуку (≈2 хв, запити до AniList).

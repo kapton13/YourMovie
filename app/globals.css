@@ -216,3 +216,27 @@ a {
     gap: 8px;
   }
 }
+
+/* Найвужчі телефони: менші кнопки й відступи, щоб уся шапка вмістилася разом із вибором мови */
+@media (max-width: 360px) {
+  .logo {
+    font-size: 1rem;
+  }
+
+  .header-inner,
+  .header-actions,
+  .nav {
+    gap: 6px;
+  }
+
+  /* Кнопки теми й мови (не пункти меню мов) та кружечок профілю */
+  .header-actions > button,
+  .header-actions > div > button[aria-haspopup],
+  .header-actions > .user-placeholder,
+  .header-actions > a[class*="avatar"] {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+}

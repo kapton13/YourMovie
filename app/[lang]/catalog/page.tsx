@@ -93,7 +93,7 @@ async function CatalogResults({ searchParams }: Pick<PageProps<"/[lang]/catalog"
   return (
     <>
       {exactTotal !== undefined ? (
-        <VisibleCount ids={media.map((m) => m.id)} className={styles.summary} />
+        <VisibleCount ids={media.map((x) => x.id)} className={styles.summary} />
       ) : (
         <p className={styles.summary}>{fmt(m.catalog.results.shown, { from: first, to: first + media.length - 1 })}</p>
       )}
