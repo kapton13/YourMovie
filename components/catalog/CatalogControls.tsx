@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useOptimistic, useRef, useState } from "react";
+import { useI18n, useLocaleRouter } from "@/components/i18n/I18nProvider";
 import type { TagGroup } from "@/lib/anilist";
 import {
   COUNTRIES,
@@ -18,6 +19,7 @@ import {
   catalogTitle,
   countFilters,
   defaultSort,
+  episodePresetLabel,
   parseCatalogParams,
   parseRange,
   rangeToParam,
@@ -25,19 +27,12 @@ import {
   type Range,
   type SortKey,
 } from "@/lib/catalog";
-import {
-  COUNTRY_LABELS,
-  FORMAT_LABELS,
-  GENRE_LABELS,
-  SEASON_LABELS,
-  SORT_LABELS,
-  SOURCE_LABELS,
-  STATUS_LABELS,
-  TAG_CATEGORY_LABELS,
-} from "@/lib/labels";
+import { label as labelOf } from "@/lib/i18n/labels";
 import { useCatalogTransition } from "./CatalogTransition";
 import { Popover } from "./Popover";
 import styles from "./CatalogControls.module.css";
+
+type I18n = ReturnType<typeof useI18n>;
 
 type Props = {
   tagGroups: TagGroup[];
@@ -47,7 +42,11 @@ type Props = {
 const TYPING_DELAY = 400;
 
 export function CatalogControls({ tagGroups, maxYear }: Props) {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const i18n = useI18n();
+  const { m, fmt } = i18n;
+  const c = m.catalog.controls;
+  const L = m.labels;
   const searchParams = useSearchParams();
   const { startTransition } = useCatalogTransition();
 
@@ -113,11 +112,11 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
     () => Array.from({ length: maxYear - MIN_YEAR + 1 }, (_, i) => maxYear - i),
     [maxYear],
   );
-  const chips = activeChips(query);
+  const chips = activeChips(query, i18n);
 
   return (
     <div className={styles.controls}>
-      <h1 className={styles.title}>{catalogTitle(query)}</h1>
+      <h1 className={styles.title}>{catalogTitle(query, m)}</h1>
 
       <div className={styles.searchRow}>
         <form
@@ -135,8 +134,8 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
           <input
             type="search"
             className={`${styles.control} ${styles.searchInput}`}
-            placeholder="Назва аніме або слово з назви…"
-            aria-label="Пошук за назвою"
+            placeholder={c.searchPlaceholder}
+            aria-label={c.searchLabel}
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             enterKeyHint="search"
@@ -147,7 +146,7 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
             <button
               type="button"
               className={styles.clearText}
-              aria-label="Очистити пошук"
+              aria-label={c.clearSearch}
               onClick={() => {
                 setText("");
                 navigate({ ...query, q: "", page: 1 });
@@ -163,16 +162,16 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
           aria-expanded={filtersOpen}
           onClick={() => setFiltersOpen((value) => !value)}
         >
-          Фільтри{filterCount > 0 && <span className={styles.count}>{filterCount}</span>}
+          {c.filters}{filterCount > 0 && <span className={styles.count}>{filterCount}</span>}
         </button>
       </div>
 
       <div className={`${styles.filters} ${filtersOpen ? styles.filtersOpen : ""}`}>
         <div className={styles.grid}>
-          <Field label="Жанри й теги" wide>
+          <Field label={c.genresTags} wide>
             <Popover
-              label="Жанри й теги"
-              summary={genreSummary(query)}
+              label={c.genresTags}
+              summary={genreSummary(query, i18n)}
               active={query.genres.length + query.genresNot.length + query.tags.length + query.tagsNot.length > 0}
               wide
             >
@@ -180,61 +179,63 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
             </Popover>
           </Field>
 
-          <Field label="Роки" wide>
+          <Field label={c.years} wide>
             <div className={styles.yearRange}>
               <Select
-                label="Рік від"
+                label={c.yearFrom}
                 value={query.yearFrom?.toString() ?? ""}
                 onChange={(v) => update(yearPatch(query, v ? Number(v) : undefined, query.yearTo))}
-                options={[["", "Від"], ...years.map((y) => [String(y), String(y)] as [string, string])]}
+                options={[["", c.from], ...years.map((y) => [String(y), String(y)] as [string, string])]}
               />
               <span aria-hidden="true">–</span>
               <Select
-                label="Рік до"
+                label={c.yearTo}
                 value={query.yearTo?.toString() ?? ""}
                 onChange={(v) => update(yearPatch(query, query.yearFrom, v ? Number(v) : undefined))}
-                options={[["", "До"], ...years.map((y) => [String(y), String(y)] as [string, string])]}
+                options={[["", c.to], ...years.map((y) => [String(y), String(y)] as [string, string])]}
               />
             </div>
           </Field>
 
-          <Field label="Сезон">
+          <Field label={c.season}>
             <Select
-              label="Сезон"
+              label={c.season}
               value={query.season ?? ""}
               onChange={(v) => update({ season: (v || undefined) as CatalogQuery["season"] })}
-              options={[["", "Будь-який"], ...SEASONS.map((s) => [s, SEASON_LABELS[s]] as [string, string])]}
+              options={[["", c.any.season], ...SEASONS.map((s) => [s, labelOf(L.season, s)] as [string, string])]}
             />
           </Field>
 
-          <Field label="Формат">
+          <Field label={c.format}>
             <CheckList
-              label="Формат"
+              label={c.format}
+              anyLabel={c.any.format}
               values={FORMATS}
               selected={query.formats}
-              labelOf={(f) => FORMAT_LABELS[f]}
+              labelOf={(f) => labelOf(L.format, f)}
               onChange={(formats) => update({ formats })}
             />
           </Field>
 
-          <Field label="Статус">
+          <Field label={c.status}>
             <CheckList
-              label="Статус"
+              label={c.status}
+              anyLabel={c.any.status}
               values={STATUSES}
               selected={query.statuses}
-              labelOf={(s) => STATUS_LABELS[s]}
+              labelOf={(s) => labelOf(L.status, s)}
               onChange={(statuses) => update({ statuses })}
             />
           </Field>
 
-          <Field label="Сортування">
+          <Field label={c.sort}>
             <Select
-              label="Сортування"
+              label={c.sort}
               value={query.sort}
               active={query.sort !== defaultSort(query.q)}
               onChange={(v) => update({ sort: v as SortKey })}
               options={SORTS.filter((s) => s !== "relevance" || text.trim() || query.q).map(
-                (s) => [s, SORT_LABELS[s]] as [string, string],
+                (s) => [s, labelOf(L.sort, s)] as [string, string],
               )}
             />
           </Field>
@@ -242,39 +243,39 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
 
         {showMore && (
           <div className={styles.grid}>
-            <Field label="Кількість серій">
+            <Field label={c.episodes}>
               <Select
-                label="Кількість серій"
+                label={c.episodes}
                 value={rangeToParam(query.episodes) ?? ""}
                 onChange={(v) => update({ episodes: parseRange(v, 1, 5000) })}
-                options={episodeOptions(query.episodes)}
+                options={episodeOptions(query.episodes, i18n)}
               />
             </Field>
-            <Field label="Мінімальна оцінка">
+            <Field label={c.minScore}>
               <Select
-                label="Мінімальна оцінка"
+                label={c.minScore}
                 value={query.minScore?.toString() ?? ""}
                 onChange={(v) => update({ minScore: v ? Number(v) : undefined })}
                 options={[
-                  ["", "Будь-яка"],
-                  ...SCORE_PRESETS.map((s) => [String(s), `від ${s} з 10`] as [string, string]),
+                  ["", c.any.score],
+                  ...SCORE_PRESETS.map((s) => [String(s), fmt(c.scoreOption, { score: s })] as [string, string]),
                 ]}
               />
             </Field>
-            <Field label="Країна">
+            <Field label={c.country}>
               <Select
-                label="Країна"
+                label={c.country}
                 value={query.country ?? ""}
                 onChange={(v) => update({ country: v || undefined })}
-                options={[["", "Будь-яка"], ...COUNTRIES.map((c) => [c, COUNTRY_LABELS[c]] as [string, string])]}
+                options={[["", c.any.country], ...COUNTRIES.map((x) => [x, labelOf(L.country, x)] as [string, string])]}
               />
             </Field>
-            <Field label="Першоджерело">
+            <Field label={c.source}>
               <Select
-                label="Першоджерело"
+                label={c.source}
                 value={query.source ?? ""}
                 onChange={(v) => update({ source: v || undefined })}
-                options={[["", "Будь-яке"], ...SOURCES.map((s) => [s, SOURCE_LABELS[s]] as [string, string])]}
+                options={[["", c.any.source], ...SOURCES.map((s) => [s, labelOf(L.source, s)] as [string, string])]}
               />
             </Field>
           </div>
@@ -282,20 +283,20 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
 
         {advancedCount === 0 && (
           <button type="button" className={styles.moreToggle} onClick={() => setMoreOpen((v) => !v)}>
-            {moreOpen ? "Менше фільтрів ▴" : "Більше фільтрів: серії, оцінка, країна, першоджерело ▾"}
+            {moreOpen ? c.fewer : c.more}
           </button>
         )}
       </div>
 
       {chips.length > 0 && (
-        <div className={styles.chips} aria-label="Увімкнені фільтри">
+        <div className={styles.chips} aria-label={c.activeFilters}>
           {chips.map((chip) => (
             <button
               key={chip.key}
               type="button"
               className={`${styles.chip} ${chip.exclude ? styles.chipExclude : ""}`}
               onClick={() => update(chip.remove)}
-              aria-label={`Прибрати фільтр: ${chip.label}`}
+              aria-label={fmt(c.removeFilter, { label: chip.label })}
             >
               {chip.label}
               <span aria-hidden="true">✕</span>
@@ -309,7 +310,7 @@ export function CatalogControls({ tagGroups, maxYear }: Props) {
               navigate({ ...EMPTY, sort: "popular" });
             }}
           >
-            Скинути все
+            {c.resetAll}
           </button>
         </div>
       )}
@@ -364,23 +365,27 @@ function Select({
 
 function CheckList<T extends string>({
   label,
+  anyLabel,
   values,
   selected,
   labelOf,
   onChange,
 }: {
   label: string;
+  /** Що показати, коли нічого не вибрано: «Будь-який». */
+  anyLabel: string;
   values: T[];
   selected: T[];
   labelOf: (value: T) => string;
   onChange: (selected: T[]) => void;
 }) {
+  const { m, fmt } = useI18n();
   const summary =
     selected.length === 0
-      ? "Будь-який"
+      ? anyLabel
       : selected.length <= 2
         ? selected.map(labelOf).join(", ")
-        : `${labelOf(selected[0])} і ще ${selected.length - 1}`;
+        : fmt(m.catalog.controls.andMore, { first: labelOf(selected[0]), n: selected.length - 1 });
   return (
     <Popover label={label} summary={summary} active={selected.length > 0}>
       <div className={styles.checkList}>
@@ -400,7 +405,7 @@ function CheckList<T extends string>({
       </div>
       {selected.length > 0 && (
         <button type="button" className={styles.clearList} onClick={() => onChange([])}>
-          Скинути
+          {m.catalog.controls.reset}
         </button>
       )}
     </Popover>
@@ -418,11 +423,15 @@ function GenreTagPicker({
   tagGroups: TagGroup[];
   onChange: (patch: Partial<CatalogQuery>) => void;
 }) {
+  const { m } = useI18n();
+  const p = m.catalog.picker;
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
+  const [hintBefore, hintRest = ""] = p.hint.split("{include}");
+  const [hintMiddle, hintAfter = ""] = hintRest.split("{exclude}");
 
   const genres = GENRES.filter(
-    (g) => !needle || GENRE_LABELS[g].toLowerCase().includes(needle) || g.toLowerCase().includes(needle),
+    (g) => !needle || labelOf(m.labels.genre, g).toLowerCase().includes(needle) || g.toLowerCase().includes(needle),
   );
   const groups = tagGroups
     .map((group) => ({ ...group, tags: group.tags.filter((t) => !needle || t.toLowerCase().includes(needle)) }))
@@ -450,25 +459,28 @@ function GenreTagPicker({
       <input
         type="search"
         className={`${styles.control} ${styles.pickerSearch}`}
-        placeholder="Знайти жанр або тег…"
-        aria-label="Знайти жанр або тег"
+        placeholder={p.placeholder}
+        aria-label={p.label}
         value={filter}
         onChange={(event) => setFilter(event.target.value)}
         autoComplete="off"
       />
       <p className={styles.pickerHint}>
-        Натисніть раз — <b className={styles.hintInclude}>показувати</b>, ще раз —{" "}
-        <b className={styles.hintExclude}>виключити</b>, втретє — скасувати.
+        {hintBefore}
+        <b className={styles.hintInclude}>{p.include}</b>
+        {hintMiddle}
+        <b className={styles.hintExclude}>{p.exclude}</b>
+        {hintAfter}
       </p>
 
       {genres.length > 0 && (
         <section>
-          <h3 className={styles.pickerHeading}>Жанри</h3>
+          <h3 className={styles.pickerHeading}>{p.genres}</h3>
           <div className={styles.triList}>
             {genres.map((genre) => (
               <TriChip
                 key={genre}
-                label={GENRE_LABELS[genre]}
+                label={labelOf(m.labels.genre, genre)}
                 state={stateOf(query.genres, query.genresNot, genre)}
                 onClick={() => cycle("genres", genre)}
               />
@@ -480,12 +492,12 @@ function GenreTagPicker({
       {groups.length > 0 && (
         <section>
           <h3 className={styles.pickerHeading}>
-            Теги <span className={styles.pickerNote}>(англійською, як в AniList)</span>
+            {p.tags} <span className={styles.pickerNote}>{p.tagsNote}</span>
           </h3>
           {groups.map((group) => (
             <details key={group.category} className={styles.tagGroup} open={Boolean(needle)}>
               <summary>
-                {TAG_CATEGORY_LABELS[group.category] ?? group.category}{" "}
+                {labelOf(m.labels.tagCategory, group.category)}{" "}
                 <span className={styles.pickerNote}>{group.tags.length}</span>
               </summary>
               <div className={styles.triList}>
@@ -503,19 +515,20 @@ function GenreTagPicker({
         </section>
       )}
 
-      {genres.length === 0 && groups.length === 0 && <p className={styles.pickerNote}>Нічого не знайдено.</p>}
+      {genres.length === 0 && groups.length === 0 && <p className={styles.pickerNote}>{p.nothing}</p>}
     </div>
   );
 }
 
 function TriChip({ label, state, onClick }: { label: string; state: TriState; onClick: () => void }) {
-  const description = state === "include" ? "показувати" : state === "exclude" ? "виключено" : "не вибрано";
+  const { m, fmt } = useI18n();
+  const description = m.catalog.picker.state[state];
   return (
     <button
       type="button"
       className={`${styles.tri} ${state === "include" ? styles.triInclude : ""} ${state === "exclude" ? styles.triExclude : ""}`}
       onClick={onClick}
-      aria-label={`${label}: ${description}`}
+      aria-label={fmt(m.catalog.picker.chipState, { label, state: description })}
     >
       {state === "include" && <span aria-hidden="true">✓ </span>}
       {state === "exclude" && <span aria-hidden="true">✕ </span>}
@@ -526,13 +539,15 @@ function TriChip({ label, state, onClick }: { label: string; state: TriState; on
 
 // ---------------------------------------------------------------------------
 
-function genreSummary(query: CatalogQuery): string {
-  const names = [...query.genres.map((g) => GENRE_LABELS[g]), ...query.tags];
+function genreSummary(query: CatalogQuery, { m, fmt }: I18n): string {
+  const c = m.catalog.controls;
+  const names = [...query.genres.map((g) => labelOf(m.labels.genre, g)), ...query.tags];
   const excluded = query.genresNot.length + query.tagsNot.length;
-  if (names.length === 0 && excluded === 0) return "Будь-які";
+  if (names.length === 0 && excluded === 0) return c.any.genres;
   const parts: string[] = [];
-  if (names.length > 0) parts.push(names.length <= 2 ? names.join(", ") : `${names[0]} і ще ${names.length - 1}`);
-  if (excluded > 0) parts.push(`без ${excluded}`);
+  if (names.length > 0)
+    parts.push(names.length <= 2 ? names.join(", ") : fmt(c.andMore, { first: names[0], n: names.length - 1 }));
+  if (excluded > 0) parts.push(fmt(c.excluded, { n: excluded }));
   return parts.join("; ");
 }
 
@@ -541,41 +556,37 @@ function yearPatch(query: CatalogQuery, from: number | undefined, to: number | u
   return { yearFrom: from, yearTo: to };
 }
 
-function episodeOptions(current: Range | undefined): [string, string][] {
+function episodeOptions(current: Range | undefined, i18n: I18n): [string, string][] {
   const options: [string, string][] = [
-    ["", "Будь-яка"],
-    ...EPISODE_PRESETS.map((p) => [p.value, p.label] as [string, string]),
+    ["", i18n.m.catalog.controls.any.episodes],
+    ...EPISODE_PRESETS.map((value) => [value, episodePresetLabel(value, i18n.m, i18n.intl)] as [string, string]),
   ];
   const value = rangeToParam(current);
-  if (value && !options.some(([v]) => v === value)) options.push([value, episodesLabel(current!)]);
+  if (value && !options.some(([v]) => v === value)) options.push([value, episodesLabel(current!, i18n)]);
   return options;
 }
 
-function pluralEpisodes(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "серія";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "серії";
-  return "серій";
-}
-
-function episodesLabel({ min, max }: Range): string {
-  if (min !== undefined && min === max) return `${min} ${pluralEpisodes(min)}`;
-  if (min !== undefined && max !== undefined) return `${min}–${max} серій`;
-  if (min !== undefined) return `понад ${min - 1} ${pluralEpisodes(min - 1)}`;
-  return `до ${max} ${pluralEpisodes(max!)}`;
+function episodesLabel({ min, max }: Range, { m, fmt, count }: I18n): string {
+  const e = m.catalog.episodes;
+  if (min !== undefined && min === max) return count(m.common.episodes, min);
+  if (min !== undefined && max !== undefined) return fmt(e.range, { min, max });
+  if (min !== undefined) return fmt(e.over, { count: count(m.common.episodes, min - 1) });
+  return fmt(e.upTo, { count: count(m.common.episodes, max!) });
 }
 
 type Chip = { key: string; label: string; exclude?: boolean; remove: Partial<CatalogQuery> };
 
-function activeChips(query: CatalogQuery): Chip[] {
+function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
+  const { m, fmt } = i18n;
+  const chipsText = m.catalog.chips;
+  const L = m.labels;
   const chips: Chip[] = [];
   for (const g of query.genres)
-    chips.push({ key: `g:${g}`, label: GENRE_LABELS[g], remove: { genres: query.genres.filter((x) => x !== g) } });
+    chips.push({ key: `g:${g}`, label: labelOf(L.genre, g), remove: { genres: query.genres.filter((x) => x !== g) } });
   for (const g of query.genresNot)
     chips.push({
       key: `gn:${g}`,
-      label: `без «${GENRE_LABELS[g]}»`,
+      label: fmt(chipsText.notGenre, { genre: labelOf(L.genre, g) }),
       exclude: true,
       remove: { genresNot: query.genresNot.filter((x) => x !== g) },
     });
@@ -584,7 +595,7 @@ function activeChips(query: CatalogQuery): Chip[] {
   for (const t of query.tagsNot)
     chips.push({
       key: `tn:${t}`,
-      label: `без #${t}`,
+      label: fmt(chipsText.notTag, { tag: t }),
       exclude: true,
       remove: { tagsNot: query.tagsNot.filter((x) => x !== t) },
     });
@@ -592,25 +603,25 @@ function activeChips(query: CatalogQuery): Chip[] {
     const { yearFrom: from, yearTo: to } = query;
     const label =
       from !== undefined && from === to
-        ? `${from} рік`
+        ? fmt(chipsText.year, { year: from })
         : from !== undefined && to !== undefined
           ? `${from}–${to}`
           : from !== undefined
-            ? `з ${from} року`
-            : `до ${to} року`;
+            ? fmt(chipsText.yearFrom, { year: from })
+            : fmt(chipsText.yearTo, { year: to! });
     chips.push({ key: "year", label, remove: { yearFrom: undefined, yearTo: undefined } });
   }
-  if (query.season) chips.push({ key: "season", label: SEASON_LABELS[query.season], remove: { season: undefined } });
+  if (query.season) chips.push({ key: "season", label: labelOf(L.season, query.season), remove: { season: undefined } });
   for (const f of query.formats)
-    chips.push({ key: `f:${f}`, label: FORMAT_LABELS[f], remove: { formats: query.formats.filter((x) => x !== f) } });
+    chips.push({ key: `f:${f}`, label: labelOf(L.format, f), remove: { formats: query.formats.filter((x) => x !== f) } });
   for (const s of query.statuses)
-    chips.push({ key: `s:${s}`, label: STATUS_LABELS[s], remove: { statuses: query.statuses.filter((x) => x !== s) } });
-  if (query.episodes) chips.push({ key: "eps", label: episodesLabel(query.episodes), remove: { episodes: undefined } });
+    chips.push({ key: `s:${s}`, label: labelOf(L.status, s), remove: { statuses: query.statuses.filter((x) => x !== s) } });
+  if (query.episodes) chips.push({ key: "eps", label: episodesLabel(query.episodes, i18n), remove: { episodes: undefined } });
   if (query.minScore !== undefined)
-    chips.push({ key: "score", label: `оцінка від ${query.minScore}`, remove: { minScore: undefined } });
+    chips.push({ key: "score", label: fmt(chipsText.score, { score: query.minScore }), remove: { minScore: undefined } });
   if (query.country)
-    chips.push({ key: "country", label: COUNTRY_LABELS[query.country] ?? query.country, remove: { country: undefined } });
+    chips.push({ key: "country", label: labelOf(L.country, query.country), remove: { country: undefined } });
   if (query.source)
-    chips.push({ key: "source", label: SOURCE_LABELS[query.source] ?? query.source, remove: { source: undefined } });
+    chips.push({ key: "source", label: labelOf(L.source, query.source), remove: { source: undefined } });
   return chips;
 }

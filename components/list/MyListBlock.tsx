@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListStatus } from "@/lib/lists";
+import { LIST_STATUSES, type ListStatus } from "@/lib/lists";
 import { useHidden } from "@/components/hidden/HiddenProvider";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
+import { stripLocale } from "@/lib/i18n/config";
+import { fmt } from "@/lib/i18n/format";
 import { useUserMedia } from "./UserMediaProvider";
 import styles from "./MyListBlock.module.css";
 
@@ -23,6 +25,8 @@ export function MyListBlock({
   const { user, entry, saving, error, setStatus, setScore, setSeasonScore, seasonScore, seasonAuto, scoreAuto, multipart, remove: removeAll } =
     useUserMedia();
   const pathname = usePathname();
+  const { m } = useI18n();
+  const t = m.list.block;
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmHide, setConfirmHide] = useState(false);
   const { hiddenIds, hiddenKeys, hide, unhide } = useHidden();
@@ -33,7 +37,7 @@ export function MyListBlock({
       return (
         <div className={styles.block}>
           <p className={styles.error} role="alert">
-            {error}
+            {m.list.errors[error]}
           </p>
         </div>
       );
@@ -41,14 +45,16 @@ export function MyListBlock({
   }
 
   if (!user) {
+    const [before, after] = t.loginText.split("{link}");
     return (
       <div className={styles.block}>
-        <p className={styles.heading}>Мій список</p>
+        <p className={styles.heading}>{t.heading}</p>
         <p className={styles.muted}>
-          <Link href={`/login?next=${encodeURIComponent(pathname ?? "/")}`} className={styles.link}>
-            Увійдіть
+          {before}
+          <Link href={`/login?next=${encodeURIComponent(stripLocale(pathname ?? "/"))}`} className={styles.link}>
+            {t.loginLink}
           </Link>
-          , щоб додати аніме у свій список, відмічати серії й ставити оцінки.
+          {after}
         </p>
       </div>
     );
@@ -72,12 +78,10 @@ export function MyListBlock({
     const key = [...hiddenKeys].find(([, ids]) => ids.includes(mediaId))?.[0] ?? mediaId;
     return (
       <div className={`${styles.block} ${styles.hiddenBlock}`}>
-        <p className={styles.heading}>✕ Не цікаво</p>
-        <p className={styles.muted}>
-          Ви позначили це аніме як «Не цікаво» — сайт його не показує й не рекомендує.
-        </p>
+        <p className={styles.heading}>{t.hiddenTitle}</p>
+        <p className={styles.muted}>{t.hiddenText}</p>
         <button type="button" className={styles.restore} onClick={() => unhide(key)}>
-          Повернути
+          {t.restore}
         </button>
       </div>
     );
@@ -97,29 +101,29 @@ export function MyListBlock({
   return (
     <div className={styles.block} aria-busy={saving}>
       <div className={styles.headRow}>
-        <p className={styles.heading}>{entry ? "У моєму списку" : "Додати в мій список"}</p>
+        <p className={styles.heading}>{entry ? t.inList : t.add}</p>
         {entry && !confirmRemove && (
           <button type="button" className={styles.removeLink} onClick={() => setConfirmRemove(true)}>
-            Прибрати зі списку
+            {t.remove}
           </button>
         )}
       </div>
 
       {confirmRemove && (
-        <div className={styles.confirm} role="alertdialog" aria-label="Прибрати зі списку?">
-          <span>Прибрати це аніме (усі частини) зі списку разом з оцінками й відмітками серій?</span>
+        <div className={styles.confirm} role="alertdialog" aria-label={t.removeAria}>
+          <span>{t.removeText}</span>
           <span className={styles.confirmActions}>
             <button type="button" className={styles.danger} onClick={remove}>
-              Прибрати
+              {t.removeConfirm}
             </button>
             <button type="button" className={styles.cancel} onClick={() => setConfirmRemove(false)}>
-              Скасувати
+              {m.common.cancel}
             </button>
           </span>
         </div>
       )}
 
-      <div className={styles.statuses} role="group" aria-label="Статус">
+      <div className={styles.statuses} role="group" aria-label={t.statusGroup}>
         {LIST_STATUSES.map((s) => (
           <button
             key={s}
@@ -129,60 +133,52 @@ export function MyListBlock({
             onClick={() => status !== s && save({ status: s as ListStatus })}
           >
             {status === s && <span aria-hidden="true">✓ </span>}
-            {LIST_STATUS_LABELS[s]}
+            {m.list.statuses[s]}
           </button>
         ))}
       </div>
 
       <ScoreRow
-        label={multipart ? "Оцінка аніме" : "Моя оцінка"}
+        label={multipart ? t.animeScore : t.myScore}
         score={score}
         onChange={(n) => save({ score: n })}
-        ariaLabel="Оцінка всього аніме від 1 до 10"
-        auto={
-          scoreAuto
-            ? multipart
-              ? "Середнє оцінок усіх сезонів. Щоб змінити — змініть оцінку сезону."
-              : "Середнє оцінок усіх серій. Щоб змінити — змініть оцінку серії."
-            : undefined
-        }
+        ariaLabel={t.animeScoreAria}
+        auto={scoreAuto ? (multipart ? t.autoSeasons : t.autoEpisodes) : undefined}
       />
       {multipart && (
         <ScoreRow
-          label={`Оцінка: ${seasonLabel ?? "ця частина"}`}
+          label={fmt(t.partScore, { part: seasonLabel ?? t.thisPart })}
           score={seasonScore}
           onChange={(n) => (setConfirmRemove(false), setSeasonScore(n))}
-          ariaLabel="Оцінка цієї частини від 1 до 10"
-          auto={seasonAuto ? "Середнє оцінок усіх серій. Щоб змінити — змініть оцінку серії." : undefined}
+          ariaLabel={t.partScoreAria}
+          auto={seasonAuto ? t.autoEpisodes : undefined}
         />
       )}
       {!entry && (
-        <p className={styles.muted}>
-          Оцінка додасть аніме в «Дивлюся». «Переглянуто» — коли відмічено всі серії або натиснуто кнопку.
-        </p>
+        <p className={styles.muted}>{t.hint}</p>
       )}
 
       {confirmHide ? (
-        <div className={styles.confirm} role="alertdialog" aria-label="Не цікаво?">
-          <span>Аніме у вашому списку. Прибрати його звідти (з оцінками й відмітками) і позначити «Не цікаво»?</span>
+        <div className={styles.confirm} role="alertdialog" aria-label={t.hideAria}>
+          <span>{t.hideText}</span>
           <span className={styles.confirmActions}>
             <button type="button" className={styles.danger} onClick={notInterested}>
-              Так
+              {m.common.yes}
             </button>
             <button type="button" className={styles.cancel} onClick={() => setConfirmHide(false)}>
-              Скасувати
+              {m.common.cancel}
             </button>
           </span>
         </div>
       ) : (
         <button type="button" className={styles.notInterested} onClick={notInterested}>
-          ✕ Не цікаво
+          {t.notInterested}
         </button>
       )}
 
       {error && (
         <p className={styles.error} role="alert">
-          {error}
+          {m.list.errors[error]}
         </p>
       )}
     </div>
@@ -203,11 +199,13 @@ function ScoreRow({
   /** Оцінка рахується сама — пояснення замість ручного вибору. */
   auto?: string;
 }) {
+  const { m, intl } = useI18n();
+  const t = m.list.block;
   return (
     <div className={styles.scoreRow}>
       <span className={styles.scoreLabel}>
         {label}
-        {score !== null && <b className={styles.scoreValue}> {formatUserScore(score)}</b>}
+        {score !== null && <b className={styles.scoreValue}> {score.toLocaleString(intl, { maximumFractionDigits: 1 })}</b>}
       </span>
       <div className={styles.scores} role="group" aria-label={ariaLabel}>
         {SCORES.map((n) => {
@@ -219,7 +217,7 @@ function ScoreRow({
               className={`${styles.score} ${score !== null && n <= Math.round(score) ? styles.scoreFilled : ""} ${active ? styles.scoreActive : ""}`}
               aria-pressed={active}
               aria-label={
-                auto ? `${label}: ${n}` : active ? `${label}: ${n}, натисніть, щоб прибрати` : `${label}: оцінити на ${n}`
+                fmt(auto ? t.scoreAuto : active ? t.scoreRemove : t.scoreRate, { label, n })
               }
               disabled={Boolean(auto)}
               onClick={() => onChange(active ? null : n)}

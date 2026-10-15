@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Мої аніме",
+  metaTitle: "Мої аніме — YourMovie",
+  loggedOut: { text: "{link}, щоб бачити свої списки, нові серії й прогрес.", link: "Увійдіть" },
+  loadError: "Не вдалося завантажити ваш список. Оновіть сторінку.",
+  franchisesSlow: "AniList зараз відповідає повільно — сезони можуть бути не згруповані. Оновіть сторінку трохи згодом.",
+  animeNumber: "Аніме #{id}",
+  tabsLabel: "Списки",
+  statuses: {
+    watching: "Дивлюся",
+    planning: "Планую",
+    completed: "Переглянуто",
+    paused: "На паузі",
+    dropped: "Кинув",
+  },
+  sort: {
+    label: "Сортування:",
+    new: "нові серії",
+    title: "назва",
+    recent: "остання зміна",
+  },
+  empty: {
+    watching: "Тут з’являться аніме зі статусом «Дивлюся». Знайдіть щось у {link} і відмітьте першу серію.",
+    catalogLink: "каталозі",
+    caughtUp: "Усе, що вийшло, переглянуто. Щойно вийде нова серія — аніме з’явиться тут.",
+    grid: "Тут поки порожньо.",
+  },
+  newEpisode: "Нова серія!",
+  newDot: "нова",
+  left: "залишилось {episodes}",
+  loading: "завантажуємо…",
+  myScore: "моя оцінка ★ {score}",
+  duration: { hours: "{h} год", minutes: "{m} хв", hoursMinutes: "{h} год {m} хв" },
+  plusOneLabel: "Відмітити серію {n} ({part}) переглянутою",
+  episodeNo: "№{n}",
+  nextEpisode: "Серія {n} вийде {date}",
+  confirmAll: "Відмітити {episodes} переглянутими?",
+  seasonDone: "Переглянуто весь сезон",
+  airedDone: "Переглянуто все, що вийшло",
+  episode: "Серія {n}",
+  upTo: "усі до цієї",
+  rateLabel: "Оцінити серію {n}",
+  watchedLabel: "Серію {n} переглянуто",
+  watched: "Переглянуто",
+  ratingLabel: "Оцінка серії {n}",
+  more: { text: "Ще {n} — на {link}", link: "сторінці сезону" },
+  waiting: {
+    toggle: "Чекають нових серій ({n})",
+    next: "{part}, серія {n} — {date}",
+    unknown: "дата нових серій невідома",
+  },
+  parts: { one: "{n} частина", few: "{n} частини", many: "{n} частин", other: "{n} частини" },
+  extras: " + {n} дод.",
+};
+
+export default my;

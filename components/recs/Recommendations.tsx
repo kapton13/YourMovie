@@ -1,28 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { MediaGrid } from "@/components/MediaGrid";
 import { SkipListed } from "@/components/hidden/SkipListed";
 import { useHidden } from "@/components/hidden/HiddenProvider";
-import { GENRE_LABELS } from "@/lib/labels";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
+import { label as labelOf } from "@/lib/i18n/labels";
 import type { Recommendation } from "@/lib/recommendations";
-import { useRecommendations } from "./useRecommendations";
+import { useReasonText, useRecommendations } from "./useRecommendations";
 import styles from "./Recommendations.module.css";
 
 type Kind = "all" | "series" | "movies";
 type Airing = "all" | "finished" | "releasing";
 
-const KINDS: [Kind, string][] = [
-  ["all", "Усі"],
-  ["series", "Серіали"],
-  ["movies", "Фільми"],
-];
-const AIRING: [Airing, string][] = [
-  ["all", "Усі"],
-  ["finished", "Завершені"],
-  ["releasing", "Виходять зараз"],
-];
+const KINDS: Kind[] = ["all", "series", "movies"];
+const AIRING: Airing[] = ["all", "finished", "releasing"];
 const SERIES = new Set(["TV", "TV_SHORT", "ONA", "OVA"]);
 const PAGE = 48;
 
@@ -39,22 +31,26 @@ function matches(item: Recommendation, kind: Kind, airing: Airing, genre: string
 /** Сторінка «Рекомендації»: за списками й оцінками людини, з простими фільтрами. */
 export function Recommendations() {
   const state = useRecommendations();
+  const reasonText = useReasonText();
+  const { m, fmt, count, intl } = useI18n();
   const { hiddenIds, listedIds } = useHidden();
   const [kind, setKind] = useState<Kind>("all");
   const [airing, setAiring] = useState<Airing>("all");
   const [genre, setGenre] = useState("");
   const [shown, setShown] = useState(PAGE);
 
-  const heading = <h1 className={styles.title}>Рекомендації</h1>;
+  const heading = <h1 className={styles.title}>{m.recs.title}</h1>;
 
   if (state.kind === "checking") return heading;
   if (state.kind === "guest") {
+    const [before, after = ""] = m.recs.guest.split("{link}");
     return (
       <>
         {heading}
         <p className={styles.empty}>
-          <Link href="/login?next=%2Frecommendations">Увійдіть</Link>, і ми підберемо аніме за вашими списками й
-          оцінками.
+          {before}
+          <Link href="/login?next=%2Frecommendations">{m.recs.guestLink}</Link>
+          {after}
         </p>
       </>
     );
@@ -63,7 +59,7 @@ export function Recommendations() {
     return (
       <>
         {heading}
-        <p className={styles.lead}>Підбираємо аніме за вашими списками й оцінками…</p>
+        <p className={styles.lead}>{m.recs.loading}</p>
         <div className={styles.gridSkeleton} aria-busy="true" />
       </>
     );
@@ -72,7 +68,7 @@ export function Recommendations() {
     return (
       <>
         {heading}
-        <p className={styles.empty}>Не вдалося підібрати рекомендації. Спробуйте оновити сторінку трохи згодом.</p>
+        <p className={styles.empty}>{m.recs.error}</p>
       </>
     );
   }
@@ -81,38 +77,46 @@ export function Recommendations() {
   // Те, що людина щойно сховала чи додала в списки, теж прибираємо — і з лічильників.
   const visible = items.filter((i) => !hiddenIds.has(i.media.id) && !listedIds.has(i.media.id));
   // Обраний жанр лишається у списку, навіть якщо його останнє аніме щойно сховали, — щоб фільтр можна було скинути.
+  const genreLabel = (g: string) => labelOf(m.labels.genre, g);
   const genres = [...new Set([...visible.flatMap((i) => i.media.genres), ...(genre ? [genre] : [])])].sort((a, b) =>
-    (GENRE_LABELS[a] ?? a).localeCompare(GENRE_LABELS[b] ?? b, "uk"),
+    genreLabel(a).localeCompare(genreLabel(b), intl),
   );
   const filtered = visible.filter((i) => matches(i, kind, airing, genre));
-  const reasons = new Map(items.map((i) => [i.media.id, i.reason]));
+  const reasons = new Map(items.map((i) => [i.media.id, reasonText(i.reason)]));
   const reset = () => setShown(PAGE);
 
   return (
     <SkipListed>
       {heading}
       <p className={styles.lead}>
-        {basedOn > 0
-          ? `Підібрано за ${basedOn} аніме з ваших списків і вашими оцінками. Що вище — то більше підходить.`
-          : "Поки що ми мало знаємо про ваш смак, тому показуємо популярне."}
+        {basedOn > 0 ? fmt(m.recs.lead, { count: count(m.common.anime, basedOn) }) : m.recs.leadEmpty}
       </p>
       {basedOn < 3 && (
         <p className={styles.hint}>
-          Додайте в списки й оцініть хоча б 3 аніме, які ви дивилися, — рекомендації стануть точнішими.{" "}
-          <Link href="/catalog">Перейти до каталогу →</Link>
+          {m.recs.hint} <Link href="/catalog">{m.recs.toCatalog}</Link>
         </p>
       )}
 
       <div className={styles.filters}>
-        <Segmented label="Тип" options={KINDS} value={kind} onChange={(v) => (setKind(v), reset())} />
-        <Segmented label="Статус" options={AIRING} value={airing} onChange={(v) => (setAiring(v), reset())} />
+        <Segmented
+          label={m.recs.filters.kind}
+          options={KINDS.map((v): [Kind, string] => [v, m.recs.filters.kinds[v]])}
+          value={kind}
+          onChange={(v) => (setKind(v), reset())}
+        />
+        <Segmented
+          label={m.recs.filters.airing}
+          options={AIRING.map((v): [Airing, string] => [v, m.recs.filters.airingOptions[v]])}
+          value={airing}
+          onChange={(v) => (setAiring(v), reset())}
+        />
         <label className={styles.genre}>
-          <span className={styles.filterLabel}>Жанр</span>
+          <span className={styles.filterLabel}>{m.recs.filters.genre}</span>
           <select value={genre} onChange={(e) => (setGenre(e.target.value), reset())} className={styles.select}>
-            <option value="">Усі жанри</option>
+            <option value="">{m.recs.filters.allGenres}</option>
             {genres.map((g) => (
               <option key={g} value={g}>
-                {GENRE_LABELS[g] ?? g}
+                {genreLabel(g)}
               </option>
             ))}
           </select>
@@ -124,12 +128,12 @@ export function Recommendations() {
           <MediaGrid items={filtered.slice(0, shown).map((i) => i.media)} note={(m) => reasons.get(m.id)} />
           {filtered.length > shown && (
             <button type="button" className={styles.more} onClick={() => setShown((n) => n + PAGE)}>
-              Показати ще
+              {m.recs.more}
             </button>
           )}
         </>
       ) : (
-        <p className={styles.empty}>За цими фільтрами нічого не знайшлося. Спробуйте інші.</p>
+        <p className={styles.empty}>{m.recs.noResults}</p>
       )}
     </SkipListed>
   );

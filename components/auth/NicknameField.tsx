@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NICKNAME_RULES, cleanNickname, nicknameProblem } from "@/lib/profile";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { cleanNickname, nicknameProblem } from "@/lib/profile";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import styles from "./auth.module.css";
 
@@ -20,6 +21,8 @@ export function NicknameField({
   /** Поточний нік (у профілі): його не вважаємо «зайнятим». */
   current?: string;
 }) {
+  const { m } = useI18n();
+  const t = m.auth.nickname;
   const nick = cleanNickname(value);
   const problem = nick ? nicknameProblem(nick) : "";
   // Що відомо одразу, без запиту до бази.
@@ -56,18 +59,18 @@ export function NicknameField({
 
   const message =
     state === "invalid"
-      ? problem
+      ? t.problems[problem]
       : state === "taken"
-        ? "Цей нікнейм уже зайнятий — спробуйте інший."
+        ? t.taken
         : state === "free"
-          ? "✓ Нікнейм вільний"
+          ? t.free
           : state === "checking"
-            ? "Перевіряємо…"
-            : NICKNAME_RULES;
+            ? t.checking
+            : t.rules;
 
   return (
     <label className={styles.field}>
-      <span>Нікнейм</span>
+      <span>{t.label}</span>
       <input
         type="text"
         name="nickname"
@@ -82,7 +85,7 @@ export function NicknameField({
         onChange={(e) => onChange(e.target.value)}
         className={`${styles.input} ${state === "invalid" || state === "taken" ? styles.inputBad : ""}`}
         aria-invalid={state === "invalid" || state === "taken"}
-        placeholder="Наприклад, Kapton"
+        placeholder={t.placeholder}
       />
       <span
         className={`${styles.hint} ${state === "free" ? styles.hintOk : ""} ${state === "invalid" || state === "taken" ? styles.hintBad : ""}`}

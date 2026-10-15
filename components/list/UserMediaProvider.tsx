@@ -18,6 +18,9 @@ import { getSupabaseBrowser } from "@/lib/supabase/client";
 
 export type EpisodeMark = Mark;
 
+/** Що пішло не так — текст бере компонент зі словника (`m.list.errors`). */
+export type UserMediaError = "load" | "save" | "seasons";
+
 /** Що сторінка знає про аніме, до якого належить ця частина. */
 export type FranchiseContext = {
   /** id запису всього аніме (найперша основна частина). */
@@ -45,7 +48,7 @@ type Context = {
   /** Чи має аніме кілька частин (тоді показуємо оцінку сезону окремо). */
   multipart: boolean;
   saving: boolean;
-  error: string;
+  error: UserMediaError | null;
   airedCount: number;
   total: number | null;
   setStatus: (status: ListStatus) => void;
@@ -60,7 +63,7 @@ const UserMediaContext = createContext<Context | null>(null);
 
 export function useUserMedia(): Context {
   const context = useContext(UserMediaContext);
-  if (!context) throw new Error("useUserMedia: немає UserMediaProvider");
+  if (!context) throw new Error("useUserMedia: UserMediaProvider is missing");
   return context;
 }
 
@@ -90,7 +93,7 @@ export function UserMediaProvider({
   const main = mainInfo.map((p) => (p.id === part.id ? part : p));
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<UserMediaError | null>(null);
   // Збільшуємо, щоб перечитати дані з бази (після невдалого збереження).
   const [version, setVersion] = useState(0);
   const idsKey = allIds.join(",");
@@ -111,7 +114,7 @@ export function UserMediaProvider({
       if (entriesRes.error || marksRes.error) {
         // Без даних нічого не даємо змінювати — інакше збереження затерло б справжні оцінки.
         console.error(entriesRes.error ?? marksRes.error);
-        setError("Не вдалося завантажити ваш список. Оновіть сторінку.");
+        setError("load");
         return;
       }
       // Таблиця оцінок сезонів може ще не існувати — тоді просто без них.
@@ -185,7 +188,7 @@ export function UserMediaProvider({
     if (!current) return;
     const before = current;
     setLoaded({ ...current, ...next });
-    setError("");
+    setError(null);
     setSaving(true);
     const problem = await write();
     setSaving(false);
@@ -194,7 +197,7 @@ export function UserMediaProvider({
       // Частину могло вже бути збережено — показуємо як було й перечитуємо з бази, як є насправді.
       setLoaded(before);
       setVersion((v) => v + 1);
-      setError("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
+      setError("save");
     }
   }
 
@@ -323,7 +326,7 @@ export function UserMediaProvider({
           // Не знаємо, скільки серій вийшло в інших сезонах, — не ставимо «Переглянуто» навмання.
           console.error(e);
           setSaving(false);
-          setError("Не вдалося дізнатися про інші сезони в AniList. Спробуйте ще раз трохи згодом.");
+          setError("seasons");
         });
     },
 

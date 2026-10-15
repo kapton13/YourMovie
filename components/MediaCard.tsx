@@ -1,6 +1,9 @@
-import Link from "next/link";
+"use client";
+
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { MediaCard as Media } from "@/lib/anilist";
-import { FORMAT_LABELS, formatScore } from "@/lib/labels";
+import { label as labelOf } from "@/lib/i18n/labels";
+import { formatScore } from "@/lib/labels";
 import { Hideable } from "./hidden/Hideable";
 import styles from "./MediaCard.module.css";
 
@@ -19,9 +22,10 @@ type Props = {
 };
 
 export function MediaCard({ media, badge, label, note, current, hideable = true }: Props) {
-  const title = media.title.english ?? media.title.romaji ?? "Без назви";
+  const { m, fmt } = useI18n();
+  const title = media.title.english ?? media.title.romaji ?? m.common.untitled;
   const score = formatScore(media.averageScore);
-  const meta = [media.format && FORMAT_LABELS[media.format], media.startDate.year ?? media.seasonYear]
+  const meta = [media.format && labelOf(m.labels.format, media.format), media.startDate.year ?? media.seasonYear]
     .filter(Boolean)
     .join(" · ");
 
@@ -34,11 +38,11 @@ export function MediaCard({ media, badge, label, note, current, hideable = true 
         )}
         {badge && <span className={styles.badge}>{badge}</span>}
         {score && (
-          <span className={styles.score} aria-label={`Рейтинг ${score} з 10`}>
+          <span className={styles.score} aria-label={fmt(m.home.card.score, { score })}>
             ★ {score}
           </span>
         )}
-        {current && <span className={styles.here}>Ви тут</span>}
+        {current && <span className={styles.here}>{m.home.card.here}</span>}
       </div>
       {label && <p className={styles.label}>{label}</p>}
       <h3 className={styles.title} title={title}>
@@ -88,4 +92,10 @@ function Wrapper({
   ) : (
     children
   );
+}
+
+/** Тексти ряду карток: MediaRow лишається спільним (сервер і браузер передають йому функції), тож тексти — тут. */
+export function MediaRowText({ id }: { id: "seeAll" | "empty" }) {
+  const { m } = useI18n();
+  return m.home.row[id];
 }

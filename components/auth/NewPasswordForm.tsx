@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Link, useI18n, useLocaleRouter } from "@/components/i18n/I18nProvider";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 import { useUser } from "./useUser";
@@ -13,7 +12,9 @@ const MIN_PASSWORD = 8;
 /** Новий пароль: після посилання з листа «Забули пароль?» або з акаунта. */
 export function NewPasswordForm() {
   const user = useUser();
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { m, fmt } = useI18n();
+  const t = m.auth.newPassword;
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -24,12 +25,10 @@ export function NewPasswordForm() {
   if (!user) {
     return (
       <div className={styles.card}>
-        <h1 className={styles.title}>Новий пароль</h1>
-        <p className={styles.text}>
-          Посилання застаріло або ви не ввійшли. Запросіть новий лист на сторінці входу («Забули пароль?»).
-        </p>
+        <h1 className={styles.title}>{t.title}</h1>
+        <p className={styles.text}>{t.expired}</p>
         <p className={styles.switch}>
-          <Link href="/login">До входу</Link>
+          <Link href="/login">{t.toLogin}</Link>
         </p>
       </div>
     );
@@ -38,25 +37,25 @@ export function NewPasswordForm() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
-    if (password.length < MIN_PASSWORD) return setError(`Пароль має бути щонайменше ${MIN_PASSWORD} символів.`);
+    if (password.length < MIN_PASSWORD) return setError(fmt(m.auth.passwordTooShort, { n: MIN_PASSWORD }));
     setBusy(true);
     const { error } = await getSupabaseBrowser().auth.updateUser({ password });
     setBusy(false);
-    if (error) return setError(authErrorMessage(error));
+    if (error) return setError(authErrorMessage(error, m));
     setDone(true);
     setTimeout(() => router.replace("/account"), 1500);
   }
 
   return (
     <div className={styles.card}>
-      <h1 className={styles.title}>Новий пароль</h1>
-      <p className={styles.text}>Для акаунта {user.email}</p>
+      <h1 className={styles.title}>{t.title}</h1>
+      <p className={styles.text}>{fmt(t.forAccount, { email: user.email ?? "" })}</p>
       {done ? (
-        <p className={styles.notice}>Пароль змінено.</p>
+        <p className={styles.notice}>{t.done}</p>
       ) : (
         <form className={styles.form} onSubmit={onSubmit} noValidate>
           <label className={styles.field}>
-            <span>Новий пароль</span>
+            <span>{t.label}</span>
             <input
               type="password"
               autoComplete="new-password"
@@ -66,7 +65,7 @@ export function NewPasswordForm() {
               minLength={MIN_PASSWORD}
               required
             />
-            <span className={styles.hint}>Щонайменше {MIN_PASSWORD} символів.</span>
+            <span className={styles.hint}>{fmt(m.auth.passwordHint, { n: MIN_PASSWORD })}</span>
           </label>
           {error && (
             <p className={styles.error} role="alert">
@@ -74,7 +73,7 @@ export function NewPasswordForm() {
             </p>
           )}
           <button type="submit" className={styles.submit} disabled={busy || !password}>
-            {busy ? "Зберігаємо…" : "Зберегти пароль"}
+            {busy ? t.saving : t.save}
           </button>
         </form>
       )}

@@ -1,0 +1,58 @@
+import type { Plural } from "@/lib/i18n/format";
+
+const my = {
+  title: "My anime",
+  metaTitle: "My anime — YourMovie",
+  loggedOut: { text: "{link} to see your lists, new episodes and progress.", link: "Log in" },
+  loadError: "Couldn’t load your list. Please refresh the page.",
+  franchisesSlow: "AniList is responding slowly right now, so seasons may not be grouped. Please refresh the page a little later.",
+  animeNumber: "Anime #{id}",
+  tabsLabel: "Lists",
+  statuses: {
+    watching: "Watching",
+    planning: "Planning",
+    completed: "Completed",
+    paused: "On hold",
+    dropped: "Dropped",
+  },
+  sort: {
+    label: "Sort by:",
+    new: "new episodes",
+    title: "title",
+    recent: "last change",
+  },
+  empty: {
+    watching: "Anime with the “Watching” status will show up here. Find something in the {link} and mark the first episode.",
+    catalogLink: "catalog",
+    caughtUp: "You’re all caught up. As soon as a new episode comes out, the anime will show up here.",
+    grid: "Nothing here yet.",
+  },
+  newEpisode: "New episode!",
+  newDot: "new",
+  left: "{episodes} left",
+  loading: "loading…",
+  myScore: "my score ★ {score}",
+  duration: { hours: "{h} h", minutes: "{m} min", hoursMinutes: "{h} h {m} min" },
+  plusOneLabel: "Mark episode {n} ({part}) as watched",
+  episodeNo: "#{n}",
+  nextEpisode: "Episode {n} airs {date}",
+  confirmAll: "Mark {episodes} as watched?",
+  seasonDone: "Watched the whole season",
+  airedDone: "Watched everything aired",
+  episode: "Episode {n}",
+  upTo: "all up to this one",
+  rateLabel: "Rate episode {n}",
+  watchedLabel: "Episode {n} watched",
+  watched: "Watched",
+  ratingLabel: "Episode {n} score",
+  more: { text: "{n} more on the {link}", link: "season page" },
+  waiting: {
+    toggle: "Waiting for new episodes ({n})",
+    next: "{part}, episode {n} — {date}",
+    unknown: "no date for new episodes yet",
+  },
+  parts: { one: "{n} part", other: "{n} parts" } as Plural,
+  extras: " + {n} extra",
+};
+
+export default my;

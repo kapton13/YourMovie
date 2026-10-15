@@ -1,16 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { Franchise, FranchisePart, MyMedia } from "@/lib/anilist";
 import { franchiseEntryAfter, hasUnwatchedAired, mergeStatuses, seasonAverage, type Marks } from "@/lib/franchiseRules";
-import { FORMAT_LABELS } from "@/lib/labels";
-import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListEntry, type ListStatus } from "@/lib/lists";
+import { fmt } from "@/lib/i18n/format";
+import { formatAiringDate, label, partLabel } from "@/lib/i18n/labels";
+import { LIST_STATUSES, type ListEntry, type ListStatus } from "@/lib/lists";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
 import { useHidden } from "@/components/hidden/HiddenProvider";
 import { HiddenList } from "./HiddenList";
+import type { Messages } from "@/messages";
 import styles from "./MyAnime.module.css";
 
 type SortKey = "new" | "title" | "recent";
@@ -35,22 +37,29 @@ type Item = {
 const NEW_EPISODE_DAYS = 7;
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-const shortDate = new Intl.DateTimeFormat("uk-UA", { day: "numeric", month: "long", timeZone: "Europe/Kyiv" });
-
 /** «2 год 10 хв», «45 хв». */
-function formatDuration(minutes: number): string {
+function formatDuration(minutes: number, t: Messages["my"]["duration"]): string {
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
-  if (h === 0) return `${m} хв`;
-  return m === 0 ? `${h} год` : `${h} год ${m} хв`;
+  if (h === 0) return fmt(t.minutes, { m });
+  return m === 0 ? fmt(t.hours, { h }) : fmt(t.hoursMinutes, { h, m });
 }
 
-function pluralEpisodes(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "серія";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "серії";
-  return "серій";
+/** Оцінка: «8», «7,5» / «7.5» — за правилами мови. */
+function formatScore(score: number, intl: string): string {
+  return score.toLocaleString(intl, { minimumFractionDigits: Number.isInteger(score) ? 0 : 1, maximumFractionDigits: 1 });
+}
+
+/** Вставити елемент (посилання, жирний текст) замість {name} у тексті зі словника. */
+function withNode(template: string, name: string, node: React.ReactNode): React.ReactNode {
+  const [before, after] = template.split(`{${name}}`);
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  );
 }
 
 function dateValue(part: FranchisePart): number {
@@ -69,10 +78,10 @@ function partTitle(part: FranchisePart): string {
 }
 
 /** Якщо AniList не відповів про частини — показуємо аніме як одну частину. */
-function singlePartFranchise(id: number, media: MyMedia | undefined): Franchise {
+function singlePartFranchise(id: number, media: MyMedia | undefined, m: Messages): Franchise {
   const part: FranchisePart = {
     id,
-    title: media?.title ?? { romaji: null, english: `Аніме #${id}` },
+    title: media?.title ?? { romaji: null, english: fmt(m.my.animeNumber, { id }) },
     coverImage: media?.coverImage ?? { large: null, color: null },
     format: media?.format ?? null,
     seasonYear: media?.seasonYear ?? null,
@@ -81,20 +90,23 @@ function singlePartFranchise(id: number, media: MyMedia | undefined): Franchise 
     startDate: { year: media?.startDate.year ?? null, month: null, day: null },
     status: media?.status ?? null,
     duration: media?.duration ?? null,
-    label: "Сезон 1",
+    kind: "season",
+    season: 1,
   };
   return { key: id, title: partTitle(part), main: [part], extras: [] };
 }
 
 export function MyAnime() {
   const user = useUser();
+  const { m, intl, count } = useI18n();
+  const t = m.my;
   const [entries, setEntries] = useState<ListEntry[] | undefined>(undefined);
   const [marks, setMarks] = useState<Map<number, Marks>>(new Map());
   const [seasonScores, setSeasonScores] = useState<Map<number, number>>(new Map());
   const [franchises, setFranchises] = useState<Record<number, Franchise>>({});
   const [media, setMedia] = useState<Map<number, MyMedia>>(new Map());
-  const [loadProblem, setLoadProblem] = useState("");
-  const [error, setError] = useState("");
+  const [loadProblem, setLoadProblem] = useState<"" | "list" | "franchises" | "anilist">("");
+  const [error, setError] = useState(false);
   // Збільшуємо, щоб перечитати все з бази (після невдалого збереження частина могла записатися).
   const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<ListStatus | "hidden">("watching");
@@ -140,7 +152,7 @@ export function MyAnime() {
       if (cancelled) return;
       if (entriesRes.error || marksRes.error) {
         console.error(entriesRes.error ?? marksRes.error);
-        setLoadProblem("Не вдалося завантажити ваш список. Оновіть сторінку.");
+        setLoadProblem("list");
         setEntries([]);
         return;
       }
@@ -168,7 +180,7 @@ export function MyAnime() {
         groups = await res.json();
       } catch (e) {
         console.error(e);
-        if (!cancelled) setLoadProblem("AniList зараз відповідає повільно — сезони можуть бути не згруповані. Оновіть сторінку трохи згодом.");
+        if (!cancelled) setLoadProblem("franchises");
       }
       if (cancelled) return;
 
@@ -222,7 +234,7 @@ export function MyAnime() {
         if (!cancelled) setMedia(fresh);
       } catch (e) {
         console.error(e);
-        if (!cancelled) setLoadProblem("Не вдалося завантажити дані з AniList. Спробуйте оновити сторінку трохи згодом.");
+        if (!cancelled) setLoadProblem("anilist");
         return;
       }
 
@@ -262,22 +274,22 @@ export function MyAnime() {
   const items: Item[] = useMemo(
     () =>
       (entries ?? []).map((entry) => {
-        const franchise = franchises[entry.media_id] ?? singlePartFranchise(entry.media_id, media.get(entry.media_id));
+        const franchise = franchises[entry.media_id] ?? singlePartFranchise(entry.media_id, media.get(entry.media_id), m);
         const mainIds = new Set(franchise.main.map((p) => p.id));
         const parts = [...franchise.main, ...franchise.extras].map((part): PartView => {
-          const m = media.get(part.id);
+          const fresh = media.get(part.id);
           const partMarks = marks.get(part.id);
-          const aired = m?.airedCount ?? 0;
+          const aired = fresh?.airedCount ?? 0;
           const unwatched: number[] = [];
           for (let n = 1; n <= aired; n++) if (!partMarks?.get(n)?.watched) unwatched.push(n);
           const isMain = mainIds.has(part.id);
           // Побічні частини показуємо, лише якщо людина вже почала їх дивитися.
           const started = Boolean(partMarks && [...partMarks.values()].some((x) => x.watched));
-          return { part, media: m, isMain, unwatched, pending: unwatched.length > 0 && (isMain || started) };
+          return { part, media: fresh, isMain, unwatched, pending: unwatched.length > 0 && (isMain || started) };
         });
         return { key: entry.media_id, franchise, entry, parts };
       }),
-    [entries, franchises, marks, media],
+    [entries, franchises, marks, media, m],
   );
 
   if (user === undefined || (user && entries === undefined)) return <div className={styles.skeleton} />;
@@ -285,10 +297,8 @@ export function MyAnime() {
   if (!user) {
     return (
       <div className={styles.empty}>
-        <h1 className={styles.title}>Мої аніме</h1>
-        <p>
-          <Link href="/login?next=%2Fmy">Увійдіть</Link>, щоб бачити свої списки, нові серії й прогрес.
-        </p>
+        <h1 className={styles.title}>{t.title}</h1>
+        <p>{withNode(t.loggedOut.text, "link", <Link href="/login?next=%2Fmy">{t.loggedOut.link}</Link>)}</p>
       </div>
     );
   }
@@ -339,7 +349,7 @@ export function MyAnime() {
     setSeasonScores(nextScores);
     if (nextEntry && nextEntry !== item.entry)
       setEntries((list) => list?.map((e) => (e.media_id === item.key ? nextEntry : e)));
-    setError("");
+    setError(false);
 
     const supabase = getSupabaseBrowser();
     const writes: PromiseLike<{ error: { message: string } | null }>[] = [
@@ -362,7 +372,7 @@ export function MyAnime() {
       setSeasonScores(before.seasonScores);
       setEntries(before.entries);
       setVersion((v) => v + 1);
-      setError("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
+      setError(true);
     }
   }
 
@@ -370,9 +380,9 @@ export function MyAnime() {
 
   return (
     <div>
-      <h1 className={styles.title}>Мої аніме</h1>
+      <h1 className={styles.title}>{t.title}</h1>
 
-      <div className={styles.tabs} role="tablist" aria-label="Списки">
+      <div className={styles.tabs} role="tablist" aria-label={t.tabsLabel}>
         {LIST_STATUSES.map((s) => (
           <button
             key={s}
@@ -382,7 +392,7 @@ export function MyAnime() {
             className={`${styles.tab} ${tab === s ? styles.tabActive : ""}`}
             onClick={() => setTab(s)}
           >
-            {LIST_STATUS_LABELS[s]} <span className={styles.count}>{counts[s]}</span>
+            {t.statuses[s]} <span className={styles.count}>{counts[s]}</span>
           </button>
         ))}
         <button
@@ -392,29 +402,27 @@ export function MyAnime() {
           className={`${styles.tab} ${styles.tabHidden} ${tab === "hidden" ? styles.tabActive : ""}`}
           onClick={() => setTab("hidden")}
         >
-          ✕ Не цікаво <span className={styles.count}>{hiddenKeys.size}</span>
+          ✕ {m.hidden.tab} <span className={styles.count}>{hiddenKeys.size}</span>
         </button>
       </div>
 
       {error && (
         <p className={styles.error} role="alert">
-          {error}
+          {m.common.saveError}
         </p>
       )}
-      {loadProblem && <p className={styles.error}>{loadProblem}</p>}
+      {loadProblem && (
+        <p className={styles.error}>
+          {loadProblem === "list" ? t.loadError : loadProblem === "franchises" ? t.franchisesSlow : m.common.anilistError}
+        </p>
+      )}
 
       {tab === "watching" ? (
         <>
           {behind.length > 0 && (
             <div className={styles.sortRow}>
-              <span>Сортування:</span>
-              {(
-                [
-                  ["new", "нові серії"],
-                  ["title", "назва"],
-                  ["recent", "остання зміна"],
-                ] as [SortKey, string][]
-              ).map(([key, label]) => (
+              <span>{t.sort.label}</span>
+              {(["new", "title", "recent"] as SortKey[]).map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -422,7 +430,7 @@ export function MyAnime() {
                   aria-pressed={sort === key}
                   onClick={() => setSort(key)}
                 >
-                  {label}
+                  {t.sort[key]}
                 </button>
               ))}
             </div>
@@ -431,12 +439,9 @@ export function MyAnime() {
           {behind.length === 0 && (
             <div className={styles.empty}>
               {watching.length === 0 ? (
-                <p>
-                  Тут з’являться аніме зі статусом «Дивлюся». Знайдіть щось у <Link href="/catalog">каталозі</Link> і
-                  відмітьте першу серію.
-                </p>
+                <p>{withNode(t.empty.watching, "link", <Link href="/catalog">{t.empty.catalogLink}</Link>)}</p>
               ) : (
-                <p>Усе, що вийшло, переглянуто. Щойно вийде нова серія — аніме з’явиться тут.</p>
+                <p>{t.empty.caughtUp}</p>
               )}
             </div>
           )}
@@ -459,23 +464,23 @@ export function MyAnime() {
                     </Link>
                     <div className={styles.itemInfo}>
                       <Link href={`/anime/${item.key}`} className={styles.itemTitle}>
-                        {item.franchise.title}
+                        {item.franchise.title || m.common.untitled}
                       </Link>
                       <p className={styles.itemMeta}>
-                        {anyNew && <span className={styles.newBadge}>Нова серія!</span>}
+                        {anyNew && <span className={styles.newBadge}>{t.newEpisode}</span>}
                         {mediaReady ? (
                           <>
-                            залишилось{" "}
-                            <b>
-                              {pending.reduce((n, p) => n + p.unwatched.length, 0)}{" "}
-                              {pluralEpisodes(pending.reduce((n, p) => n + p.unwatched.length, 0))}
-                            </b>
-                            {minutes > 0 && <> · ~{formatDuration(minutes)}</>}
+                            {withNode(
+                              t.left,
+                              "episodes",
+                              <b>{count(m.common.episodes, pending.reduce((n, p) => n + p.unwatched.length, 0))}</b>,
+                            )}
+                            {minutes > 0 && <> · ~{formatDuration(minutes, t.duration)}</>}
                           </>
                         ) : (
-                          "завантажуємо…"
+                          t.loading
                         )}
-                        {item.entry.score !== null && <> · моя оцінка ★ {formatUserScore(item.entry.score)}</>}
+                        {item.entry.score !== null && <> · {fmt(t.myScore, { score: formatScore(item.entry.score, intl) })}</>}
                       </p>
                     </div>
                   </div>
@@ -498,12 +503,10 @@ export function MyAnime() {
                               aria-expanded={expanded}
                               onClick={() => (setOpenPart(expanded ? null : id), setRating(null), setConfirmAll(null))}
                             >
-                              <span className={styles.partLabel}>{view.part.label}</span>
+                              <span className={styles.partLabel}>{partLabel(view.part, m)}</span>
                               {showTitle && <span className={styles.partTitle}>{partTitle(view.part)}</span>}
-                              <span className={styles.partCount}>
-                                {left.length} {pluralEpisodes(left.length)}
-                              </span>
-                              {isNewPart(view) && <span className={styles.newDot}>нова</span>}
+                              <span className={styles.partCount}>{count(m.common.episodes, left.length)}</span>
+                              {isNewPart(view) && <span className={styles.newDot}>{t.newDot}</span>}
                               <span className={styles.chevron} aria-hidden="true">
                                 {expanded ? "▴" : "▾"}
                               </span>
@@ -512,15 +515,17 @@ export function MyAnime() {
                               type="button"
                               className={styles.plusOne}
                               onClick={() => markEpisodes(item, view, [left[0]])}
-                              aria-label={`Відмітити серію ${left[0]} (${view.part.label}) переглянутою`}
+                              aria-label={fmt(t.plusOneLabel, { n: left[0], part: partLabel(view.part, m) })}
                             >
-                              +1 <span className={styles.plusOneHint}>№{left[0]}</span>
+                              +1 <span className={styles.plusOneHint}>{fmt(t.episodeNo, { n: left[0] })}</span>
                             </button>
                           </div>
                           {view.media?.nextAiringEpisode && (
                             <p className={styles.next}>
-                              Серія {view.media.nextAiringEpisode.episode} вийде{" "}
-                              {shortDate.format(new Date(view.media.nextAiringEpisode.airingAt * 1000))}
+                              {fmt(t.nextEpisode, {
+                                n: view.media.nextAiringEpisode.episode,
+                                date: formatAiringDate(view.media.nextAiringEpisode.airingAt, intl),
+                              })}
                             </p>
                           )}
 
@@ -528,16 +533,16 @@ export function MyAnime() {
                             <div className={styles.partBody}>
                               {confirmAll === id ? (
                                 <p className={styles.confirmAll}>
-                                  Відмітити {left.length} {pluralEpisodes(left.length)} переглянутими?{" "}
+                                  {fmt(t.confirmAll, { episodes: count(m.common.episodes, left.length) })}{" "}
                                   <button
                                     type="button"
                                     className={styles.confirmYes}
                                     onClick={() => (setConfirmAll(null), markEpisodes(item, view, left))}
                                   >
-                                    Так
+                                    {m.common.yes}
                                   </button>
                                   <button type="button" className={styles.confirmNo} onClick={() => setConfirmAll(null)}>
-                                    Ні
+                                    {m.common.no}
                                   </button>
                                 </p>
                               ) : (
@@ -546,7 +551,7 @@ export function MyAnime() {
                                   className={styles.seasonDone}
                                   onClick={() => (left.length > 1 ? setConfirmAll(id) : markEpisodes(item, view, left))}
                                 >
-                                  ✓ {fullSeason ? "Переглянуто весь сезон" : "Переглянуто все, що вийшло"}
+                                  ✓ {fullSeason ? t.seasonDone : t.airedDone}
                                 </button>
                               )}
                               <ol className={styles.episodes}>
@@ -556,21 +561,21 @@ export function MyAnime() {
                                     <li key={n} className={styles.episode}>
                                       <div className={styles.episodeRow}>
                                         <span className={styles.episodeNumber}>{n}</span>
-                                        <span className={styles.episodeTitle}>Серія {n}</span>
+                                        <span className={styles.episodeTitle}>{fmt(t.episode, { n })}</span>
                                         {n > left[0] && (
                                           <button
                                             type="button"
                                             className={styles.upTo}
                                             onClick={() => markEpisodes(item, view, left.filter((x) => x <= n))}
                                           >
-                                            усі до цієї
+                                            {t.upTo}
                                           </button>
                                         )}
                                         <button
                                           type="button"
                                           className={styles.rate}
                                           aria-expanded={rating === key}
-                                          aria-label={`Оцінити серію ${n}`}
+                                          aria-label={fmt(t.rateLabel, { n })}
                                           onClick={() => setRating(rating === key ? null : key)}
                                         >
                                           ☆
@@ -578,14 +583,14 @@ export function MyAnime() {
                                         <button
                                           type="button"
                                           className={styles.watchedButton}
-                                          aria-label={`Серію ${n} переглянуто`}
+                                          aria-label={fmt(t.watchedLabel, { n })}
                                           onClick={() => markEpisodes(item, view, [n])}
                                         >
-                                          ✓ <span>Переглянуто</span>
+                                          ✓ <span>{t.watched}</span>
                                         </button>
                                       </div>
                                       {rating === key && (
-                                        <div className={styles.rating} role="group" aria-label={`Оцінка серії ${n}`}>
+                                        <div className={styles.rating} role="group" aria-label={fmt(t.ratingLabel, { n })}>
                                           {SCORES.map((score) => (
                                             <button
                                               key={score}
@@ -603,7 +608,11 @@ export function MyAnime() {
                                 })}
                                 {left.length > 50 && (
                                   <li className={styles.more}>
-                                    Ще {left.length - 50} — на <Link href={`/anime/${id}`}>сторінці сезону</Link>
+                                    {withNode(
+                                      fmt(t.more.text, { n: left.length - 50 }),
+                                      "link",
+                                      <Link href={`/anime/${id}`}>{t.more.link}</Link>,
+                                    )}
                                   </li>
                                 )}
                               </ol>
@@ -626,21 +635,21 @@ export function MyAnime() {
                 aria-expanded={showWaiting}
                 onClick={() => setShowWaiting((v) => !v)}
               >
-                {showWaiting ? "▴" : "▾"} Чекають нових серій ({waiting.length})
+                {showWaiting ? "▴" : "▾"} {fmt(t.waiting.toggle, { n: waiting.length })}
               </button>
               {showWaiting && (
                 <ul className={styles.waitingList}>
                   {waiting.map((item) => {
                     const next = item.parts
-                      .map((p) => p.media?.nextAiringEpisode && { ...p.media.nextAiringEpisode, label: p.part.label })
+                      .map((p) => p.media?.nextAiringEpisode && { ...p.media.nextAiringEpisode, label: partLabel(p.part, m) })
                       .find(Boolean);
                     return (
                       <li key={item.key}>
-                        <Link href={`/anime/${item.key}`}>{item.franchise.title}</Link>
+                        <Link href={`/anime/${item.key}`}>{item.franchise.title || m.common.untitled}</Link>
                         <span>
                           {next
-                            ? `${next.label}, серія ${next.episode} — ${shortDate.format(new Date(next.airingAt * 1000))}`
-                            : "дата нових серій невідома"}
+                            ? fmt(t.waiting.next, { part: next.label, n: next.episode, date: formatAiringDate(next.airingAt, intl) })
+                            : t.waiting.unknown}
                         </span>
                       </li>
                     );
@@ -660,7 +669,8 @@ export function MyAnime() {
 }
 
 function Grid({ items }: { items: Item[] }) {
-  if (items.length === 0) return <div className={styles.empty}>Тут поки порожньо.</div>;
+  const { m, intl, count } = useI18n();
+  if (items.length === 0) return <div className={styles.empty}>{m.my.empty.grid}</div>;
   return (
     <ul className={styles.grid}>
       {items.map(({ key, franchise, entry }) => {
@@ -674,13 +684,13 @@ function Grid({ items }: { items: Item[] }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={first.coverImage.large} alt="" loading="lazy" />
                 )}
-                {entry.score !== null && <span className={styles.myScore}>★ {formatUserScore(entry.score)}</span>}
+                {entry.score !== null && <span className={styles.myScore}>★ {formatScore(entry.score, intl)}</span>}
               </span>
-              <span className={styles.cardTitle}>{franchise.title}</span>
+              <span className={styles.cardTitle}>{franchise.title || m.common.untitled}</span>
               <span className={styles.cardMeta}>
                 {parts > 1
-                  ? `${franchise.main.length} ${franchise.main.length === 1 ? "частина" : franchise.main.length < 5 ? "частини" : "частин"}${franchise.extras.length ? ` + ${franchise.extras.length} дод.` : ""}`
-                  : [first?.format && FORMAT_LABELS[first.format], first?.startDate.year ?? first?.seasonYear].filter(Boolean).join(" · ")}
+                  ? `${count(m.my.parts, franchise.main.length)}${franchise.extras.length ? fmt(m.my.extras, { n: franchise.extras.length }) : ""}`
+                  : [first?.format && label(m.labels.format, first.format), first?.startDate.year ?? first?.seasonYear].filter(Boolean).join(" · ")}
               </span>
             </Link>
           </li>

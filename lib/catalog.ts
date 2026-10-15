@@ -7,8 +7,9 @@
  *        &season=fall&format=tv,movie&status=finished&episodes=13-26&score=7.5
  *        &country=jp&source=manga&sort=score&page=2
  */
+import type { Messages } from "@/messages";
 import type { MediaFormat, MediaStatus, Season } from "./anilist";
-import { GENRE_LABELS, SEASON_LABELS } from "./labels";
+import { count, fmt } from "./i18n/format";
 
 export type SortKey = "relevance" | "popular" | "score" | "trending" | "newest" | "oldest";
 
@@ -47,7 +48,26 @@ const MAX_LIST = 15;
 // Варіанти фільтрів і їхні короткі назви в адресі
 
 /** Жанри AniList без «Hentai» (сайт не показує дорослий контент). */
-export const GENRES = Object.keys(GENRE_LABELS).filter((g) => g !== "Hentai");
+export const GENRES = [
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Drama",
+  "Ecchi",
+  "Fantasy",
+  "Horror",
+  "Mahou Shoujo",
+  "Mecha",
+  "Music",
+  "Mystery",
+  "Psychological",
+  "Romance",
+  "Sci-Fi",
+  "Slice of Life",
+  "Sports",
+  "Supernatural",
+  "Thriller",
+];
 
 export const FORMATS: MediaFormat[] = ["TV", "TV_SHORT", "MOVIE", "SPECIAL", "OVA", "ONA", "MUSIC"];
 
@@ -71,14 +91,15 @@ export const SOURCES = [
 
 export const SORTS: SortKey[] = ["relevance", "popular", "score", "trending", "newest", "oldest"];
 
-export const EPISODE_PRESETS: { value: string; label: string }[] = [
-  { value: "1", label: "1 серія" },
-  { value: "2-12", label: "2–12" },
-  { value: "13-26", label: "13–26" },
-  { value: "27-52", label: "27–52" },
-  { value: "53-100", label: "53–100" },
-  { value: "101-", label: "Понад 100" },
-];
+/** Варіанти кількості серій (як в адресі). Підписи — `episodePresetLabel`. */
+export const EPISODE_PRESETS = ["1", "2-12", "13-26", "27-52", "53-100", "101-"];
+
+/** Підпис варіанта кількості серій потрібною мовою: «1 серія», «2–12», «Понад 100». */
+export function episodePresetLabel(value: string, m: Messages, intl: string): string {
+  if (value === "1") return count(m.common.episodes, 1, intl);
+  if (value === "101-") return m.catalog.episodes.over100;
+  return value.replace("-", "–");
+}
 
 export const SCORE_PRESETS = [5, 6, 7, 7.5, 8, 8.5, 9];
 
@@ -266,8 +287,10 @@ export function countFilters(query: CatalogQuery): number {
   );
 }
 
-export function catalogTitle(query: CatalogQuery): string {
-  if (query.q) return `Пошук: «${query.q}»`;
+/** Заголовок каталогу потрібною мовою: «Пошук: «…»», «Аніме 2024 року», «Жанр: Драма»… */
+export function catalogTitle(query: CatalogQuery, m: Messages): string {
+  const t = m.catalog.title;
+  if (query.q) return fmt(t.search, { q: query.q });
 
   const filters = countFilters(query);
   const singleYear =
@@ -275,14 +298,16 @@ export function catalogTitle(query: CatalogQuery): string {
   const yearCounts = query.yearFrom !== undefined || query.yearTo !== undefined ? 1 : 0;
 
   if (query.season && filters === 1 + yearCounts && (singleYear || !yearCounts)) {
-    return `Сезон: ${SEASON_LABELS[query.season]}${singleYear ? ` ${singleYear}` : ""}`;
+    const season = m.labels.season[query.season] ?? query.season;
+    return singleYear ? fmt(t.seasonYear, { season, year: singleYear }) : fmt(t.season, { season });
   }
-  if (singleYear && filters === 1) return `Аніме ${singleYear} року`;
-  if (query.genres.length === 1 && filters === 1) return `Жанр: ${GENRE_LABELS[query.genres[0]]}`;
+  if (singleYear && filters === 1) return fmt(t.year, { year: singleYear });
+  if (query.genres.length === 1 && filters === 1)
+    return fmt(t.genre, { genre: m.labels.genre[query.genres[0]] ?? query.genres[0] });
   if (filters === 0) {
-    if (query.sort === "trending") return "Зараз у тренді";
-    if (query.sort === "score") return "Топ рейтингу";
-    if (query.sort === "newest") return "Нові аніме";
+    if (query.sort === "trending") return t.trending;
+    if (query.sort === "score") return t.top;
+    if (query.sort === "newest") return t.newest;
   }
-  return "Каталог аніме";
+  return t.default;
 }

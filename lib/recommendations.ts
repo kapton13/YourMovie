@@ -1,5 +1,5 @@
 import { getHomeSections, getRecCards, getRecSeeds, type RecCard } from "./anilist";
-import { formatUserScore, type ListStatus } from "./lists";
+import type { ListStatus } from "./lists";
 
 /**
  * Рекомендації без ШІ (узгоджено з власником 2026-10-14):
@@ -12,10 +12,19 @@ import { formatUserScore, type ListStatus } from "./lists";
 
 export type RecEntry = { id: number; status: ListStatus; score: number | null };
 
+/**
+ * Чому порадили — дані, а текст складає браузер мовою сайту:
+ * «Бо ви оцінили «X» на 9», «Схоже на «X» і «Y»», «Популярне на AniList».
+ * Назва може бути порожньою, якщо AniList її не має.
+ */
+export type RecReason =
+  | { kind: "rated"; title: string; score: number }
+  | { kind: "similar"; titles: string[] }
+  | { kind: "popular" };
+
 export type Recommendation = {
   media: Omit<RecCard, "tags" | "previous" | "isAdult">;
-  /** Чому порадили: «Бо ви оцінили «X» на 9», «Схоже на «X» і «Y»», «Популярне на AniList». */
-  reason: string;
+  reason: RecReason;
 };
 
 export type RecommendationsResult = {
@@ -151,14 +160,15 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
   }
 
   const seedTitle = new Map(seeds.map((s) => [s.id, s.title]));
-  function reason(from: Map<number, number>): string {
+  function reason(from: Map<number, number>): RecReason {
     const liked = [...from].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
     const [first, second] = liked.map(([id]) => id);
     const score = entryOf.get(first)?.score ?? null;
+    const title = (id: number) => seedTitle.get(id) ?? "";
     // Вказують кілька улюблених аніме — це найпереконливіше пояснення.
-    if (second !== undefined) return `Схоже на «${seedTitle.get(first)}» і «${seedTitle.get(second)}»`;
-    if (score !== null && score >= 8) return `Бо ви оцінили «${seedTitle.get(first)}» на ${formatUserScore(score)}`;
-    return `Схоже на «${seedTitle.get(first)}»`;
+    if (second !== undefined) return { kind: "similar", titles: [title(first), title(second)] };
+    if (score !== null && score >= 8) return { kind: "rated", title: title(first), score };
+    return { kind: "similar", titles: [title(first)] };
   }
 
   const ranked = [...merged]
@@ -184,7 +194,7 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
       const card = cards.get(id);
       if (!card || taken.has(id) || exclude.has(id) || !suitable(card) || card.previous) continue;
       taken.add(id);
-      items.push({ media: strip(card), reason: "Популярне на AniList" });
+      items.push({ media: strip(card), reason: { kind: "popular" } });
     }
   }
 

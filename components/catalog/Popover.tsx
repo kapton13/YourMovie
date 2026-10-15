@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import styles from "./CatalogControls.module.css";
 
 type Props = {
@@ -21,6 +22,7 @@ export function Popover({ label, summary, active, wide, children }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const { m } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -59,7 +61,7 @@ export function Popover({ label, summary, active, wide, children }: Props) {
             <div className={styles.panelHeader}>
               <span>{label}</span>
               <button type="button" className={styles.done} onClick={() => setOpen(false)}>
-                Готово
+                {m.common.done}
               </button>
             </div>
             <div className={styles.panelBody}>{children}</div>
