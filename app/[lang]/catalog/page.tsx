@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "Каталог і пошук аніме — YourMovie",
 };
 
-export default async function CatalogPage({ searchParams }: PageProps<"/catalog">) {
+export default async function CatalogPage({ searchParams }: PageProps<"/[lang]/catalog">) {
   const options = await getFilterOptions().catch((error) => {
     console.error(error);
     return { tagGroups: [], maxYear: 2027 };
@@ -60,7 +60,7 @@ function ResultsSkeleton() {
   );
 }
 
-async function CatalogResults({ searchParams }: Pick<PageProps<"/catalog">, "searchParams">) {
+async function CatalogResults({ searchParams }: Pick<PageProps<"/[lang]/catalog">, "searchParams">) {
   const query = parseCatalogParams(await searchParams);
 
   let result;

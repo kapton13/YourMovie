@@ -48,13 +48,13 @@ function displayTitle(media: MediaDetails): string {
   return media.title.english ?? media.title.romaji ?? "Без назви";
 }
 
-export async function generateMetadata({ params }: PageProps<"/anime/[id]">) {
+export async function generateMetadata({ params }: PageProps<"/[lang]/anime/[id]">) {
   const id = parseId((await params).id);
   const media = id ? await getMedia(id).catch(() => null) : null;
   return { title: media ? `${displayTitle(media)} — YourMovie` : "Аніме — YourMovie" };
 }
 
-export default function AnimePage({ params }: PageProps<"/anime/[id]">) {
+export default function AnimePage({ params }: PageProps<"/[lang]/anime/[id]">) {
   return (
     <Suspense fallback={<p className={styles.status}>Завантажуємо…</p>}>
       <Anime params={params} />
@@ -62,7 +62,7 @@ export default function AnimePage({ params }: PageProps<"/anime/[id]">) {
   );
 }
 
-async function Anime({ params }: Pick<PageProps<"/anime/[id]">, "params">) {
+async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">) {
   const id = parseId((await params).id);
   if (!id) notFound();
 

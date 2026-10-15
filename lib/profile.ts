@@ -48,6 +48,8 @@ export type Profile = {
   phone: string | null;
   /** Відкритий профіль (`/u/нікнейм` бачать усі). Немає, якщо базу ще не оновлено. */
   is_public?: boolean;
+  /** Обрана мова сайту (en, uk, ru…). Немає, якщо базу ще не оновлено або не обирали. */
+  language?: string | null;
   country: string | null;
 };
 

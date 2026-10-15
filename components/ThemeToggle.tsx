@@ -1,9 +1,11 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
 import styles from "./ThemeToggle.module.css";
 
 /** Перемикає світлу/темну тему; вибір запам'ятовується в браузері. */
 export function ThemeToggle() {
+  const { m } = useI18n();
   function toggle() {
     const root = document.documentElement;
     const current =
@@ -18,7 +20,7 @@ export function ThemeToggle() {
   }
 
   return (
-    <button type="button" className={styles.toggle} onClick={toggle} aria-label="Змінити тему: день або ніч" title="День / ніч">
+    <button type="button" className={styles.toggle} onClick={toggle} aria-label={m.common.theme.toggle} title={m.common.theme.toggle}>
       <svg className={styles.sun} viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="4.5" />
         <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
