@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "update-titles": "node scripts/update-title-index.mjs"
+    "update-titles": "node scripts/update-title-index.mjs",
+    "update-ru-titles": "node scripts/update-ru-titles.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

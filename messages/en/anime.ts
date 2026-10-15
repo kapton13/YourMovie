@@ -22,6 +22,7 @@ const anime = {
     heading: "Description",
     empty: "No description yet.",
     englishNote: "The description is in English, as provided by AniList.",
+    sourceNote: "Description: {source}.",
   },
   tags: "Tags",
   info: {

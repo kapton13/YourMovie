@@ -13,7 +13,7 @@ const common = {
   },
   theme: { toggle: "Switch day / night theme" },
   language: { label: "Site language", choose: "Language" },
-  footer: { dataBy: "Anime data provided by {source}." },
+  footer: { dataBy: "Anime data provided by {source}.", shikimori: "Russian titles and descriptions: {source}." },
   notFound: {
     title: "Page not found",
     text: "The link may be outdated or contain a typo.",

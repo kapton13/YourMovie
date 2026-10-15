@@ -29,7 +29,7 @@ const my = {
   },
   newEpisode: "New episode!",
   newDot: "new",
-  left: "{episodes} left",
+  left: { one: "{episodes} left", other: "{episodes} left" } as Plural,
   loading: "loading…",
   myScore: "my score ★ {score}",
   duration: { hours: "{h} h", minutes: "{m} min", hoursMinutes: "{h} h {m} min" },

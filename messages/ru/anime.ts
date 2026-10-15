@@ -22,6 +22,7 @@ const anime: Messages["anime"] = {
     heading: "Описание",
     empty: "Описания пока нет.",
     englishNote: "Описание на английском — так его предоставляет AniList.",
+    sourceNote: "Описание: {source}.",
   },
   tags: "Теги",
   info: {

@@ -1,4 +1,6 @@
 import { cacheLife } from "next/cache";
+import type { Titles } from "./i18n/title";
+import { attachRussianTitles } from "./russianTitles";
 import { PAGE_SIZE, type CatalogQuery, type SortKey } from "./catalog";
 import { rankByRelevance } from "./search";
 import { searchTitleIndex } from "./titleIndex";
@@ -18,7 +20,8 @@ export type Season = "WINTER" | "SPRING" | "SUMMER" | "FALL";
 
 export type MediaCard = {
   id: number;
-  title: { romaji: string | null; english: string | null };
+  /** russian — з Shikimori (для російської версії), якщо відома. */
+  title: { romaji: string | null; english: string | null; russian?: string | null };
   coverImage: { large: string | null; color: string | null };
   format: MediaFormat | null;
   seasonYear: number | null;
@@ -94,6 +97,7 @@ async function anilist<T>(query: string, variables: Record<string, unknown>, att
     const error = json?.errors?.[0];
     throw new AniListError(error?.status ?? res.status, error?.message ?? res.statusText);
   }
+  attachRussianTitles(json.data);
   return json.data as T;
 }
 
@@ -428,7 +432,7 @@ export type RelationType =
 
 export type MediaDetails = Omit<MediaCard, "startDate"> & {
   idMal: number | null;
-  title: { romaji: string | null; english: string | null; native: string | null };
+  title: { romaji: string | null; english: string | null; native: string | null; russian?: string | null };
   coverImage: { extraLarge: string | null; large: string | null; color: string | null };
   bannerImage: string | null;
   description: string | null;
@@ -515,7 +519,9 @@ export type PartKind = "season" | "series" | "MOVIE" | "OVA" | "SPECIAL" | "MUSI
  */
 export type Franchise = {
   key: number;
+  /** Англійська назва (для сортування); показувати — `animeTitle(titles, lang)`. */
   title: string;
+  titles: Titles;
   /** Основна історія (ланцюжок «попередня / наступна частина») за датою виходу. */
   main: FranchisePart[];
   /** Побічні історії, спешли, OVA «збоку» — за датою виходу. */
@@ -633,6 +639,7 @@ export async function getFranchise(id: number): Promise<Franchise> {
     key: first.id,
     // Порожня назва — інтерфейс покаже «Без назви» потрібною мовою.
     title: first.title.english ?? first.title.romaji ?? "",
+    titles: first.title,
     main: mainParts,
     extras: extraParts,
   };
@@ -855,7 +862,7 @@ export type RecCard = MediaCard & {
 
 export type RecSeed = {
   id: number;
-  title: string;
+  titles: Titles;
   genres: string[];
   tags: RecTag[];
   recs: { rating: number; media: RecCard }[];
@@ -963,7 +970,7 @@ export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
       for (const r of recs) cardMemo.set(r.media.id, { at, card: r.media });
       const seed: RecSeed = {
         id: m.id,
-        title: m.title.english ?? m.title.romaji ?? "",
+        titles: m.title,
         genres: m.genres,
         tags: m.tags ?? [],
         recs,

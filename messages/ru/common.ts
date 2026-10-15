@@ -13,7 +13,7 @@ const common: Messages["common"] = {
   },
   theme: { toggle: "Сменить тему: день или ночь" },
   language: { label: "Язык сайта", choose: "Язык" },
-  footer: { dataBy: "Данные об аниме предоставляет {source}." },
+  footer: { dataBy: "Данные об аниме предоставляет {source}.", shikimori: "Русские названия и описания: {source}." },
   notFound: {
     title: "Такой страницы нет",
     text: "Возможно, ссылка устарела или в ней ошибка.",

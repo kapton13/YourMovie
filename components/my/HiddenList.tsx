@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useHidden } from "@/components/hidden/HiddenProvider";
 import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { Franchise } from "@/lib/anilist";
+import { animeTitle } from "@/lib/i18n/title";
 import styles from "./MyAnime.module.css";
 
 /** Вкладка «Не цікаво»: усе сховане, з кнопкою «Повернути». */
 export function HiddenList() {
   const { hiddenKeys, unhide } = useHidden();
-  const { m, fmt } = useI18n();
+  const { m, fmt, lang } = useI18n();
   const t = m.hidden;
   const keys = [...hiddenKeys.keys()].sort((a, b) => a - b);
   const keysParam = keys.join(",");
@@ -48,7 +49,7 @@ export function HiddenList() {
                     <img src={first.coverImage.large} alt="" loading="lazy" />
                   )}
                 </span>
-                <span className={styles.cardTitle}>{franchise ? franchise.title || m.common.untitled : fmt(t.animeNumber, { id: key })}</span>
+                <span className={styles.cardTitle}>{franchise ? animeTitle(franchise.titles, lang) || m.common.untitled : fmt(t.animeNumber, { id: key })}</span>
               </Link>
               <button type="button" className={styles.restore} onClick={() => unhide(key)}>
                 {t.restore}

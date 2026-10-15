@@ -11,7 +11,8 @@ import list from "./list";
 import my from "./my";
 import profile from "./profile";
 import recs from "./recs";
+import tags from "./tags";
 
-const messages: Messages = { common, labels, home, catalog, anime, list, my, hidden, recs, profile, auth, account };
+const messages: Messages = { common, labels, home, catalog, anime, list, my, hidden, recs, profile, auth, account, tags };
 
 export default messages;
