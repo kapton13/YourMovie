@@ -92,7 +92,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
   const altTitles = [media.title.english, media.title.romaji, media.title.native].filter(
     (t, i, all): t is string => Boolean(t) && t !== title && all.indexOf(t) === i,
   );
-  const score = formatScore(media.averageScore);
+  const score = formatScore(media.averageScore, intl);
   const votes = media.stats?.scoreDistribution.reduce((sum, d) => sum + d.amount, 0) ?? 0;
   // Російською — опис Shikimori, якщо є; інакше англійський з AniList.
   const ruParagraphs = shikimoriParagraphs(shikimori?.description ?? null);

@@ -100,7 +100,7 @@ function singlePartFranchise(id: number, media: MyMedia | undefined, m: Messages
 
 export function MyAnime() {
   const user = useUser();
-  const { m, intl, count, lang } = useI18n();
+  const { m, intl, count, plural, lang } = useI18n();
   const t = m.my;
   const [entries, setEntries] = useState<ListEntry[] | undefined>(undefined);
   const [marks, setMarks] = useState<Map<number, Marks>>(new Map());
@@ -472,11 +472,11 @@ export function MyAnime() {
                         {anyNew && <span className={styles.newBadge}>{t.newEpisode}</span>}
                         {mediaReady ? (
                           <>
-                            {withNode(
-                              t.left,
-                              "episodes",
-                              <b>{count(m.common.episodes, pending.reduce((n, p) => n + p.unwatched.length, 0))}</b>,
-                            )}
+                            {(() => {
+                              // «осталась 1 серия» / «осталось 5 серий» — форма дієслова теж залежить від числа.
+                              const total = pending.reduce((n, p) => n + p.unwatched.length, 0);
+                              return withNode(plural(t.left, total), "episodes", <b>{count(m.common.episodes, total)}</b>);
+                            })()}
                             {minutes > 0 && <> · ~{formatDuration(minutes, t.duration)}</>}
                           </>
                         ) : (

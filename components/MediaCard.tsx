@@ -23,9 +23,9 @@ type Props = {
 };
 
 export function MediaCard({ media, badge, label, note, current, hideable = true }: Props) {
-  const { m, fmt, lang } = useI18n();
+  const { m, fmt, lang, intl } = useI18n();
   const title = animeTitle(media.title, lang) || m.common.untitled;
-  const score = formatScore(media.averageScore);
+  const score = formatScore(media.averageScore, intl);
   const meta = [media.format && labelOf(m.labels.format, media.format), media.startDate.year ?? media.seasonYear]
     .filter(Boolean)
     .join(" · ");

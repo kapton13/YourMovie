@@ -29,7 +29,7 @@ const my: Messages["my"] = {
   },
   newEpisode: "Новая серия!",
   newDot: "новая",
-  left: "осталось {episodes}",
+  left: { one: "осталась {episodes}", few: "осталось {episodes}", many: "осталось {episodes}", other: "осталось {episodes}" },
   loading: "загружаем…",
   myScore: "моя оценка ★ {score}",
   duration: { hours: "{h} ч", minutes: "{m} мин", hoursMinutes: "{h} ч {m} мин" },
