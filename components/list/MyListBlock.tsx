@@ -16,10 +16,13 @@ const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 export function MyListBlock({
   seasonLabel,
   mediaId,
+  rootId,
   title,
 }: {
   seasonLabel?: string;
   mediaId: number;
+  /** Перша частина аніме: «Не цікаво» ховає всі сезони. */
+  rootId?: number;
   title: string;
 }) {
   const { user, entry, saving, error, setStatus, setScore, setSeasonScore, seasonScore, seasonAuto, scoreAuto, multipart, remove: removeAll } =
@@ -95,7 +98,7 @@ export function MyListBlock({
     }
     setConfirmHide(false);
     if (entry) removeAll();
-    hide(mediaId, title);
+    hide(mediaId, title, rootId);
   }
 
   return (

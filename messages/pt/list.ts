@@ -35,7 +35,7 @@ const list: Messages["list"] = {
     partScore: "Nota: {part}",
     thisPart: "esta parte",
     partScoreAria: "Nota para esta parte, de 1 a 10",
-    hint: "Dar uma nota coloca o anime em “Assistindo”. “Assistido” é definido quando todos os episódios estão marcados ou ao apertar o botão.",
+    hint: "Dar uma nota coloca o anime em “Assistindo”. “Assistido” é definido quando todos os episódios lançados estão marcados ou ao apertar o botão; com um episódio novo, volta para “Assistindo”.",
     notInterested: "✕ Não tenho interesse",
     hideAria: "Não tem interesse?",
     hideText: "Este anime está na sua lista. Removê-lo de lá (com notas e marcações de episódios) e marcá-lo como “Não tenho interesse”?",

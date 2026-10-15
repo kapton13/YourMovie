@@ -194,7 +194,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
               )}
             </p>
           )}
-          <MyListBlock seasonLabel={part} mediaId={media.id} title={title} />
+          <MyListBlock seasonLabel={part} mediaId={media.id} rootId={franchise?.key} title={title} />
           <h2 className={styles.subheading}>{m.anime.description.heading}</h2>
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => <p key={i} className={styles.paragraph}>{p}</p>)

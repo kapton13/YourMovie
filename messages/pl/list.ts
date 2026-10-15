@@ -35,7 +35,7 @@ const list: Messages["list"] = {
     partScore: "Ocena: {part}",
     thisPart: "ta część",
     partScoreAria: "Ocena tej części od 1 do 10",
-    hint: "Ocena dodaje anime do „Oglądam”. Status „Obejrzane” pojawia się, gdy oznaczysz wszystkie odcinki albo naciśniesz przycisk.",
+    hint: "Ocena dodaje anime do „Oglądam”. Status „Obejrzane” pojawia się, gdy oznaczysz wszystkie wydane odcinki albo naciśniesz przycisk; nowy odcinek przenosi anime z powrotem do „Oglądam”.",
     notInterested: "✕ Nie interesuje mnie",
     hideAria: "Nie interesuje cię?",
     hideText: "To anime jest na twojej liście. Usunąć je stamtąd (z ocenami i oznaczonymi odcinkami) i oznaczyć jako „Nie interesuje mnie”?",

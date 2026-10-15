@@ -35,7 +35,7 @@ const list: Messages["list"] = {
     partScore: "Puntuación: {part}",
     thisPart: "esta parte",
     partScoreAria: "Puntuación de esta parte del 1 al 10",
-    hint: "Al puntuar, el anime pasa a «Viendo». «Completado» se marca cuando todos los episodios están marcados o al pulsar el botón.",
+    hint: "Al puntuar, el anime pasa a «Viendo». «Completado» se marca cuando todos los episodios emitidos están marcados o al pulsar el botón; con un episodio nuevo vuelve a «Viendo».",
     notInterested: "✕ No me interesa",
     hideAria: "¿No te interesa?",
     hideText: "Este anime está en tu lista. ¿Quitarlo de ahí (con puntuaciones y episodios marcados) y marcarlo como «No me interesa»?",

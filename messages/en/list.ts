@@ -33,7 +33,7 @@ const list = {
     partScore: "Score: {part}",
     thisPart: "this part",
     partScoreAria: "Score for this part from 1 to 10",
-    hint: "A score adds the anime to “Watching”. “Completed” is set when all episodes are marked or the button is pressed.",
+    hint: "A score adds the anime to “Watching”. “Completed” is set when every released episode is marked or the button is pressed; a new episode moves it back to “Watching”.",
     notInterested: "✕ Not interested",
     hideAria: "Not interested?",
     hideText: "This anime is in your list. Remove it from there (with scores and episode marks) and mark it “Not interested”?",

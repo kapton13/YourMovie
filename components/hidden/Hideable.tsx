@@ -12,12 +12,15 @@ import styles from "./Hidden.module.css";
 export function Hideable({
   mediaId,
   rootId,
+  parentId,
   title,
   children,
 }: {
   mediaId: number;
   /** Перша частина аніме (якщо відома): сезон 3 ховається, коли в списку саме аніме. */
   rootId?: number;
+  /** Попередня частина: сховано її — ховаємо й цю (новий сезон, спешл). Лише для «Не цікаво». */
+  parentId?: number;
   title: string;
   children: React.ReactNode;
 }) {
@@ -26,6 +29,7 @@ export function Hideable({
   const { m, fmt } = useI18n();
   const ids = rootId && rootId !== mediaId ? [mediaId, rootId] : [mediaId];
   if (ids.some((id) => hiddenIds.has(id) || (skipListed && listedIds.has(id)))) return null;
+  if (parentId && hiddenIds.has(parentId)) return null;
   return (
     <div className={styles.hideable}>
       {children}
@@ -33,7 +37,7 @@ export function Hideable({
         <button
           type="button"
           className={styles.cross}
-          onClick={() => hide(mediaId, title)}
+          onClick={() => hide(mediaId, title, rootId)}
           aria-label={fmt(m.hidden.crossLabel, { title })}
           title={m.hidden.crossTitle}
         >

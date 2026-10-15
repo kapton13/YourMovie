@@ -35,7 +35,7 @@ const list: Messages["list"] = {
     partScore: "Bewertung: {part}",
     thisPart: "dieser Teil",
     partScoreAria: "Bewertung für diesen Teil von 1 bis 10",
-    hint: "Eine Bewertung setzt den Anime auf „Schaue ich“. „Gesehen“ wird gesetzt, wenn alle Folgen abgehakt sind oder du den Button drückst.",
+    hint: "Eine Bewertung setzt den Anime auf „Schaue ich“. „Gesehen“ wird gesetzt, wenn alle erschienenen Folgen abgehakt sind oder du den Button drückst; mit einer neuen Folge geht es zurück zu „Schaue ich“.",
     notInterested: "✕ Kein Interesse",
     hideAria: "Kein Interesse?",
     hideText: "Dieser Anime ist in deiner Liste. Dort entfernen (samt Bewertungen und abgehakten Folgen) und als „Kein Interesse“ markieren?",
