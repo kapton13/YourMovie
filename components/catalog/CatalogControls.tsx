@@ -423,7 +423,7 @@ function GenreTagPicker({
   tagGroups: TagGroup[];
   onChange: (patch: Partial<CatalogQuery>) => void;
 }) {
-  const { m } = useI18n();
+  const { m, intl } = useI18n();
   const p = m.catalog.picker;
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
@@ -434,7 +434,15 @@ function GenreTagPicker({
     (g) => !needle || labelOf(m.labels.genre, g).toLowerCase().includes(needle) || g.toLowerCase().includes(needle),
   );
   const groups = tagGroups
-    .map((group) => ({ ...group, tags: group.tags.filter((t) => !needle || t.toLowerCase().includes(needle)) }))
+    // Шукаємо і за перекладеною назвою тегу, і за англійською.
+    .map((group) => ({
+      ...group,
+      tags: group.tags.filter(
+        (t) => !needle || t.toLowerCase().includes(needle) || labelOf(m.tags, t).toLowerCase().includes(needle),
+      )
+        // За абеткою мови сайту.
+        .sort((a, b) => labelOf(m.tags, a).localeCompare(labelOf(m.tags, b), intl)),
+    }))
     .filter((group) => group.tags.length > 0);
 
   const stateOf = (included: string[], excluded: string[], value: string): TriState =>
@@ -504,7 +512,7 @@ function GenreTagPicker({
                 {group.tags.map((tag) => (
                   <TriChip
                     key={tag}
-                    label={tag}
+                    label={labelOf(m.tags, tag)}
                     state={stateOf(query.tags, query.tagsNot, tag)}
                     onClick={() => cycle("tags", tag)}
                   />
@@ -591,11 +599,11 @@ function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
       remove: { genresNot: query.genresNot.filter((x) => x !== g) },
     });
   for (const t of query.tags)
-    chips.push({ key: `t:${t}`, label: `#${t}`, remove: { tags: query.tags.filter((x) => x !== t) } });
+    chips.push({ key: `t:${t}`, label: `#${labelOf(m.tags, t)}`, remove: { tags: query.tags.filter((x) => x !== t) } });
   for (const t of query.tagsNot)
     chips.push({
       key: `tn:${t}`,
-      label: fmt(chipsText.notTag, { tag: t }),
+      label: fmt(chipsText.notTag, { tag: labelOf(m.tags, t) }),
       exclude: true,
       remove: { tagsNot: query.tagsNot.filter((x) => x !== t) },
     });

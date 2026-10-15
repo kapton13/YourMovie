@@ -21,6 +21,9 @@ import { catalogHref } from "@/lib/catalog";
 import { count, fmt } from "@/lib/i18n/format";
 import { formatAiringDate, formatFuzzyDate, label, partLabel } from "@/lib/i18n/labels";
 import { getI18n } from "@/lib/i18n/server";
+import { animeTitle } from "@/lib/i18n/title";
+import type { Locale } from "@/lib/i18n/config";
+import { getShikimoriAnime, shikimoriParagraphs, type ShikimoriAnime } from "@/lib/shikimori";
 import { formatScore } from "@/lib/labels";
 import type { Messages } from "@/messages";
 import { descriptionParagraphs } from "@/lib/text";
@@ -30,15 +33,26 @@ function parseId(raw: string): number | null {
   return /^\d{1,9}$/.test(raw) ? Number(raw) : null;
 }
 
-function displayTitle(media: MediaDetails, m: Messages): string {
-  return media.title.english ?? media.title.romaji ?? m.common.untitled;
+function displayTitle(media: MediaDetails, m: Messages, lang: Locale, shikimori?: ShikimoriAnime | null): string {
+  const title = { ...media.title, russian: media.title.russian ?? shikimori?.russian ?? null };
+  return animeTitle(title, lang) || m.common.untitled;
+}
+
+/** Російська версія: назва й опис із Shikimori (за id MyAnimeList). Без нього — дані AniList. */
+async function shikimoriFor(media: MediaDetails, lang: Locale): Promise<ShikimoriAnime | null> {
+  if (lang !== "ru" || !media.idMal) return null;
+  return getShikimoriAnime(media.idMal).catch((error) => {
+    console.error(error);
+    return null;
+  });
 }
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/anime/[id]">): Promise<Metadata> {
-  const { m } = await getI18n();
+  const { m, lang } = await getI18n();
   const id = parseId((await params).id);
   const media = id ? await getMedia(id).catch(() => null) : null;
-  return { title: media ? fmt(m.anime.metaTitle, { title: displayTitle(media, m) }) : m.anime.metaFallback };
+  const shikimori = media ? await shikimoriFor(media, lang) : null;
+  return { title: media ? fmt(m.anime.metaTitle, { title: displayTitle(media, m, lang, shikimori) }) : m.anime.metaFallback };
 }
 
 export default async function AnimePage({ params }: PageProps<"/[lang]/anime/[id]">) {
@@ -73,11 +87,16 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
   const partInFranchise = franchise ? [...franchise.main, ...franchise.extras].find((p) => p.id === media.id) : undefined;
   const mainIndex = franchise ? franchise.main.findIndex((p) => p.id === media.id) : -1;
 
-  const title = displayTitle(media, m);
-  const altTitles = [media.title.romaji, media.title.native].filter((t) => t && t !== title);
+  const shikimori = await shikimoriFor(media, lang);
+  const title = displayTitle(media, m, lang, shikimori);
+  const altTitles = [media.title.english, media.title.romaji, media.title.native].filter(
+    (t, i, all): t is string => Boolean(t) && t !== title && all.indexOf(t) === i,
+  );
   const score = formatScore(media.averageScore);
   const votes = media.stats?.scoreDistribution.reduce((sum, d) => sum + d.amount, 0) ?? 0;
-  const paragraphs = descriptionParagraphs(media.description);
+  // Російською — опис Shikimori, якщо є; інакше англійський з AniList.
+  const ruParagraphs = shikimoriParagraphs(shikimori?.description ?? null);
+  const paragraphs = ruParagraphs.length > 0 ? ruParagraphs : descriptionParagraphs(media.description);
   const tags = media.tags
     .filter((tag) => !tag.isMediaSpoiler && !tag.isGeneralSpoiler && tag.rank >= 50)
     .slice(0, 12);
@@ -165,7 +184,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
                 <>
                   {partOfBefore}
                   <Link href={`/anime/${franchise.key}`} className={styles.franchiseLink}>
-                    {fmt(m.anime.franchise.quoted, { title: franchise.title })}
+                    {fmt(m.anime.franchise.quoted, { title: animeTitle(franchise.titles, lang) || m.common.untitled })}
                   </Link>
                   {partOfAfter} · {part}
                   {mainIndex >= 0
@@ -182,14 +201,24 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
           ) : (
             <p className={styles.muted}>{m.anime.description.empty}</p>
           )}
-          {paragraphs.length > 0 && lang !== "en" && <p className={styles.note}>{m.anime.description.englishNote}</p>}
+          {ruParagraphs.length > 0 && shikimori ? (
+            <p className={styles.note}>
+              {m.anime.description.sourceNote.split("{source}")[0]}
+              <a href={shikimori.url} target="_blank" rel="noopener noreferrer">
+                Shikimori
+              </a>
+              {m.anime.description.sourceNote.split("{source}")[1]}
+            </p>
+          ) : (
+            paragraphs.length > 0 && lang !== "en" && <p className={styles.note}>{m.anime.description.englishNote}</p>
+          )}
 
           {tags.length > 0 && (
             <>
               <h2 className={styles.subheading}>{m.anime.tags}</h2>
               <ul className={styles.tags}>
                 {tags.map((tag) => (
-                  <li key={tag.name}>{tag.name}</li>
+                  <li key={tag.name}>{label(m.tags, tag.name)}</li>
                 ))}
               </ul>
             </>

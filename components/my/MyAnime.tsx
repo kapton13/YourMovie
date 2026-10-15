@@ -5,8 +5,10 @@ import { useUser } from "@/components/auth/useUser";
 import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { Franchise, FranchisePart, MyMedia } from "@/lib/anilist";
 import { franchiseEntryAfter, hasUnwatchedAired, mergeStatuses, seasonAverage, type Marks } from "@/lib/franchiseRules";
+import type { Locale } from "@/lib/i18n/config";
 import { fmt } from "@/lib/i18n/format";
 import { formatAiringDate, label, partLabel } from "@/lib/i18n/labels";
+import { animeTitle } from "@/lib/i18n/title";
 import { LIST_STATUSES, type ListEntry, type ListStatus } from "@/lib/lists";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
@@ -73,8 +75,8 @@ function chronoIndex(item: { franchise: Franchise }, view: { part: FranchisePart
   return all.findIndex((p) => p.id === view.part.id);
 }
 
-function partTitle(part: FranchisePart): string {
-  return part.title.english ?? part.title.romaji ?? `#${part.id}`;
+function partTitle(part: FranchisePart, lang: Locale): string {
+  return animeTitle(part.title, lang) || `#${part.id}`;
 }
 
 /** Якщо AniList не відповів про частини — показуємо аніме як одну частину. */
@@ -93,12 +95,12 @@ function singlePartFranchise(id: number, media: MyMedia | undefined, m: Messages
     kind: "season",
     season: 1,
   };
-  return { key: id, title: partTitle(part), main: [part], extras: [] };
+  return { key: id, title: part.title.english ?? part.title.romaji ?? "", titles: part.title, main: [part], extras: [] };
 }
 
 export function MyAnime() {
   const user = useUser();
-  const { m, intl, count } = useI18n();
+  const { m, intl, count, lang } = useI18n();
   const t = m.my;
   const [entries, setEntries] = useState<ListEntry[] | undefined>(undefined);
   const [marks, setMarks] = useState<Map<number, Marks>>(new Map());
@@ -315,7 +317,7 @@ export function MyAnime() {
   const isNewPart = (p: PartView) => Boolean(p.pending && p.media?.lastAiredAt && now - p.media.lastAiredAt < NEW_EPISODE_DAYS * 86400);
 
   const sorted = [...behind].sort((a, b) => {
-    if (sort === "title") return a.franchise.title.localeCompare(b.franchise.title);
+    if (sort === "title") return animeTitle(a.franchise.titles, lang).localeCompare(animeTitle(b.franchise.titles, lang), intl);
     if (sort === "recent") return b.entry.updated_at.localeCompare(a.entry.updated_at);
     return lastAired(b) - lastAired(a) || b.entry.updated_at.localeCompare(a.entry.updated_at);
   });
@@ -464,7 +466,7 @@ export function MyAnime() {
                     </Link>
                     <div className={styles.itemInfo}>
                       <Link href={`/anime/${item.key}`} className={styles.itemTitle}>
-                        {item.franchise.title || m.common.untitled}
+                        {animeTitle(item.franchise.titles, lang) || m.common.untitled}
                       </Link>
                       <p className={styles.itemMeta}>
                         {anyNew && <span className={styles.newBadge}>{t.newEpisode}</span>}
@@ -490,7 +492,7 @@ export function MyAnime() {
                       const id = view.part.id;
                       const expanded = openPart === id;
                       const left = view.unwatched;
-                      const showTitle = partTitle(view.part) !== item.franchise.title;
+                      const showTitle = partTitle(view.part, lang) !== animeTitle(item.franchise.titles, lang);
                       const fullSeason =
                         (view.media?.episodes ?? view.part.episodes ?? 0) > 0 &&
                         (view.media?.airedCount ?? 0) >= (view.media?.episodes ?? view.part.episodes ?? 0);
@@ -504,7 +506,7 @@ export function MyAnime() {
                               onClick={() => (setOpenPart(expanded ? null : id), setRating(null), setConfirmAll(null))}
                             >
                               <span className={styles.partLabel}>{partLabel(view.part, m)}</span>
-                              {showTitle && <span className={styles.partTitle}>{partTitle(view.part)}</span>}
+                              {showTitle && <span className={styles.partTitle}>{partTitle(view.part, lang)}</span>}
                               <span className={styles.partCount}>{count(m.common.episodes, left.length)}</span>
                               {isNewPart(view) && <span className={styles.newDot}>{t.newDot}</span>}
                               <span className={styles.chevron} aria-hidden="true">
@@ -645,7 +647,7 @@ export function MyAnime() {
                       .find(Boolean);
                     return (
                       <li key={item.key}>
-                        <Link href={`/anime/${item.key}`}>{item.franchise.title || m.common.untitled}</Link>
+                        <Link href={`/anime/${item.key}`}>{animeTitle(item.franchise.titles, lang) || m.common.untitled}</Link>
                         <span>
                           {next
                             ? fmt(t.waiting.next, { part: next.label, n: next.episode, date: formatAiringDate(next.airingAt, intl) })
@@ -669,7 +671,7 @@ export function MyAnime() {
 }
 
 function Grid({ items }: { items: Item[] }) {
-  const { m, intl, count } = useI18n();
+  const { m, intl, count, lang } = useI18n();
   if (items.length === 0) return <div className={styles.empty}>{m.my.empty.grid}</div>;
   return (
     <ul className={styles.grid}>
@@ -686,7 +688,7 @@ function Grid({ items }: { items: Item[] }) {
                 )}
                 {entry.score !== null && <span className={styles.myScore}>★ {formatScore(entry.score, intl)}</span>}
               </span>
-              <span className={styles.cardTitle}>{franchise.title || m.common.untitled}</span>
+              <span className={styles.cardTitle}>{animeTitle(franchise.titles, lang) || m.common.untitled}</span>
               <span className={styles.cardMeta}>
                 {parts > 1
                   ? `${count(m.my.parts, franchise.main.length)}${franchise.extras.length ? fmt(m.my.extras, { n: franchise.extras.length }) : ""}`

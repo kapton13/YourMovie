@@ -74,6 +74,16 @@ export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
                 AniList
               </a>
               {after}
+              {lang === "ru" && (
+                <>
+                  {" "}
+                  {m.common.footer.shikimori.split("{source}")[0]}
+                  <a href="https://shikimori.io" target="_blank" rel="noopener noreferrer">
+                    Shikimori
+                  </a>
+                  {m.common.footer.shikimori.split("{source}")[1]}
+                </>
+              )}
             </div>
           </footer>
         </I18nProvider>

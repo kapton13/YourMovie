@@ -3,6 +3,7 @@
 import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { MediaCard as Media } from "@/lib/anilist";
 import { label as labelOf } from "@/lib/i18n/labels";
+import { animeTitle } from "@/lib/i18n/title";
 import { formatScore } from "@/lib/labels";
 import { Hideable } from "./hidden/Hideable";
 import styles from "./MediaCard.module.css";
@@ -22,8 +23,8 @@ type Props = {
 };
 
 export function MediaCard({ media, badge, label, note, current, hideable = true }: Props) {
-  const { m, fmt } = useI18n();
-  const title = media.title.english ?? media.title.romaji ?? m.common.untitled;
+  const { m, fmt, lang } = useI18n();
+  const title = animeTitle(media.title, lang) || m.common.untitled;
   const score = formatScore(media.averageScore);
   const meta = [media.format && labelOf(m.labels.format, media.format), media.startDate.year ?? media.seasonYear]
     .filter(Boolean)

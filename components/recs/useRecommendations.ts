@@ -1,5 +1,6 @@
 "use client";
 
+import { animeTitle, type Titles } from "@/lib/i18n/title";
 import { useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -81,8 +82,8 @@ export function useRecommendations(): State {
 
 /** Текст «чому порадили» мовою сайту. */
 export function useReasonText(): (reason: RecReason) => string {
-  const { m, fmt, intl } = useI18n();
-  const name = (title: string) => title || m.common.untitled;
+  const { m, fmt, intl, lang } = useI18n();
+  const name = (title: Titles | undefined) => animeTitle(title, lang) || m.common.untitled;
   return (reason) => {
     if (reason.kind === "popular") return m.recs.reason.popular;
     if (reason.kind === "rated") {
@@ -91,7 +92,7 @@ export function useReasonText(): (reason: RecReason) => string {
     }
     const [first, second] = reason.titles;
     return second === undefined
-      ? fmt(m.recs.reason.similarOne, { title: name(first ?? "") })
+      ? fmt(m.recs.reason.similarOne, { title: name(first) })
       : fmt(m.recs.reason.similarTwo, { first: name(first), second: name(second) });
   };
 }

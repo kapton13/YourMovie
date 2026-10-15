@@ -60,11 +60,14 @@
 - Тексти — словники `messages/<мова>/<розділ>.ts` (common, labels, home, catalog, anime, list, my, hidden, recs, profile, auth, account). Англійський — зразок і запасний; `uk`/`ru` типізовані `Messages[...]` і мусять бути повні; нова мова може бути неповною (чого бракує — англійською).
 - **Додати мову:** скопіювати `messages/en/` у `messages/<код>/`, перекласти, зареєструвати в `messages/index.ts` і в `LOCALES`/`LOCALE_INFO` (для мов справа наліво — `dir: "rtl"` і перевірити верстку).
 - У компонентах: клієнтські — `useI18n()` (`m`, `fmt`, `count`, `intl`, `href`), `Link` і `useLocaleRouter()` з `components/i18n/I18nProvider`; серверні — `await getI18n()` з `lib/i18n/server`. Ніякого тексту в коді, дати й числа — через `Intl` з `intl`, множина — `count(m.common.episodes, n)`. Підписи частин аніме — `partLabel(part, m)`.
+- Назви аніме мовою: `animeTitle(title, lang)` з `lib/i18n/title.ts`. Російські назви — словник `data/ru-titles.json` (≈5000 найпопулярніших, з Shikimori; `npm run update-ru-titles`), його підставляє `attachRussianTitles` в усі відповіді AniList (`title.russian`). На сторінці аніме для `ru` — назва й опис напряму з Shikimori (`lib/shikimori.ts`, кеш на дні) з посиланням на джерело; в підвалі російської версії — згадка Shikimori. Інші мови — назви й описи англійською (AniList).
+- Теги: `m.tags[назва]` (`messages/<мова>/tags.ts`; англійською — як є).
 - Вибір мови: перемикач у шапці й «Мова сайту» в налаштуваннях (`useSwitchLanguage`), зберігається в cookie і `profiles.language` (SQL `009`), мова профілю діє на всіх пристроях.
 
 ## Команди
 - `npm run dev` — локальний запуск; `npm run build` — збірка; `npm run lint` — перевірка коду.
 - `npm run update-titles` — оновити словник назв для пошуку (≈2 хв, запити до AniList).
+- `npm run update-ru-titles` — оновити російські назви з Shikimori (≈5 хв).
 
 ## Середовище
 У першій сесії хмарне середовище блокувало npm і AniList. Власник налаштовує мережевий доступ (Custom: стандартний список + `graphql.anilist.co`, `anilist.co`, `s4.anilist.co`, `api.themoviedb.org`, `image.tmdb.org`, `*.supabase.co`, `shikimori.io`, `*.vercel.app`). На початку сесії перевірити доступ до npm і `graphql.anilist.co`.

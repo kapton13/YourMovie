@@ -1,3 +1,4 @@
+import type { Titles } from "./i18n/title";
 import { getHomeSections, getRecCards, getRecSeeds, type RecCard } from "./anilist";
 import type { ListStatus } from "./lists";
 
@@ -18,8 +19,8 @@ export type RecEntry = { id: number; status: ListStatus; score: number | null };
  * Назва може бути порожньою, якщо AniList її не має.
  */
 export type RecReason =
-  | { kind: "rated"; title: string; score: number }
-  | { kind: "similar"; titles: string[] }
+  | { kind: "rated"; title: Titles; score: number }
+  | { kind: "similar"; titles: Titles[] }
   | { kind: "popular" };
 
 export type Recommendation = {
@@ -159,12 +160,13 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
     merged.set(rootId, item);
   }
 
-  const seedTitle = new Map(seeds.map((s) => [s.id, s.title]));
+  // Назви — усіма відомими мовами: «чому порадили» складає браузер мовою сайту.
+  const seedTitle = new Map(seeds.map((s) => [s.id, s.titles]));
   function reason(from: Map<number, number>): RecReason {
     const liked = [...from].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
     const [first, second] = liked.map(([id]) => id);
     const score = entryOf.get(first)?.score ?? null;
-    const title = (id: number) => seedTitle.get(id) ?? "";
+    const title = (id: number): Titles => seedTitle.get(id) ?? {};
     // Вказують кілька улюблених аніме — це найпереконливіше пояснення.
     if (second !== undefined) return { kind: "similar", titles: [title(first), title(second)] };
     if (score !== null && score >= 8) return { kind: "rated", title: title(first), score };
