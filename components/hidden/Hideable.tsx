@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { isCardHidden } from "@/lib/hidden";
 import { useHidden } from "./HiddenProvider";
 import { useSkipListed } from "./SkipListed";
 import styles from "./Hidden.module.css";
@@ -27,9 +28,7 @@ export function Hideable({
   const { hiddenIds, listedIds, loggedIn, hide } = useHidden();
   const skipListed = useSkipListed();
   const { m, fmt } = useI18n();
-  const ids = rootId && rootId !== mediaId ? [mediaId, rootId] : [mediaId];
-  if (ids.some((id) => hiddenIds.has(id) || (skipListed && listedIds.has(id)))) return null;
-  if (parentId && hiddenIds.has(parentId)) return null;
+  if (isCardHidden({ mediaId, rootId, parentId }, hiddenIds, skipListed ? listedIds : undefined)) return null;
   return (
     <div className={styles.hideable}>
       {children}

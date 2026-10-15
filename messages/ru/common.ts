@@ -32,7 +32,7 @@ const common: Messages["common"] = {
   close: "Закрыть",
   done: "Готово",
   episodes: { one: "серия", few: "серии", many: "серий", other: "серии" },
-  anime: { one: "аниме", other: "аниме" },
+  anime: { one: "аниме", few: "аниме", many: "аниме", other: "аниме" },
 };
 
 export default common;

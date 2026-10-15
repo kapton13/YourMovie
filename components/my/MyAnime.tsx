@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { Franchise, FranchisePart, MyMedia } from "@/lib/anilist";
@@ -294,6 +294,12 @@ export function MyAnime() {
     [entries, franchises, marks, media, m],
   );
 
+  /**
+   * Записи в базу — по черзі: при швидких кліках запит раннього кліку («Дивлюся») не повинен дійти
+   * пізніше за наступний («Переглянуто»).
+   */
+  const writeQueue = useRef<Promise<unknown>>(Promise.resolve());
+
   if (user === undefined || (user && entries === undefined)) return <div className={styles.skeleton} />;
 
   if (!user) {
@@ -354,19 +360,25 @@ export function MyAnime() {
     setError(false);
 
     const supabase = getSupabaseBrowser();
-    const writes: PromiseLike<{ error: { message: string } | null }>[] = [
-      supabase
-        .from("episode_marks")
-        .upsert(
-          episodes.map((episode) =>
-            score !== undefined ? { media_id: partId, episode, watched: true, score } : { media_id: partId, episode, watched: true },
+    // Запити до бази стартують лише тут — по черзі після попередніх (див. writeQueue).
+    const write = () => {
+      const writes: PromiseLike<{ error: { message: string } | null }>[] = [
+        supabase
+          .from("episode_marks")
+          .upsert(
+            episodes.map((episode) =>
+              score !== undefined ? { media_id: partId, episode, watched: true, score } : { media_id: partId, episode, watched: true },
+            ),
           ),
-        ),
-    ];
-    if (seasonChanged) writes.push(supabase.from("season_scores").upsert({ media_id: partId, score: average }));
-    if (nextEntry && nextEntry !== item.entry)
-      writes.push(supabase.from("list_entries").upsert({ media_id: item.key, status: nextEntry.status, score: nextEntry.score }));
-    const results = await Promise.all(writes);
+      ];
+      if (seasonChanged) writes.push(supabase.from("season_scores").upsert({ media_id: partId, score: average }));
+      if (nextEntry && nextEntry !== item.entry)
+        writes.push(supabase.from("list_entries").upsert({ media_id: item.key, status: nextEntry.status, score: nextEntry.score }));
+      return Promise.all(writes);
+    };
+    const task = writeQueue.current.then(write, write);
+    writeQueue.current = task.catch(() => null);
+    const results = await task.catch((e: unknown) => [{ error: { message: String(e) } }]);
     const failed = results.find((r) => r.error);
     if (failed) {
       console.error(failed.error);
