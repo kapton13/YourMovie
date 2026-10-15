@@ -63,7 +63,7 @@ export function MediaCard({ media, badge, label, note, current, hideable = true 
       {content}
     </article>
   ) : (
-    <Wrapper enabled={hideable} mediaId={media.id} rootId={media.rootId} title={title}>
+    <Wrapper enabled={hideable} mediaId={media.id} rootId={media.rootId} parentId={media.parentId} title={title}>
       <article className={styles.card}>
         <Link href={`/anime/${media.id}`} className={styles.link}>
           {content}
@@ -77,17 +77,19 @@ function Wrapper({
   enabled,
   mediaId,
   rootId,
+  parentId,
   title,
   children,
 }: {
   enabled: boolean;
   mediaId: number;
   rootId?: number;
+  parentId?: number;
   title: string;
   children: React.ReactNode;
 }) {
   return enabled ? (
-    <Hideable mediaId={mediaId} rootId={rootId} title={title}>
+    <Hideable mediaId={mediaId} rootId={rootId} parentId={parentId} title={title}>
       {children}
     </Hideable>
   ) : (

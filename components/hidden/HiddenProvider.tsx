@@ -15,7 +15,8 @@ type HiddenContext = {
   /** Аніме цілком: id першої частини → id усіх її частин. */
   hiddenKeys: Map<number, number[]>;
   loggedIn: boolean;
-  hide: (mediaId: number, title: string) => Promise<boolean>;
+  /** rootId — перша частина аніме, якщо картка її знає: тоді одразу зникають усі сезони. */
+  hide: (mediaId: number, title: string, rootId?: number) => Promise<boolean>;
   unhide: (key: number) => Promise<boolean>;
   /** id частин аніме, які вже є в списках (усі статуси, крім «Планую»). */
   listedIds: Set<number>;
@@ -44,6 +45,27 @@ export function useHidden(): HiddenContext {
 
 type Row = { media_id: number; franchise_key: number };
 
+/** Усі частини аніме (сезони, фільми, OVA) одним записом «Не цікаво» під ключем аніме. */
+function franchiseRows(franchise: Franchise, extraIds: number[]): Row[] {
+  const ids = new Set([...franchise.main, ...franchise.extras].map((p) => p.id));
+  for (const id of extraIds) ids.add(id);
+  return [...ids].map((id) => ({ media_id: id, franchise_key: franchise.key }));
+}
+
+/** Частини аніме з AniList (через наш сервер); одна повторна спроба — великі аніме інколи не встигають. */
+async function fetchFranchises(ids: number[]): Promise<Record<number, Franchise>> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`/api/franchises?ids=${ids.join(",")}`);
+      if (res.ok) return (await res.json()) as Record<number, Franchise>;
+    } catch (e) {
+      console.warn(e);
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return {};
+}
+
 /** Список «Не цікаво» для всього сайту: що сховано, сховати, повернути. */
 export function HiddenProvider({ children }: { children: React.ReactNode }) {
   const user = useUser();
@@ -54,6 +76,8 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   const [listed, setListed] = useState<{ userId: string; ids: Set<number> } | null>(null);
   /** Аніме (id запису) → id усіх його частин; не змінюється, тож пам'ятаємо між переходами. */
   const franchiseParts = useRef(new Map<number, number[]>());
+  /** Для кого вже доповнили «Не цікаво» в цьому відкритті сайту. */
+  const completedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -74,6 +98,39 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [user]);
+
+  // Доповнюємо «Не цікаво»: аніме, сховане не повністю (AniList тоді не встиг), і нові сезони, що вийшли пізніше.
+  useEffect(() => {
+    if (!user || loaded?.userId !== user.id || completedFor.current === user.id) return;
+    completedFor.current = user.id;
+    const groups = new Map<number, number[]>();
+    for (const r of loaded.rows) groups.set(r.franchise_key, [...(groups.get(r.franchise_key) ?? []), r.media_id]);
+    const keys = [...groups.keys()].slice(0, 600);
+    (async () => {
+      for (let i = 0; i < keys.length; i += 300) {
+        const chunk = keys.slice(i, i + 300);
+        const franchises = await fetchFranchises(chunk);
+        const fixes: Row[] = [];
+        for (const key of chunk) {
+          const franchise = franchises[key];
+          if (!franchise) continue;
+          const have = groups.get(key)!;
+          const rows = franchiseRows(franchise, have);
+          if (franchise.key !== key || rows.length !== have.length) fixes.push(...rows);
+        }
+        if (fixes.length === 0) continue;
+        const { error } = await getSupabaseBrowser().from("hidden_media").upsert(fixes);
+        if (error) {
+          console.warn(error);
+          continue;
+        }
+        const ids = new Set(fixes.map((r) => r.media_id));
+        setLoaded((prev) =>
+          prev && prev.userId === user.id ? { ...prev, rows: [...prev.rows.filter((r) => !ids.has(r.media_id)), ...fixes] } : prev,
+        );
+      }
+    })();
+  }, [user, loaded]);
 
   const refreshListed = useCallback(async () => {
     if (!user) return;
@@ -144,30 +201,19 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   );
 
   const hide = useCallback(
-    async (mediaId: number, title: string) => {
-      // Одразу ховаємо саму картку, потім — усі частини цього аніме.
-      setRows((list) => [...list, { media_id: mediaId, franchise_key: mediaId }]);
-      let rowsToSave: Row[] = [{ media_id: mediaId, franchise_key: mediaId }];
-      try {
-        const res = await fetch(`/api/franchises?ids=${mediaId}`);
-        if (res.ok) {
-          const franchise = ((await res.json()) as Record<number, Franchise>)[mediaId];
-          if (franchise) {
-            rowsToSave = [...franchise.main, ...franchise.extras].map((p) => ({
-              media_id: p.id,
-              franchise_key: franchise.key,
-            }));
-            if (!rowsToSave.some((r) => r.media_id === mediaId))
-              rowsToSave.push({ media_id: mediaId, franchise_key: franchise.key });
-          }
-        }
-      } catch (e) {
-        console.warn(e);
-      }
+    async (mediaId: number, title: string, rootId?: number) => {
+      // Одразу ховаємо картку й перший сезон (а з ним — усі картки цього аніме), потім — усі частини.
+      const root = rootId ?? mediaId;
+      const quick: Row[] = [...new Set([mediaId, root])].map((id) => ({ media_id: id, franchise_key: root }));
+      const quickIds = new Set(quick.map((r) => r.media_id));
+      setRows((list) => [...list.filter((r) => !quickIds.has(r.media_id)), ...quick]);
+      const franchise = (await fetchFranchises([mediaId]))[mediaId];
+      // AniList не відповів — зберігаємо хоча б це; решту частин доповнимо, коли сайт відкриють наступного разу.
+      const rowsToSave = franchise ? franchiseRows(franchise, [...quickIds]) : quick;
       const { error } = await getSupabaseBrowser().from("hidden_media").upsert(rowsToSave);
       if (error) {
         console.error(error);
-        setRows((list) => list.filter((r) => r.media_id !== mediaId));
+        setRows((list) => list.filter((r) => !quickIds.has(r.media_id)));
         return false;
       }
       const ids = new Set(rowsToSave.map((r) => r.media_id));

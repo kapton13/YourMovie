@@ -35,7 +35,7 @@ const list: Messages["list"] = {
     partScore: "Puan: {part}",
     thisPart: "bu kısım",
     partScoreAria: "Bu kısım için 1–10 arası puan",
-    hint: "Puan vermek animeyi “İzleniyor” listesine ekler. “Tamamlandı” durumu tüm bölümler işaretlenince ya da düğmeye basınca verilir.",
+    hint: "Puan vermek animeyi “İzleniyor” listesine ekler. “Tamamlandı” durumu yayınlanan tüm bölümler işaretlenince ya da düğmeye basınca verilir; yeni bölüm çıkınca tekrar “İzleniyor” olur.",
     notInterested: "✕ İlgilenmiyorum",
     hideAria: "İlgilenmiyor musun?",
     hideText: "Bu anime listende. Oradan (puanları ve bölüm işaretleriyle birlikte) çıkarılıp “İlgilenmiyorum” olarak işaretlensin mi?",

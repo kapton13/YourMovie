@@ -44,6 +44,16 @@ function allWatched(marks: Marks | undefined, episodes: number): boolean {
   return true;
 }
 
+/**
+ * Частину переглянуто наскільки можливо: вийшла повністю — усі серії; ще виходить — усі, що вже вийшли
+ * (лише якщо точно знаємо скільки); ще не почалась — нічого дивитись.
+ */
+function caughtUp(p: PartInfo, marks: Marks | undefined): boolean {
+  if (p.status === "FINISHED" || p.status === "CANCELLED") return Boolean(p.episodes) && allWatched(marks, p.episodes!);
+  if (p.status === "NOT_YET_RELEASED") return true;
+  return p.aired !== undefined && allWatched(marks, p.aired);
+}
+
 function watchedCount(marks: Marks | undefined): number {
   let n = 0;
   if (marks) for (const [, m] of marks) if (m.watched) n++;
@@ -73,8 +83,9 @@ export function animeAverage(main: PartInfo[], seasonScores: Map<number, number>
 /**
  * Після змін у серіях або оцінках сезонів:
  * — є переглянуті серії, а аніме ще не в списку або «Планую» → «Дивлюся»;
- * — усі основні частини вийшли повністю й переглянуті → «Переглянуто» (лише так — оцінка «Переглянуто» не ставить);
- * — «Переглянуто», а є серія, що вже вийшла й не відмічена → «Дивлюся»;
+ * — відмічено всі серії, що вже вийшли, в усіх основних частинах → «Переглянуто», навіть якщо аніме ще виходить
+ *   (рішення власника 2026-10-15; оцінка «Переглянуто» не ставить);
+ * — «Переглянуто», а є серія, що вже вийшла й не відмічена (наприклад, вийшла нова) → «Дивлюся»;
  * — оцінено всі основні частини → оцінка аніме = середнє оцінок сезонів (має перевагу над ручною);
  * — сезон перестав бути оціненим, а оцінка аніме була саме тим середнім (`before`) → прибираємо її.
  * Повертає той самий `entry`, якщо змінювати нічого не треба.
@@ -96,16 +107,9 @@ export function franchiseEntryAfter(args: {
   for (const [, partMarks] of marks) if (watchedCount(partMarks) > 0) anyWatched = true;
   if (anyWatched && (status === null || status === "planning")) status = "watching";
 
-  const allDone =
-    main.length > 0 &&
-    main.every(
-      (p) =>
-        (p.status === "FINISHED" || p.status === "CANCELLED") &&
-        p.episodes &&
-        allWatched(marks.get(p.id), p.episodes),
-    );
+  const allDone = main.length > 0 && main.some((p) => airedOf(p) > 0) && main.every((p) => caughtUp(p, marks.get(p.id)));
   if (allDone && (status === "watching" || status === "planning" || status === "paused")) status = "completed";
-  if (status === "completed" && !allDone && hasUnwatchedAired(main, marks)) status = "watching";
+  if (status === "completed" && hasUnwatchedAired(main, marks)) status = "watching";
 
   const average = animeAverage(main, seasonScores);
   if (average !== null) score = average;

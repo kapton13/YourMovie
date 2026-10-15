@@ -35,7 +35,7 @@ const list: Messages["list"] = {
     partScore: "Note : {part}",
     thisPart: "cette partie",
     partScoreAria: "Note de cette partie, de 1 à 10",
-    hint: "Une note ajoute l’anime à « En cours ». Il passe en « Terminé » quand tous les épisodes sont cochés ou quand vous appuyez sur le bouton.",
+    hint: "Une note ajoute l’anime à « En cours ». Il passe en « Terminé » quand tous les épisodes sortis sont cochés ou quand vous appuyez sur le bouton ; un nouvel épisode le remet en « En cours ».",
     notInterested: "✕ Pas intéressé",
     hideAria: "Pas intéressé ?",
     hideText: "Cet anime est dans votre liste. L’en retirer (avec ses notes et les épisodes cochés) et le marquer « Pas intéressé » ?",

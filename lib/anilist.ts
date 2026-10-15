@@ -30,6 +30,8 @@ export type MediaCard = {
   averageScore: number | null;
   /** Перша частина аніме, до якого належить картка (для сезону 3 — сезон 1), якщо відомо. */
   rootId?: number;
+  /** Попередня частина (для сезону 3 — сезон 2, для спешлу — його аніме), якщо відомо. */
+  parentId?: number;
 };
 
 export type HomeSections = {
@@ -138,6 +140,7 @@ const CATALOG_QUERY = `
         ${CARD_FIELDS}
         synonyms
         popularity
+        relations { edges { relationType node { id type format startDate { year month day } } } }
       }
     }
   }
@@ -201,7 +204,10 @@ function catalogVariables(query: CatalogQuery) {
 }
 
 type CatalogResponse = {
-  Page: { pageInfo: { currentPage: number; hasNextPage: boolean }; media: CatalogItem[] };
+  Page: {
+    pageInfo: { currentPage: number; hasNextPage: boolean };
+    media: (CatalogItem & { relations: { edges: RelationEdge[] } | null })[];
+  };
 };
 
 /** Скільки тайтлів зі словника можна додати до першої сторінки пошуку. */
@@ -238,7 +244,8 @@ export async function getCatalogPage(query: CatalogQuery): Promise<CatalogPage> 
   }
 
   return {
-    media,
+    // Попередня частина (з того самого запиту): спешл чи новий сезон сховається разом з аніме «Не цікаво».
+    media: media.map(({ relations, ...m }) => ({ ...m, parentId: previousPart(m, relations?.edges ?? []) ?? undefined })),
     currentPage: data.Page.pageInfo.currentPage,
     hasNextPage: data.Page.pageInfo.hasNextPage,
   };
