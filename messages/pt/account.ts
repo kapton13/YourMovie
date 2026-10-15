@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "Configurações do perfil — YourMovie" },
+  title: "Meu perfil",
+  notLoggedIn: "Você não está conectado.",
+  login: "Entrar",
+  or: "ou",
+  signup: "criar conta",
+  welcome: "Boas-vindas ao YourMovie! Sua conta foi criada.",
+  userNumber: "Usuário #{n}",
+  since: "com a gente desde {date}",
+  loadError: "Não foi possível carregar o perfil. Atualize a página.",
+  changePassword: "Alterar senha",
+  signOut: "Sair",
+  signingOut: "Saindo…",
+  public: {
+    label: "Perfil público",
+    on: "Qualquer pessoa com o link pode ver suas estatísticas e listas. Seu e-mail, nome completo, telefone e país continuam privados.",
+    off: "Só você pode ver suas estatísticas e listas.",
+    link: "Meu perfil e estatísticas →",
+    dbOutdated: "O banco de dados ainda não foi atualizado para perfis públicos — execute o SQL do arquivo 008.",
+  },
+  language: {
+    hint: "O site abrirá neste idioma em todos os seus dispositivos.",
+  },
+  form: {
+    email: "E-mail",
+    privateNote: "Estes dados são opcionais e só você pode vê-los.",
+    lastName: "Sobrenome",
+    firstName: "Nome",
+    middleName: "Nome do meio",
+    phone: "Telefone",
+    phonePlaceholder: "+55 11 91234-5678",
+    country: "País",
+    noCountry: "Não informado",
+    saving: "Salvando…",
+    save: "Salvar alterações",
+    noChanges: "Nenhuma alteração",
+    saved: "Salvo.",
+  },
+  errors: {
+    nicknameTaken: "Este apelido já está em uso.",
+    checkNickname: "Verifique o apelido.",
+    nameTooLong: "{label}: no máximo {n} caracteres.",
+    nameChars: "{label}: apenas letras (de qualquer idioma), apóstrofo, hífen, ponto e espaço.",
+    phone: "Telefone: apenas dígitos, espaços, parênteses, hifens e um “+” no início.",
+    nicknameJustTaken: "Alguém acabou de pegar este apelido — tente outro.",
+    invalidFields: "Alguns campos foram preenchidos incorretamente.",
+    dbOutdated: "O banco de dados ainda não foi atualizado para campos de nome separados — execute o SQL do arquivo 005.",
+    saveFailed: "Não foi possível salvar. Tente de novo.",
+  },
+};
+
+export default account;

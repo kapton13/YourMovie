@@ -65,7 +65,7 @@ const catalog = {
     exclude: "exclude",
     genres: "Genres",
     tags: "Tags",
-    tagsNote: "(in English, as on AniList)",
+    tagsNote: "(from AniList)",
     nothing: "Nothing found.",
     chipState: "{label}: {state}",
     state: { include: "shown", exclude: "excluded", off: "not selected" },

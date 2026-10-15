@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "プロフィール設定 — YourMovie" },
+  title: "マイプロフィール",
+  notLoggedIn: "ログインしていません。",
+  login: "ログイン",
+  or: "または",
+  signup: "新規登録",
+  welcome: "YourMovieへようこそ！アカウントが作成されました。",
+  userNumber: "ユーザー #{n}",
+  since: "{date}から利用",
+  loadError: "プロフィールを読み込めませんでした。ページを再読み込みしてください。",
+  changePassword: "パスワードを変更",
+  signOut: "ログアウト",
+  signingOut: "ログアウト中…",
+  public: {
+    label: "公開プロフィール",
+    on: "リンクを知っている人なら誰でも、あなたの統計とリストを見られます。メールアドレス、氏名、電話番号、国は非公開のままです。",
+    off: "統計とリストはあなただけが見られます。",
+    link: "マイプロフィールと統計 →",
+    dbOutdated: "データベースがまだ公開プロフィールに対応していません。ファイル008のSQLを実行してください。",
+  },
+  language: {
+    hint: "すべてのデバイスで、この言語でサイトが表示されます。",
+  },
+  form: {
+    email: "メールアドレス",
+    privateNote: "以下の項目は任意で、あなただけが見られます。",
+    lastName: "姓",
+    firstName: "名",
+    middleName: "ミドルネーム",
+    phone: "電話番号",
+    phonePlaceholder: "+81 90 1234 5678",
+    country: "国",
+    noCountry: "未設定",
+    saving: "保存中…",
+    save: "変更を保存",
+    noChanges: "変更はありません",
+    saved: "保存しました。",
+  },
+  errors: {
+    nicknameTaken: "このニックネームはすでに使われています。",
+    checkNickname: "ニックネームを確認してください。",
+    nameTooLong: "{label}：{n}文字以内で入力してください。",
+    nameChars: "{label}：使えるのは文字（言語は自由）、アポストロフィ、ハイフン、ピリオド、スペースのみです。",
+    phone: "電話番号：使えるのは数字、スペース、括弧、ハイフン、先頭の「+」のみです。",
+    nicknameJustTaken: "このニックネームはたった今ほかの人に使われました。別のものをお試しください。",
+    invalidFields: "入力内容に誤りがある項目があります。",
+    dbOutdated: "データベースがまだ氏名の個別項目に対応していません。ファイル005のSQLを実行してください。",
+    saveFailed: "保存できませんでした。もう一度お試しください。",
+  },
+};
+
+export default account;

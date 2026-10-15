@@ -6,6 +6,7 @@ const home = {
   loading: "Loading picks…",
   trending: "Trending now",
   currentSeason: "This season: {season}",
+  seasonName: "{season} {year}",
   popular: "All-time popular",
   top: "Top rated",
   search: {

@@ -1,0 +1,55 @@
+import type { Messages } from "..";
+
+const account: Messages["account"] = {
+  meta: { title: "Profil ayarları — YourMovie" },
+  title: "Profilim",
+  notLoggedIn: "Giriş yapmadın.",
+  login: "Giriş yap",
+  or: "veya",
+  signup: "kaydol",
+  welcome: "YourMovie’ye hoş geldin! Hesabın oluşturuldu.",
+  userNumber: "Kullanıcı #{n}",
+  since: "{date} tarihinden beri bizimle",
+  loadError: "Profil yüklenemedi. Sayfayı yenile.",
+  changePassword: "Şifreyi değiştir",
+  signOut: "Çıkış yap",
+  signingOut: "Çıkış yapılıyor…",
+  public: {
+    label: "Herkese açık profil",
+    on: "Bağlantıya sahip herkes istatistiklerini ve listelerini görebilir. E-postan, adın soyadın, telefonun ve ülken gizli kalır.",
+    off: "İstatistiklerini ve listelerini yalnızca sen görebilirsin.",
+    link: "Profilim ve istatistiklerim →",
+    dbOutdated: "Veritabanı herkese açık profiller için henüz güncellenmedi — 008 dosyasındaki SQL’i çalıştır.",
+  },
+  language: {
+    hint: "Site, tüm cihazlarında bu dilde açılacak.",
+  },
+  form: {
+    email: "E-posta",
+    privateNote: "Bu bilgiler isteğe bağlıdır ve yalnızca sen görebilirsin.",
+    lastName: "Soyadı",
+    firstName: "Adı",
+    middleName: "İkinci adı",
+    phone: "Telefon",
+    phonePlaceholder: "+1 555 123 4567",
+    country: "Ülke",
+    noCountry: "Belirtilmedi",
+    saving: "Kaydediliyor…",
+    save: "Değişiklikleri kaydet",
+    noChanges: "Değişiklik yok",
+    saved: "Kaydedildi.",
+  },
+  errors: {
+    nicknameTaken: "Bu takma ad zaten alınmış.",
+    checkNickname: "Takma adı kontrol et.",
+    nameTooLong: "{label}: en fazla {n} karakter.",
+    nameChars: "{label}: yalnızca harf (herhangi bir dil), kesme işareti, kısa çizgi, nokta ve boşluk.",
+    phone: "Telefon: yalnızca rakam, boşluk, parantez, kısa çizgi ve baştaki “+”.",
+    nicknameJustTaken: "Biri bu takma adı az önce aldı — başka bir tane dene.",
+    invalidFields: "Bazı alanlar yanlış doldurulmuş.",
+    dbOutdated: "Veritabanı ayrı ad alanları için henüz güncellenmedi — 005 dosyasındaki SQL’i çalıştır.",
+    saveFailed: "Kaydedilemedi. Tekrar dene.",
+  },
+};
+
+export default account;

@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Mis animes",
+  metaTitle: "Mis animes — YourMovie",
+  loggedOut: { text: "{link} para ver tus listas, los episodios nuevos y tu progreso.", link: "Inicia sesión" },
+  loadError: "No se pudo cargar tu lista. Actualiza la página.",
+  franchisesSlow: "AniList está respondiendo lento ahora mismo, así que puede que las temporadas no estén agrupadas. Actualiza la página en un rato.",
+  animeNumber: "Anime #{id}",
+  tabsLabel: "Listas",
+  statuses: {
+    watching: "Viendo",
+    planning: "Pendiente",
+    completed: "Completado",
+    paused: "En pausa",
+    dropped: "Abandonado",
+  },
+  sort: {
+    label: "Ordenar por:",
+    new: "episodios nuevos",
+    title: "título",
+    recent: "último cambio",
+  },
+  empty: {
+    watching: "Aquí aparecerán los animes con el estado «Viendo». Busca algo en el {link} y marca el primer episodio.",
+    catalogLink: "catálogo",
+    caughtUp: "Estás al día. En cuanto salga un episodio nuevo, el anime aparecerá aquí.",
+    grid: "Aún no hay nada aquí.",
+  },
+  newEpisode: "¡Episodio nuevo!",
+  newDot: "nuevo",
+  left: { one: "Queda {episodes}", other: "Quedan {episodes}" },
+  loading: "cargando…",
+  myScore: "mi puntuación ★ {score}",
+  duration: { hours: "{h} h", minutes: "{m} min", hoursMinutes: "{h} h {m} min" },
+  plusOneLabel: "Marcar el episodio {n} ({part}) como visto",
+  episodeNo: "#{n}",
+  nextEpisode: "El episodio {n} se estrena el {date}",
+  confirmAll: "¿Marcar {episodes} como vistos?",
+  seasonDone: "Vi toda la temporada",
+  airedDone: "Vi todo lo emitido",
+  episode: "Episodio {n}",
+  upTo: "todos hasta este",
+  rateLabel: "Puntuar el episodio {n}",
+  watchedLabel: "Episodio {n} visto",
+  watched: "Visto",
+  ratingLabel: "Puntuación del episodio {n}",
+  more: { text: "{n} más en la {link}", link: "página de la temporada" },
+  waiting: {
+    toggle: "Esperando episodios nuevos ({n})",
+    next: "{part}, episodio {n} — {date}",
+    unknown: "aún no hay fecha para los episodios nuevos",
+  },
+  parts: { one: "{n} parte", other: "{n} partes" },
+  extras: " + {n} extra",
+};
+
+export default my;

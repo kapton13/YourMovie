@@ -8,6 +8,7 @@ const home: Messages["home"] = {
   loading: "Завантажуємо добірки…",
   trending: "Зараз у тренді",
   currentSeason: "Поточний сезон: {season}",
+  seasonName: "{season} {year}",
   popular: "Популярне за весь час",
   top: "Топ рейтингу",
   search: {

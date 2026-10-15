@@ -61,7 +61,7 @@ const catalog: Messages["catalog"] = {
     exclude: "исключить",
     genres: "Жанры",
     tags: "Теги",
-    tagsNote: "(на английском, как в AniList)",
+    tagsNote: "(из AniList)",
     nothing: "Ничего не найдено.",
     chipState: "{label}: {state}",
     state: { include: "показывать", exclude: "исключено", off: "не выбрано" },

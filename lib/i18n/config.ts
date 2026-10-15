@@ -3,7 +3,7 @@
  * Чого бракує в перекладі — показується англійською. Мова за замовчуванням — англійська
  * (рішення власника: автовибору за мовою браузера немає, людина обирає сама).
  */
-export const LOCALES = ["en", "uk", "ru"] as const;
+export const LOCALES = ["en", "uk", "ru", "es", "pt", "fr", "de", "pl", "tr", "ja", "ko", "zh"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 
@@ -12,6 +12,15 @@ export const LOCALE_INFO: Record<Locale, { name: string; short: string; intl: st
   en: { name: "English", short: "EN", intl: "en-US", dir: "ltr" },
   uk: { name: "Українська", short: "UK", intl: "uk-UA", dir: "ltr" },
   ru: { name: "Русский", short: "RU", intl: "ru-RU", dir: "ltr" },
+  es: { name: "Español", short: "ES", intl: "es-ES", dir: "ltr" },
+  pt: { name: "Português", short: "PT", intl: "pt-BR", dir: "ltr" },
+  fr: { name: "Français", short: "FR", intl: "fr-FR", dir: "ltr" },
+  de: { name: "Deutsch", short: "DE", intl: "de-DE", dir: "ltr" },
+  pl: { name: "Polski", short: "PL", intl: "pl-PL", dir: "ltr" },
+  tr: { name: "Türkçe", short: "TR", intl: "tr-TR", dir: "ltr" },
+  ja: { name: "日本語", short: "JA", intl: "ja-JP", dir: "ltr" },
+  ko: { name: "한국어", short: "KO", intl: "ko-KR", dir: "ltr" },
+  zh: { name: "中文", short: "ZH", intl: "zh-CN", dir: "ltr" },
 };
 
 /** Cookie з обраною мовою (для тих, хто не ввійшов; тим, хто ввійшов, — ще й у профілі). */

@@ -21,7 +21,7 @@ export type Season = "WINTER" | "SPRING" | "SUMMER" | "FALL";
 export type MediaCard = {
   id: number;
   /** russian — з Shikimori (для російської версії), якщо відома. */
-  title: { romaji: string | null; english: string | null; russian?: string | null };
+  title: { romaji: string | null; english: string | null; native?: string | null; russian?: string | null };
   coverImage: { large: string | null; color: string | null };
   format: MediaFormat | null;
   seasonYear: number | null;
@@ -42,7 +42,7 @@ export type HomeSections = {
 
 const CARD_FIELDS = `
   id
-  title { romaji english }
+  title { romaji english native }
   coverImage { large color }
   format
   seasonYear
@@ -136,7 +136,6 @@ const CATALOG_QUERY = `
         id_in: $idIn
       ) {
         ${CARD_FIELDS}
-        title { native }
         synonyms
         popularity
       }
@@ -883,7 +882,7 @@ const REC_SEEDS_QUERY = `
     Page(perPage: 50) {
       media(id_in: $ids, type: ANIME) {
         id
-        title { romaji english }
+        title { romaji english native }
         genres
         tags { name rank }
         recommendations(sort: RATING_DESC, perPage: 20) {
@@ -952,7 +951,7 @@ export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
   await inChunks(missing, 25, async (chunk) => {
     type Raw = {
       id: number;
-      title: { romaji: string | null; english: string | null };
+      title: { romaji: string | null; english: string | null; native: string | null };
       genres: string[];
       tags: RecTag[] | null;
       recommendations: { nodes: { rating: number; mediaRecommendation: RawRecCard | null }[] };

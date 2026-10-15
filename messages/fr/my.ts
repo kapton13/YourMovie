@@ -1,0 +1,58 @@
+import type { Messages } from "..";
+
+const my: Messages["my"] = {
+  title: "Mes animes",
+  metaTitle: "Mes animes — YourMovie",
+  loggedOut: { text: "{link} pour voir vos listes, les nouveaux épisodes et votre progression.", link: "Connectez-vous" },
+  loadError: "Impossible de charger votre liste. Veuillez actualiser la page.",
+  franchisesSlow: "AniList répond lentement en ce moment : les saisons risquent de ne pas être regroupées. Veuillez actualiser la page un peu plus tard.",
+  animeNumber: "Anime n° {id}",
+  tabsLabel: "Listes",
+  statuses: {
+    watching: "En cours",
+    planning: "À voir",
+    completed: "Terminé",
+    paused: "En pause",
+    dropped: "Abandonné",
+  },
+  sort: {
+    label: "Trier par :",
+    new: "nouveaux épisodes",
+    title: "titre",
+    recent: "dernière modification",
+  },
+  empty: {
+    watching: "Les animes au statut « En cours » apparaîtront ici. Trouvez-en un dans le {link} et cochez le premier épisode.",
+    catalogLink: "catalogue",
+    caughtUp: "Vous êtes à jour. Dès qu’un nouvel épisode sortira, l’anime apparaîtra ici.",
+    grid: "Rien pour l’instant.",
+  },
+  newEpisode: "Nouvel épisode !",
+  newDot: "nouveau",
+  left: { one: "{episodes} restant", many: "{episodes} restants", other: "{episodes} restants" },
+  loading: "chargement…",
+  myScore: "ma note ★ {score}",
+  duration: { hours: "{h} h", minutes: "{m} min", hoursMinutes: "{h} h {m} min" },
+  plusOneLabel: "Marquer l’épisode {n} ({part}) comme vu",
+  episodeNo: "n° {n}",
+  nextEpisode: "L’épisode {n} sortira le {date}",
+  confirmAll: "Marquer {episodes} comme vus ?",
+  seasonDone: "J’ai vu toute la saison",
+  airedDone: "J’ai vu tout ce qui est sorti",
+  episode: "Épisode {n}",
+  upTo: "tous jusqu’à celui-ci",
+  rateLabel: "Noter l’épisode {n}",
+  watchedLabel: "Épisode {n} vu",
+  watched: "Vu",
+  ratingLabel: "Note de l’épisode {n}",
+  more: { text: "{n} de plus sur la {link}", link: "page de la saison" },
+  waiting: {
+    toggle: "En attente de nouveaux épisodes ({n})",
+    next: "{part}, épisode {n} — {date}",
+    unknown: "pas encore de date pour les nouveaux épisodes",
+  },
+  parts: { one: "{n} partie", many: "{n} parties", other: "{n} parties" },
+  extras: " + {n} bonus",
+};
+
+export default my;

@@ -41,7 +41,7 @@ async function HomeSections() {
     );
   }
 
-  const seasonTitle = `${label(m.labels.season, data.season.season)} ${data.season.year}`;
+  const seasonTitle = fmt(m.home.seasonName, { season: label(m.labels.season, data.season.season), year: data.season.year });
   return (
     <>
       <ForYouRow />
