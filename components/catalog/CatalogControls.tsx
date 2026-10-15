@@ -578,7 +578,7 @@ type Chip = { key: string; label: string; exclude?: boolean; remove: Partial<Cat
 
 function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
   const { m, fmt } = i18n;
-  const t = m.catalog.chips;
+  const chipsText = m.catalog.chips;
   const L = m.labels;
   const chips: Chip[] = [];
   for (const g of query.genres)
@@ -586,7 +586,7 @@ function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
   for (const g of query.genresNot)
     chips.push({
       key: `gn:${g}`,
-      label: fmt(t.notGenre, { genre: labelOf(L.genre, g) }),
+      label: fmt(chipsText.notGenre, { genre: labelOf(L.genre, g) }),
       exclude: true,
       remove: { genresNot: query.genresNot.filter((x) => x !== g) },
     });
@@ -595,7 +595,7 @@ function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
   for (const t of query.tagsNot)
     chips.push({
       key: `tn:${t}`,
-      label: fmt(chipsText.notTag, { tag }),
+      label: fmt(chipsText.notTag, { tag: t }),
       exclude: true,
       remove: { tagsNot: query.tagsNot.filter((x) => x !== t) },
     });
@@ -603,12 +603,12 @@ function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
     const { yearFrom: from, yearTo: to } = query;
     const label =
       from !== undefined && from === to
-        ? fmt(t.year, { year: from })
+        ? fmt(chipsText.year, { year: from })
         : from !== undefined && to !== undefined
           ? `${from}–${to}`
           : from !== undefined
-            ? fmt(t.yearFrom, { year: from })
-            : fmt(t.yearTo, { year: to! });
+            ? fmt(chipsText.yearFrom, { year: from })
+            : fmt(chipsText.yearTo, { year: to! });
     chips.push({ key: "year", label, remove: { yearFrom: undefined, yearTo: undefined } });
   }
   if (query.season) chips.push({ key: "season", label: labelOf(L.season, query.season), remove: { season: undefined } });
@@ -618,7 +618,7 @@ function activeChips(query: CatalogQuery, i18n: I18n): Chip[] {
     chips.push({ key: `s:${s}`, label: labelOf(L.status, s), remove: { statuses: query.statuses.filter((x) => x !== s) } });
   if (query.episodes) chips.push({ key: "eps", label: episodesLabel(query.episodes, i18n), remove: { episodes: undefined } });
   if (query.minScore !== undefined)
-    chips.push({ key: "score", label: fmt(t.score, { score: query.minScore }), remove: { minScore: undefined } });
+    chips.push({ key: "score", label: fmt(chipsText.score, { score: query.minScore }), remove: { minScore: undefined } });
   if (query.country)
     chips.push({ key: "country", label: labelOf(L.country, query.country), remove: { country: undefined } });
   if (query.source)

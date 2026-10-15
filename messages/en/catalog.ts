@@ -1,3 +1,5 @@
+import type { Plural } from "@/lib/i18n/format";
+
 const catalog = {
   metaTitle: "Anime catalog and search — YourMovie",
   /** Заголовок сторінки залежно від пошуку й фільтрів (catalogTitle). */
@@ -86,6 +88,8 @@ const catalog = {
     errorTitle: "Couldn’t load the results.",
     rateLimited: "AniList is temporarily limiting requests. Wait a minute and refresh the page.",
     unavailable: "AniList seems to be unavailable right now. Try refreshing the page a little later.",
+    /** Скільки знайдено (без схованих «Не цікаво»). */
+    found: { one: "Found {n} anime", other: "Found {n} anime" } as Plural,
     shown: "Showing {from}–{to}",
     pages: "Result pages",
     prev: "← Previous",
