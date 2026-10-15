@@ -12,6 +12,30 @@ function rememberLang(lang: Locale) {
   document.cookie = `${LANG_COOKIE}=${lang}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
+/**
+ * Змінити мову сайту: запам'ятати (cookie, а для того, хто ввійшов, — у профілі) і відкрити ту саму
+ * сторінку новою мовою. Використовують перемикач у шапці й налаштування профілю.
+ */
+export function useSwitchLanguage() {
+  const { lang } = useI18n();
+  const { profile } = useProfile();
+  const router = useRouter();
+  return async (next: Locale): Promise<boolean> => {
+    if (next === lang) return true;
+    let ok = true;
+    if (profile) {
+      const { error } = await getSupabaseBrowser().from("profiles").update({ language: next }).eq("id", profile.id);
+      if (error) {
+        console.warn(error);
+        ok = false;
+      } else notifyProfileChanged();
+    }
+    rememberLang(next);
+    router.replace(switchLocalePath(window.location.pathname, next) + window.location.search + window.location.hash);
+    return ok;
+  };
+}
+
 /** Мова в шапці: список мов; вибір запам'ятовується (cookie, а для того, хто ввійшов, — у профілі). */
 export function LanguageSwitcher() {
   const { lang, m } = useI18n();
@@ -19,12 +43,6 @@ export function LanguageSwitcher() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-
-  function go(next: Locale) {
-    rememberLang(next);
-    // Адресу беремо з вікна в момент вибору: так шапка не залежить від адреси й лишається статичною.
-    router.replace(switchLocalePath(window.location.pathname, next) + window.location.search + window.location.hash);
-  }
 
   // Мова з профілю діє на всіх пристроях: якщо сторінка іншою мовою — переходимо на мову профілю.
   const preferred = profile?.language;
@@ -50,16 +68,11 @@ export function LanguageSwitcher() {
     };
   }, [open]);
 
-  async function choose(next: Locale) {
+  const switchLanguage = useSwitchLanguage();
+
+  function choose(next: Locale) {
     setOpen(false);
-    if (next === lang) return;
-    if (profile) {
-      // Зберігаємо в профілі, щоб мова була та сама на всіх пристроях.
-      const { error } = await getSupabaseBrowser().from("profiles").update({ language: next }).eq("id", profile.id);
-      if (error) console.warn(error);
-      else notifyProfileChanged();
-    }
-    go(next);
+    switchLanguage(next);
   }
 
   return (

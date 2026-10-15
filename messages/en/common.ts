@@ -1,6 +1,6 @@
 import type { Plural } from "@/lib/i18n/format";
 
-export default {
+const common = {
   siteDescription: "Anime tracker: catalog, personal lists and recommendations.",
   siteTitle: "YourMovie — anime tracker",
   nav: {
@@ -34,3 +34,5 @@ export default {
   episodes: { one: "episode", other: "episodes" } as Plural,
   anime: { one: "anime", other: "anime" } as Plural,
 };
+
+export default common;

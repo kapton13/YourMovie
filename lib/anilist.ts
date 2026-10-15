@@ -501,9 +501,13 @@ export type WatchOrderItem = Omit<MediaCard, "startDate"> & { startDate: FuzzyDa
 export type FranchisePart = WatchOrderItem & {
   status: MediaStatus | null;
   duration: number | null;
-  /** «Сезон 2», «Фільм», «OVA», «Спешл»… */
-  label: string;
+  /** Що це за частина — підпис («Сезон 2», «Фільм»…) складає `partLabel` потрібною мовою. */
+  kind: PartKind;
+  /** Номер сезону для основних серіалів (kind "season"). */
+  season: number | null;
 };
+
+export type PartKind = "season" | "series" | "MOVIE" | "OVA" | "SPECIAL" | "MUSIC" | "other";
 
 /**
  * Одне аніме з усіма частинами.
@@ -537,12 +541,7 @@ const CHAIN_TYPES: RelationType[] = ["PREQUEL", "SEQUEL"];
 // Що ще належить до того самого аніме. Спін-офи, інші версії, «ті ж герої» — окремі аніме.
 const EXTRA_TYPES: RelationType[] = ["SIDE_STORY", "PARENT", "SUMMARY"];
 const SERIES_FORMATS = new Set(["TV", "TV_SHORT", "ONA"]);
-const PART_FORMAT_LABELS: Record<string, string> = {
-  MOVIE: "Фільм",
-  OVA: "OVA",
-  SPECIAL: "Спешл",
-  MUSIC: "Кліп",
-};
+const PART_FORMAT_KINDS = new Set<PartKind>(["MOVIE", "OVA", "SPECIAL", "MUSIC"]);
 
 function dateKey({ year, month, day }: { year: number | null; month?: number | null; day?: number | null }): number {
   return year == null ? Infinity : year * 10000 + (month ?? 12) * 100 + (day ?? 31);
@@ -557,7 +556,7 @@ export async function getFranchise(id: number): Promise<Franchise> {
   "use cache";
   cacheLife("days");
 
-  type Node = Omit<FranchisePart, "label"> & {
+  type Node = Omit<FranchisePart, "kind" | "season"> & {
     relations: { edges: { relationType: RelationType; node: { id: number; type: string } }[] };
   };
 
@@ -610,28 +609,30 @@ export async function getFranchise(id: number): Promise<Franchise> {
     weight(a) - weight(b) || earliest(b) - earliest(a) || Math.min(...b) - Math.min(...a);
   const mainChain = new Set(chains.reduce((best, c) => (better(c, best) > 0 ? c : best), chains[0] ?? [id]));
 
-  const strip = (node: Node): Omit<FranchisePart, "label"> => {
+  const strip = (node: Node): Omit<FranchisePart, "kind" | "season"> => {
     const part: Partial<Node> = { ...node };
     delete part.relations;
-    return part as Omit<FranchisePart, "label">;
+    return part as Omit<FranchisePart, "kind" | "season">;
   };
   const main = [...nodes.values()].filter((n) => mainChain.has(n.id)).map(strip).sort(byDate);
   const extras = [...nodes.values()].filter((n) => !mainChain.has(n.id)).map(strip).sort(byDate);
 
-  let season = 0;
-  const label = (part: Omit<FranchisePart, "label">, inMain: boolean): string => {
-    if (SERIES_FORMATS.has(part.format ?? "")) return inMain ? `Сезон ${++season}` : "Серіал";
-    return PART_FORMAT_LABELS[part.format ?? ""] ?? "Частина";
+  let seasonNumber = 0;
+  const describe = (part: Omit<FranchisePart, "kind" | "season">, inMain: boolean): Pick<FranchisePart, "kind" | "season"> => {
+    if (SERIES_FORMATS.has(part.format ?? "")) return inMain ? { kind: "season", season: ++seasonNumber } : { kind: "series", season: null };
+    const format = part.format as PartKind | null;
+    return { kind: format && PART_FORMAT_KINDS.has(format) ? format : "other", season: null };
   };
-  const mainParts = main.map((p) => ({ ...p, label: label(p, true) }));
-  const extraParts = extras.map((p) => ({ ...p, label: label(p, false) }));
+  const mainParts = main.map((p) => ({ ...p, ...describe(p, true) }));
+  const extraParts = extras.map((p) => ({ ...p, ...describe(p, false) }));
   const first = mainParts[0] ?? extraParts[0];
   // AniList такого id не знає (видалено чи об'єднано з іншим).
   if (!first) throw new AniListError(404, `media ${id} not found`);
 
   return {
     key: first.id,
-    title: first.title.english ?? first.title.romaji ?? "Без назви",
+    // Порожня назва — інтерфейс покаже «Без назви» потрібною мовою.
+    title: first.title.english ?? first.title.romaji ?? "",
     main: mainParts,
     extras: extraParts,
   };
@@ -962,7 +963,7 @@ export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
       for (const r of recs) cardMemo.set(r.media.id, { at, card: r.media });
       const seed: RecSeed = {
         id: m.id,
-        title: m.title.english ?? m.title.romaji ?? "Без назви",
+        title: m.title.english ?? m.title.romaji ?? "",
         genres: m.genres,
         tags: m.tags ?? [],
         recs,

@@ -1,4 +1,4 @@
-export default {
+const labels = {
   format: { TV: "TV series", TV_SHORT: "Short series", MOVIE: "Movie", SPECIAL: "Special", OVA: "OVA", ONA: "ONA", MUSIC: "Music video" } as Record<string, string>,
   season: { WINTER: "Winter", SPRING: "Spring", SUMMER: "Summer", FALL: "Fall" } as Record<string, string>,
   status: { FINISHED: "Finished", RELEASING: "Airing", NOT_YET_RELEASED: "Announced", CANCELLED: "Cancelled", HIATUS: "On hiatus" } as Record<string, string>,
@@ -25,3 +25,5 @@ export default {
   tagCategory: { Theme: "Themes", Cast: "Characters", Setting: "Setting", Demographic: "Audience", Technical: "Technical" } as Record<string, string>,
   part: { season: "Season {n}", series: "Series", MOVIE: "Movie", OVA: "OVA", SPECIAL: "Special", MUSIC: "Music video", other: "Part" } as Record<string, string>,
 };
+
+export default labels;
