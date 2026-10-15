@@ -18,13 +18,16 @@ function rememberLang(lang: Locale) {
  */
 export function useSwitchLanguage() {
   const { lang } = useI18n();
-  const { profile } = useProfile();
   const router = useRouter();
   return async (next: Locale): Promise<boolean> => {
     if (next === lang) return true;
     let ok = true;
-    if (profile) {
-      const { error } = await getSupabaseBrowser().from("profiles").update({ language: next }).eq("id", profile.id);
+    // Хто ввійшов — дізнаємося в момент вибору (профіль у компоненті міг ще не завантажитися).
+    const supabase = getSupabaseBrowser();
+    const { data } = await supabase.auth.getSession();
+    const userId = data.session?.user.id;
+    if (userId) {
+      const { error } = await supabase.from("profiles").update({ language: next }).eq("id", userId);
       if (error) {
         console.warn(error);
         ok = false;
