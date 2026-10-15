@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import { useHydrated } from "@/components/useHydrated";
 import {
@@ -198,6 +198,13 @@ export function UserMediaProvider({
   const current = user && loaded?.userId === user.id ? loaded : null;
   const entry = user === null ? null : current ? current.entry : undefined;
 
+  /**
+   * Записи в базу — строго по черзі: інакше при швидких кліках (серія 1, серія 2) запит першого кліку
+   * («Дивлюся») міг дійти пізніше за другий («Переглянуто») і лишити в базі старий статус.
+   */
+  const writeQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingWrites = useRef(0);
+
   /** Виконати зміну оптимістично; якщо база відмовила — повернути як було. */
   async function run(next: Partial<Omit<Loaded, "userId">>, write: () => Promise<string | null>) {
     if (!current) return;
@@ -205,8 +212,11 @@ export function UserMediaProvider({
     setLoaded({ ...current, ...next });
     setError(null);
     setSaving(true);
-    const problem = await write();
-    setSaving(false);
+    pendingWrites.current++;
+    const task = writeQueue.current.then(write, write);
+    writeQueue.current = task.catch(() => null);
+    const problem = await task.catch((e: unknown) => String(e));
+    if (--pendingWrites.current === 0) setSaving(false);
     if (problem) {
       console.error(problem);
       // Частину могло вже бути збережено — показуємо як було й перечитуємо з бази, як є насправді.

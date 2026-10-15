@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "update-titles": "node scripts/update-title-index.mjs",
-    "update-ru-titles": "node scripts/update-ru-titles.mjs"
+    "update-ru-titles": "node scripts/update-ru-titles.mjs",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -18,11 +22,13 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.5"
   }
 }

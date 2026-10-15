@@ -5,6 +5,7 @@ import { useUser } from "@/components/auth/useUser";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useHydrated } from "@/components/useHydrated";
 import type { Franchise } from "@/lib/anilist";
+import { franchiseRows, quickRows, rowsToComplete, type HiddenRow } from "@/lib/hidden";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
 import styles from "./Hidden.module.css";
@@ -43,14 +44,7 @@ export function useHidden(): HiddenContext {
   return hydrated ? context : { ...context, hiddenIds: EMPTY.hiddenIds, hiddenKeys: EMPTY.hiddenKeys, listedIds: EMPTY.listedIds, loggedIn: false };
 }
 
-type Row = { media_id: number; franchise_key: number };
-
-/** Усі частини аніме (сезони, фільми, OVA) одним записом «Не цікаво» під ключем аніме. */
-function franchiseRows(franchise: Franchise, extraIds: number[]): Row[] {
-  const ids = new Set([...franchise.main, ...franchise.extras].map((p) => p.id));
-  for (const id of extraIds) ids.add(id);
-  return [...ids].map((id) => ({ media_id: id, franchise_key: franchise.key }));
-}
+type Row = HiddenRow;
 
 /** Частини аніме з AniList (через наш сервер); одна повторна спроба — великі аніме інколи не встигають. */
 async function fetchFranchises(ids: number[]): Promise<Record<number, Franchise>> {
@@ -110,14 +104,7 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
       for (let i = 0; i < keys.length; i += 300) {
         const chunk = keys.slice(i, i + 300);
         const franchises = await fetchFranchises(chunk);
-        const fixes: Row[] = [];
-        for (const key of chunk) {
-          const franchise = franchises[key];
-          if (!franchise) continue;
-          const have = groups.get(key)!;
-          const rows = franchiseRows(franchise, have);
-          if (franchise.key !== key || rows.length !== have.length) fixes.push(...rows);
-        }
+        const fixes = rowsToComplete(new Map(chunk.map((key) => [key, groups.get(key)!])), franchises);
         if (fixes.length === 0) continue;
         const { error } = await getSupabaseBrowser().from("hidden_media").upsert(fixes);
         if (error) {
@@ -203,8 +190,7 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   const hide = useCallback(
     async (mediaId: number, title: string, rootId?: number) => {
       // Одразу ховаємо картку й перший сезон (а з ним — усі картки цього аніме), потім — усі частини.
-      const root = rootId ?? mediaId;
-      const quick: Row[] = [...new Set([mediaId, root])].map((id) => ({ media_id: id, franchise_key: root }));
+      const quick = quickRows(mediaId, rootId);
       const quickIds = new Set(quick.map((r) => r.media_id));
       setRows((list) => [...list.filter((r) => !quickIds.has(r.media_id)), ...quick]);
       const franchise = (await fetchFranchises([mediaId]))[mediaId];
