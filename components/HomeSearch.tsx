@@ -1,12 +1,15 @@
+"use client";
+
 import Form from "next/form";
-import Link from "next/link";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import styles from "./HomeSearch.module.css";
 
 /** Пошук на головній: відкриває каталог з результатами. */
 export function HomeSearch() {
+  const { m, href } = useI18n();
   return (
     <div className={styles.wrap}>
-      <Form action="/catalog" className={styles.form} role="search">
+      <Form action={href("/catalog")} className={styles.form} role="search">
         <svg className={styles.icon} viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
@@ -15,19 +18,19 @@ export function HomeSearch() {
           type="search"
           name="q"
           className={styles.input}
-          placeholder="Назва аніме…"
-          aria-label="Пошук аніме за назвою"
+          placeholder={m.home.search.placeholder}
+          aria-label={m.home.search.label}
           enterKeyHint="search"
           autoComplete="off"
           spellCheck={false}
           required
         />
         <button type="submit" className={styles.button}>
-          Знайти
+          {m.home.search.submit}
         </button>
       </Form>
       <Link href="/catalog" className={styles.more}>
-        Розширений пошук: жанри, роки, формат та інші фільтри →
+        {m.home.search.advanced}
       </Link>
     </div>
   );

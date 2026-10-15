@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { Link, useI18n, useLocaleRouter } from "@/components/i18n/I18nProvider";
 import { cleanNickname } from "@/lib/profile";
 import { safeNext } from "@/lib/safeNext";
 import { getSupabaseBrowser, setRemember } from "@/lib/supabase/client";
@@ -16,7 +16,9 @@ type Mode = "login" | "signup" | "forgot";
 const MIN_PASSWORD = 8;
 
 export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { m, fmt, href } = useI18n();
+  const t = m.auth;
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
   const linkProblem = searchParams.get("error") === "link";
@@ -40,27 +42,28 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
     if (mode === "signup" && nicknameState !== "free") {
       setError(
         nicknameState === "taken"
-          ? "Цей нікнейм уже зайнятий — спробуйте інший."
+          ? t.nickname.taken
           : nicknameState === "checking"
-            ? "Зачекайте секунду: перевіряємо нікнейм."
-            : "Вкажіть нікнейм: 3–24 символи, літери, цифри, _ . -",
+            ? t.nicknameChecking
+            : t.nicknameRequired,
       );
       return;
     }
     if (mode === "signup" && password.length < MIN_PASSWORD) {
-      setError(`Пароль має бути щонайменше ${MIN_PASSWORD} символів.`);
+      setError(fmt(t.passwordTooShort, { n: MIN_PASSWORD }));
       return;
     }
     setBusy(true);
     const supabase = getSupabaseBrowser();
+    // Після посилання з листа — на сторінку тією ж мовою, якою людина зараз користується.
     const callback = (target: string) =>
-      `${window.location.origin}/auth/callback?next=${encodeURIComponent(target)}`;
+      `${window.location.origin}/auth/callback?next=${encodeURIComponent(href(target))}`;
 
     try {
       if (mode === "login") {
         setRemember(remember);
         const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-        if (error) return setError(authErrorMessage(error));
+        if (error) return setError(authErrorMessage(error, m));
         router.replace(next);
         router.refresh();
       } else if (mode === "signup") {
@@ -74,10 +77,10 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
             data: { nickname: cleanNickname(nickname) },
           },
         });
-        if (error) return setError(authErrorMessage(error));
+        if (error) return setError(authErrorMessage(error, m));
         // Якщо пошта вже зареєстрована, Supabase не каже про це прямо (захист від перебору адрес).
         if (data.user && data.user.identities?.length === 0)
-          return setError("Акаунт із цією поштою вже існує. Спробуйте увійти.");
+          return setError(t.accountExists);
         if (data.session) {
           // Підтвердження пошти вимкнено — людина вже в системі.
           router.replace(next === "/account" ? "/account?welcome=1" : next);
@@ -89,7 +92,7 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
           redirectTo: callback("/reset-password"),
         });
-        if (error) return setError(authErrorMessage(error));
+        if (error) return setError(authErrorMessage(error, m));
         setSentTo(cleanEmail);
       }
     } finally {
@@ -103,40 +106,30 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         <div className={styles.icon} aria-hidden="true">
           ✉
         </div>
-        <h1 className={styles.title}>Перевірте пошту</h1>
+        <h1 className={styles.title}>{t.sent.title}</h1>
         <p className={styles.text}>
-          Ми надіслали лист на <b>{sentTo}</b>.{" "}
-          {mode === "signup"
-            ? "Перейдіть за посиланням у листі, щоб підтвердити пошту й завершити реєстрацію."
-            : "Перейдіть за посиланням у листі, щоб задати новий пароль."}
+          {t.sent.text.split(/(\{email\})/).map((part, i) => (part === "{email}" ? <b key={i}>{sentTo}</b> : part))}{" "}
+          {mode === "signup" ? t.sent.signup : t.sent.forgot}
         </p>
-        <p className={styles.hint}>Листа немає кілька хвилин? Загляньте в «Спам» або «Промоакції».</p>
+        <p className={styles.hint}>{t.sent.hint}</p>
         <button type="button" className={styles.linkButton} onClick={() => setSentTo("")}>
-          ← Назад
+          {t.sent.back}
         </button>
       </div>
     );
   }
 
-  const titles: Record<Mode, string> = {
-    login: "Вхід",
-    signup: "Реєстрація",
-    forgot: "Відновлення пароля",
-  };
-
   return (
     <div className={styles.card}>
-      <h1 className={styles.title}>{titles[mode]}</h1>
+      <h1 className={styles.title}>{t.titles[mode]}</h1>
       {mode === "signup" && (
-        <p className={styles.text}>Створіть акаунт, щоб вести списки аніме, ставити оцінки й відмічати серії.</p>
+        <p className={styles.text}>{t.intro.signup}</p>
       )}
       {mode === "forgot" && (
-        <p className={styles.text}>Вкажіть пошту акаунта — ми надішлемо посилання для нового пароля.</p>
+        <p className={styles.text}>{t.intro.forgot}</p>
       )}
       {linkProblem && mode === "login" && (
-        <p className={styles.notice}>
-          Посилання з листа не спрацювало або застаріло. Якщо пошту вже підтверджено — просто увійдіть.
-        </p>
+        <p className={styles.notice}>{t.linkProblem}</p>
       )}
 
       <form className={styles.form} onSubmit={onSubmit} noValidate>
@@ -144,7 +137,7 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
           <NicknameField value={nickname} onChange={setNickname} onStateChange={onNicknameState} />
         )}
         <label className={styles.field}>
-          <span>Пошта</span>
+          <span>{t.email}</span>
           <input
             type="email"
             name="email"
@@ -161,10 +154,10 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         {mode !== "forgot" && (
           <div className={styles.field}>
             <span className={styles.fieldRow}>
-              <label htmlFor="auth-password">Пароль</label>
+              <label htmlFor="auth-password">{t.password}</label>
               {mode === "login" && (
                 <button type="button" className={styles.linkButton} onClick={() => (setMode("forgot"), setError(""))}>
-                  Забули пароль?
+                  {t.forgotPassword}
                 </button>
               )}
             </span>
@@ -185,14 +178,14 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
                 type="button"
                 className={styles.showPassword}
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Сховати пароль" : "Показати пароль"}
+                aria-label={showPassword ? t.hidePasswordLabel : t.showPasswordLabel}
               >
-                {showPassword ? "Сховати" : "Показати"}
+                {showPassword ? t.hidePassword : t.showPassword}
               </button>
             </span>
             {mode === "signup" && (
               <span id="auth-password-hint" className={styles.hint}>
-                Щонайменше {MIN_PASSWORD} символів.
+                {fmt(t.passwordHint, { n: MIN_PASSWORD })}
               </span>
             )}
           </div>
@@ -202,12 +195,8 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
           <label className={styles.remember}>
             <input type="checkbox" checked={remember} onChange={(e) => setRememberChoice(e.target.checked)} />
             <span>
-              Залишатися в системі
-              <span className={styles.hint}>
-                {remember
-                  ? "Не доведеться входити щоразу, навіть після закриття браузера."
-                  : "Вихід відбудеться, щойно ви закриєте браузер. Зручно на чужому комп'ютері."}
-              </span>
+              {t.remember.label}
+              <span className={styles.hint}>{remember ? t.remember.on : t.remember.off}</span>
             </span>
           </label>
         )}
@@ -219,24 +208,26 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
         )}
 
         <button type="submit" className={styles.submit} disabled={busy || !email.trim() || (mode !== "forgot" && !password) || (mode === "signup" && !nickname.trim())}>
-          {busy ? "Зачекайте…" : mode === "login" ? "Увійти" : mode === "signup" ? "Зареєструватися" : "Надіслати посилання"}
+          {busy ? t.submit.busy : t.submit[mode]}
         </button>
       </form>
 
       <p className={styles.switch}>
         {mode === "login" && (
           <>
-            Ще немає акаунта? <Link href={`/signup${next !== "/account" ? `?next=${encodeURIComponent(next)}` : ""}`}>Зареєструватися</Link>
+            {t.switch.noAccount}{" "}
+            <Link href={`/signup${next !== "/account" ? `?next=${encodeURIComponent(next)}` : ""}`}>{t.switch.signup}</Link>
           </>
         )}
         {mode === "signup" && (
           <>
-            Уже є акаунт? <Link href={`/login${next !== "/account" ? `?next=${encodeURIComponent(next)}` : ""}`}>Увійти</Link>
+            {t.switch.haveAccount}{" "}
+            <Link href={`/login${next !== "/account" ? `?next=${encodeURIComponent(next)}` : ""}`}>{t.switch.login}</Link>
           </>
         )}
         {mode === "forgot" && (
           <button type="button" className={styles.linkButton} onClick={() => (setMode("login"), setError(""))}>
-            ← Повернутися до входу
+            {t.switch.backToLogin}
           </button>
         )}
       </p>

@@ -1,27 +1,33 @@
-/** Зрозумілі повідомлення замість технічних помилок Supabase. */
-export function authErrorMessage(error: { code?: string; message?: string; status?: number } | null): string {
+import type { Messages } from "@/messages";
+
+/** Зрозумілі повідомлення замість технічних помилок Supabase (мовою сайту: `m` — тексти з useI18n). */
+export function authErrorMessage(
+  error: { code?: string; message?: string; status?: number } | null,
+  m: Messages,
+): string {
   if (!error) return "";
+  const t = m.auth.errors;
   switch (error.code) {
     case "invalid_credentials":
-      return "Неправильна пошта або пароль.";
+      return t.invalidCredentials;
     case "email_not_confirmed":
-      return "Спершу підтвердьте пошту: ми надіслали вам лист із посиланням.";
+      return t.emailNotConfirmed;
     case "user_already_exists":
     case "email_exists":
-      return "Акаунт із цією поштою вже існує. Спробуйте увійти.";
+      return t.userExists;
     case "weak_password":
-      return "Пароль надто простий. Візьміть щонайменше 8 символів.";
+      return t.weakPassword;
     case "email_address_invalid":
     case "validation_failed":
-      return "Перевірте, чи правильно введено пошту.";
+      return t.invalidEmail;
     case "over_email_send_rate_limit":
     case "over_request_rate_limit":
-      return "Забагато спроб. Зачекайте трохи й спробуйте знову.";
+      return t.rateLimit;
     case "same_password":
-      return "Новий пароль має відрізнятися від старого.";
+      return t.samePassword;
     case "signup_disabled":
-      return "Реєстрацію тимчасово вимкнено.";
+      return t.signupDisabled;
   }
-  if (error.status === 429) return "Забагато спроб. Зачекайте трохи й спробуйте знову.";
-  return "Щось пішло не так. Спробуйте ще раз трохи згодом.";
+  if (error.status === 429) return t.rateLimit;
+  return t.unknown;
 }

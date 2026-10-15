@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { useHidden } from "./HiddenProvider";
 import { useSkipListed } from "./SkipListed";
 import styles from "./Hidden.module.css";
@@ -22,6 +23,7 @@ export function Hideable({
 }) {
   const { hiddenIds, listedIds, loggedIn, hide } = useHidden();
   const skipListed = useSkipListed();
+  const { m, fmt } = useI18n();
   const ids = rootId && rootId !== mediaId ? [mediaId, rootId] : [mediaId];
   if (ids.some((id) => hiddenIds.has(id) || (skipListed && listedIds.has(id)))) return null;
   return (
@@ -32,8 +34,8 @@ export function Hideable({
           type="button"
           className={styles.cross}
           onClick={() => hide(mediaId, title)}
-          aria-label={`Не цікаво: «${title}» — більше не показувати`}
-          title="Не цікаво — більше не показувати"
+          aria-label={fmt(m.hidden.crossLabel, { title })}
+          title={m.hidden.crossTitle}
         >
           ✕
         </button>

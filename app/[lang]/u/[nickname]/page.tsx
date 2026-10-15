@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileView } from "@/components/profile/ProfileView";
+import { fmt } from "@/lib/i18n/format";
+import { getI18n } from "@/lib/i18n/server";
 
 function decode(value: string): string {
   try {
@@ -11,7 +13,8 @@ function decode(value: string): string {
 }
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/u/[nickname]">): Promise<Metadata> {
-  return { title: `${decode((await params).nickname)} — профіль на YourMovie` };
+  const { m } = await getI18n();
+  return { title: fmt(m.profile.metaTitle, { nickname: decode((await params).nickname) }) };
 }
 
 export default function UserPage({ params }: PageProps<"/[lang]/u/[nickname]">) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useTransition } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import styles from "./CatalogTransition.module.css";
 
 type TransitionContext = {
@@ -27,9 +28,10 @@ export function useCatalogTransition(): TransitionContext {
 
 export function PendingResults({ children }: { children: React.ReactNode }) {
   const { isPending } = useCatalogTransition();
+  const { m } = useI18n();
   return (
     <div className={`${styles.results} ${isPending ? styles.pending : ""}`} aria-busy={isPending}>
-      {isPending && <div className={styles.bar} role="progressbar" aria-label="Шукаємо…" />}
+      {isPending && <div className={styles.bar} role="progressbar" aria-label={m.catalog.searching} />}
       {children}
     </div>
   );

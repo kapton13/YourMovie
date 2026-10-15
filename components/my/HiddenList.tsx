@@ -1,14 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useHidden } from "@/components/hidden/HiddenProvider";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { Franchise } from "@/lib/anilist";
 import styles from "./MyAnime.module.css";
 
 /** Вкладка «Не цікаво»: усе сховане, з кнопкою «Повернути». */
 export function HiddenList() {
   const { hiddenKeys, unhide } = useHidden();
+  const { m, fmt } = useI18n();
+  const t = m.hidden;
   const keys = [...hiddenKeys.keys()].sort((a, b) => a - b);
   const keysParam = keys.join(",");
   const [franchises, setFranchises] = useState<Record<number, Franchise>>({});
@@ -27,14 +29,12 @@ export function HiddenList() {
 
   if (keys.length === 0)
     return (
-      <div className={styles.empty}>
-        Тут з’являться аніме, які ви сховали червоним хрестиком ✕. Сайт їх не показує й не рекомендує.
-      </div>
+      <div className={styles.empty}>{t.empty}</div>
     );
 
   return (
     <>
-      <p className={styles.hiddenNote}>Ці аніме сайт не показує на головній, у каталозі й у рекомендаціях.</p>
+      <p className={styles.hiddenNote}>{t.note}</p>
       <ul className={styles.grid}>
         {keys.map((key) => {
           const franchise = franchises[key];
@@ -48,10 +48,10 @@ export function HiddenList() {
                     <img src={first.coverImage.large} alt="" loading="lazy" />
                   )}
                 </span>
-                <span className={styles.cardTitle}>{franchise?.title ?? `Аніме #${key}`}</span>
+                <span className={styles.cardTitle}>{franchise ? franchise.title || m.common.untitled : fmt(t.animeNumber, { id: key })}</span>
               </Link>
               <button type="button" className={styles.restore} onClick={() => unhide(key)}>
-                Повернути
+                {t.restore}
               </button>
             </li>
           );

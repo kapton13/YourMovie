@@ -30,8 +30,6 @@ const NICKNAME_COMMON = "0-9_.\\-";
 const NICKNAME_PATTERNS = NICKNAME_SCRIPTS.map((s) => new RegExp(`^[${NICKNAME_COMMON}${s.ranges}]+$`, "u"));
 const NICKNAME_ANY = new RegExp(`^[${NICKNAME_COMMON}${NICKNAME_SCRIPTS.map((s) => s.ranges).join("")}]+$`, "u");
 
-export const NICKNAME_RULES = "3–24 символи: літери однієї абетки (будь-якою мовою), цифри, _ . -";
-
 /** Нікнейм в одному вигляді: та сама форма літер (NFC), без пробілів по краях. */
 export function cleanNickname(value: string): string {
   return value.normalize("NFC").trim();
@@ -76,25 +74,30 @@ export function nameLength(value: string): number {
   return [...cleanName(value)].length;
 }
 
-export function nameProblem(value: string, label: string): string {
+/** Що не так з ім'ям: "long" — задовге, "chars" — недозволені символи; "" — усе гаразд. Текст — у словнику. */
+export type NameProblem = "" | "long" | "chars";
+
+export function nameProblem(value: string): NameProblem {
   const clean = cleanName(value);
   if (!clean) return "";
-  if (nameLength(clean) > NAME_MAX_LENGTH) return `${label}: не довше за ${NAME_MAX_LENGTH} символів.`;
-  if (!NAME_PATTERN.test(clean) || !/\p{L}/u.test(clean))
-    return `${label}: лише літери (будь-якою мовою), апостроф, дефіс, крапка й пробіл.`;
+  if (nameLength(clean) > NAME_MAX_LENGTH) return "long";
+  if (!NAME_PATTERN.test(clean) || !/\p{L}/u.test(clean)) return "chars";
   return "";
 }
 
-export function nicknameProblem(nickname: string): string {
+/**
+ * Що не так з нікнеймом (текст — у словнику `auth.nickname.problems`): "short"/"long" — довжина,
+ * "mixed" — змішано абетки, "chars" — недозволені символи, "reserved" — «User» + цифри; "" — усе гаразд.
+ */
+export type NicknameProblem = "" | "short" | "long" | "mixed" | "chars" | "reserved";
+
+export function nicknameProblem(nickname: string): NicknameProblem {
   const value = cleanNickname(nickname);
   const length = [...value].length;
-  if (length < 3) return "Нікнейм — щонайменше 3 символи.";
-  if (length > 24) return "Нікнейм — не довше за 24 символи.";
-  if (!NICKNAME_PATTERNS.some((p) => p.test(value)))
-    return NICKNAME_ANY.test(value)
-      ? "Літери лише однієї абетки — не змішуйте, наприклад, латиницю з кирилицею."
-      : "Лише літери, цифри та символи _ . - (без пробілів).";
-  if (/^user[0-9]+$/i.test(value)) return "Ніки «User» + цифри сайт видає автоматично — оберіть інший.";
+  if (length < 3) return "short";
+  if (length > 24) return "long";
+  if (!NICKNAME_PATTERNS.some((p) => p.test(value))) return NICKNAME_ANY.test(value) ? "mixed" : "chars";
+  if (/^user[0-9]+$/i.test(value)) return "reserved";
   return "";
 }
 
@@ -104,9 +107,10 @@ const COUNTRY_CODES =
     " ",
   );
 
-export function countryOptions(): { code: string; name: string }[] {
-  const names = new Intl.DisplayNames(["uk"], { type: "region" });
+/** Список країн мовою сайту (`intl` — напр. "uk-UA"), за абеткою. */
+export function countryOptions(intl: string): { code: string; name: string }[] {
+  const names = new Intl.DisplayNames([intl], { type: "region" });
   return COUNTRY_CODES.map((code) => ({ code, name: names.of(code) ?? code })).sort((a, b) =>
-    a.name.localeCompare(b.name, "uk"),
+    a.name.localeCompare(b.name, intl),
   );
 }

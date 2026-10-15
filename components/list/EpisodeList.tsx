@@ -1,26 +1,46 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import type { EpisodeInfo, EpisodesData } from "@/lib/anilist";
+import { stripLocale } from "@/lib/i18n/config";
 import { useUserMedia } from "./UserMediaProvider";
 import styles from "./EpisodeList.module.css";
 
 const RANGE = 50;
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-const dateFormat = new Intl.DateTimeFormat("uk-UA", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "Europe/Kyiv",
-});
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Дата серії цифрами за київським часом, за правилами мови. */
+function dateFormat(intl: string): Intl.DateTimeFormat {
+  let format = dateFormats.get(intl);
+  if (!format) {
+    format = new Intl.DateTimeFormat(intl, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Kyiv" });
+    dateFormats.set(intl, format);
+  }
+  return format;
+}
+
+/** Вставити елемент замість {key} у тексті зі словника. */
+function withNode(template: string, key: string, node: React.ReactNode): React.ReactNode {
+  const [before, after = ""] = template.split(`{${key}}`);
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  );
+}
 
 /** Розділ «Серії»: відмітки «переглянуто», «усі до цієї», оцінка кожної серії. */
 export function EpisodeList({ data }: { data: EpisodesData }) {
   const { user, marks, saving, error, setWatched, rateEpisode } = useUserMedia();
   const pathname = usePathname();
+  const { m, fmt } = useI18n();
+  const t = m.list.episodes;
   const { episodes, airedCount } = data;
 
   const watchedCount = useMemo(() => {
@@ -55,11 +75,11 @@ export function EpisodeList({ data }: { data: EpisodesData }) {
   return (
     <section className={styles.section} aria-busy={saving}>
       <div className={styles.header}>
-        <h2 className={styles.heading}>{single ? "Перегляд" : "Серії"}</h2>
+        <h2 className={styles.heading}>{single ? t.single : t.heading}</h2>
         {ready && !single && (
           <span className={styles.progressText}>
-            переглянуто <b>{watchedCount}</b> з {airedCount}
-            {data.total && data.total > airedCount ? ` (усього буде ${data.total})` : ""}
+            {withNode(fmt(t.progress, { aired: airedCount }), "watched", <b>{watchedCount}</b>)}
+            {data.total && data.total > airedCount ? fmt(t.total, { n: data.total }) : ""}
           </span>
         )}
         {ready && !single && aired.length > 0 && (
@@ -69,33 +89,37 @@ export function EpisodeList({ data }: { data: EpisodesData }) {
             onClick={() => (allAiredWatched ? setWatched(aired, false) : setWatched(aired.filter((n) => !marks?.get(n)?.watched), true))}
           >
             {allAiredWatched
-              ? "Зняти всі відмітки"
+              ? t.unmarkAll
               : data.total && airedCount >= data.total
-                ? "✓ Переглянуто весь сезон"
-                : "✓ Переглянуто все, що вийшло"}
+                ? t.markSeason
+                : t.markAired}
           </button>
         )}
       </div>
 
       {ready && !single && (
-        <div className={styles.progress} role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Прогрес перегляду">
+        <div className={styles.progress} role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label={t.progressAria}>
           <span style={{ width: `${percent}%` }} />
         </div>
       )}
 
       {!loggedIn && user !== undefined && (
         <p className={styles.note}>
-          <Link href={`/login?next=${encodeURIComponent(pathname ?? "/")}`}>Увійдіть</Link>, щоб відмічати переглянуті серії й оцінювати їх.
+          {withNode(
+            t.loginText,
+            "link",
+            <Link href={`/login?next=${encodeURIComponent(stripLocale(pathname ?? "/"))}`}>{t.loginLink}</Link>,
+          )}
         </p>
       )}
       {error && (
         <p className={styles.error} role="alert">
-          {error}
+          {m.list.errors[error]}
         </p>
       )}
 
       {ranges > 1 && (
-        <div className={styles.ranges} role="tablist" aria-label="Серії">
+        <div className={styles.ranges} role="tablist" aria-label={t.rangesAria}>
           {Array.from({ length: ranges }, (_, i) => {
             const from = i * RANGE + 1;
             const to = Math.min(episodes.length, (i + 1) * RANGE);
@@ -159,8 +183,10 @@ function EpisodeRow({
   onOpenRating: () => void;
   onRate: (score: number | null) => void;
 }) {
-  const date = episode.airingAt ? dateFormat.format(new Date(episode.airingAt * 1000)) : null;
-  const name = episode.title ?? `Серія ${episode.number}`;
+  const { m, fmt, intl } = useI18n();
+  const t = m.list.episodes;
+  const date = episode.airingAt ? dateFormat(intl).format(new Date(episode.airingAt * 1000)) : null;
+  const name = episode.title ?? fmt(t.episode, { n: episode.number });
 
   return (
     <li className={`${styles.row} ${watched ? styles.watched : ""} ${episode.aired ? "" : styles.upcoming}`}>
@@ -172,13 +198,13 @@ function EpisodeRow({
           </span>
           <span className={styles.meta}>
             {date ? (
-              <span className={styles.date}>{episode.aired ? date : `вийде ${date}`}</span>
+              <span className={styles.date}>{episode.aired ? date : fmt(t.airs, { date })}</span>
             ) : (
-              !episode.aired && <span className={styles.date}>ще не вийшла</span>
+              !episode.aired && <span className={styles.date}>{t.notAired}</span>
             )}
             {ready && canMarkUpTo && (
-              <button type="button" className={styles.upTo} onClick={onMarkUpTo} title="Відмітити всі серії до цієї включно">
-                усі до цієї
+              <button type="button" className={styles.upTo} onClick={onMarkUpTo} title={t.upToTitle}>
+                {t.upTo}
               </button>
             )}
           </span>
@@ -191,7 +217,7 @@ function EpisodeRow({
               className={`${styles.scoreButton} ${score ? styles.scored : ""}`}
               onClick={onOpenRating}
               aria-expanded={ratingOpen}
-              aria-label={score ? `Оцінка серії ${episode.number}: ${score}. Змінити` : `Оцінити серію ${episode.number}`}
+              aria-label={score ? fmt(t.scoreAria, { n: episode.number, score }) : fmt(t.rateAria, { n: episode.number })}
             >
               {score ? `★ ${score}` : "☆"}
             </button>
@@ -200,7 +226,7 @@ function EpisodeRow({
               className={`${styles.check} ${watched ? styles.checkOn : ""}`}
               onClick={onToggle}
               aria-pressed={watched}
-              aria-label={watched ? `Серія ${episode.number} переглянута. Зняти відмітку` : `Відмітити серію ${episode.number} як переглянуту`}
+              aria-label={fmt(watched ? t.watchedAria : t.markAria, { n: episode.number })}
             >
               {watched ? "✓" : ""}
             </button>
@@ -209,7 +235,7 @@ function EpisodeRow({
       </div>
 
       {ratingOpen && (
-        <div className={styles.rating} role="group" aria-label={`Оцінка серії ${episode.number}`}>
+        <div className={styles.rating} role="group" aria-label={fmt(t.ratingAria, { n: episode.number })}>
           {SCORES.map((n) => (
             <button
               key={n}
@@ -223,7 +249,7 @@ function EpisodeRow({
           ))}
           {score !== null && (
             <button type="button" className={styles.ratingClear} onClick={() => onRate(null)}>
-              прибрати
+              {t.clear}
             </button>
           )}
         </div>

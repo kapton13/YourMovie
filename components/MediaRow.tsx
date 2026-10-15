@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { Link } from "@/components/i18n/I18nProvider";
 import type { MediaCard as Media } from "@/lib/anilist";
-import { MediaCard } from "./MediaCard";
+import { MediaCard, MediaRowText } from "./MediaCard";
 import styles from "./MediaRow.module.css";
 
 type Props<T extends Media> = {
@@ -23,7 +23,7 @@ export function MediaRow<T extends Media>({ title, href, items, badge, label, no
         <h2 className={styles.heading}>{href ? <Link href={href}>{title}</Link> : title}</h2>
         {href && (
           <Link href={href} className={styles.more}>
-            Дивитися всі →
+            <MediaRowText id="seeAll" />
           </Link>
         )}
       </div>
@@ -42,7 +42,9 @@ export function MediaRow<T extends Media>({ title, href, items, badge, label, no
           ))}
         </div>
       ) : (
-        <p className={styles.empty}>Поки що тут порожньо.</p>
+        <p className={styles.empty}>
+          <MediaRowText id="empty" />
+        </p>
       )}
     </section>
   );

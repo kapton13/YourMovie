@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import type { Franchise } from "@/lib/anilist";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
@@ -42,6 +43,7 @@ type Row = { media_id: number; franchise_key: number };
 /** Список «Не цікаво» для всього сайту: що сховано, сховати, повернути. */
 export function HiddenProvider({ children }: { children: React.ReactNode }) {
   const user = useUser();
+  const { m, fmt } = useI18n();
   const [loaded, setLoaded] = useState<{ userId: string; rows: Row[] } | null>(null);
   const [toast, setToast] = useState<{ key: number; title: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -179,11 +181,9 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
       {children}
       {toast && (
         <div className={styles.toast} role="status">
-          <span>
-            «{toast.title}» більше не показуватиметься.
-          </span>
+          <span>{fmt(m.hidden.toast, { title: toast.title })}</span>
           <button type="button" className={styles.undo} onClick={() => unhide(toast.key)}>
-            Скасувати
+            {m.hidden.undo}
           </button>
         </div>
       )}

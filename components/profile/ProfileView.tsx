@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { Link, useI18n } from "@/components/i18n/I18nProvider";
 import { MediaGrid } from "@/components/MediaGrid";
 import type { MyMedia } from "@/lib/anilist";
-import { GENRE_LABELS } from "@/lib/labels";
-import { LIST_STATUSES, LIST_STATUS_LABELS, formatUserScore, type ListStatus } from "@/lib/lists";
+import { label } from "@/lib/i18n/labels";
+import { LIST_STATUSES, type ListStatus } from "@/lib/lists";
 import { computeStats, type ProfileStats, type StatsEntry, type StatsMark } from "@/lib/stats";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
@@ -46,8 +46,15 @@ async function loadMedia(ids: number[]): Promise<Map<number, MyMedia>> {
   return result;
 }
 
+/** Оцінка за правилами мови: 7 → «7», 7.4 → «7,4» / "7.4". */
+function useScoreText(): (score: number) => string {
+  const { intl } = useI18n();
+  return (score) => score.toLocaleString(intl, { maximumFractionDigits: 1 });
+}
+
 /** Профіль користувача: статистика й списки. Свій — завжди, чужий — якщо відкритий. */
 export function ProfileView({ nickname }: { nickname: string }) {
+  const { m, fmt } = useI18n();
   const user = useUser();
   const userId = user === undefined ? undefined : (user?.id ?? null);
   const [loaded, setLoaded] = useState<{ key: string; data: Loaded } | null>(null);
@@ -111,22 +118,22 @@ export function ProfileView({ nickname }: { nickname: string }) {
   if (data.kind === "missing")
     return (
       <div className={styles.message}>
-        <h1 className={styles.title}>Користувача не знайдено</h1>
-        <p>Немає користувача з нікнеймом «{nickname}». Можливо, він змінив нікнейм.</p>
+        <h1 className={styles.title}>{m.profile.missing.title}</h1>
+        <p>{fmt(m.profile.missing.text, { nickname })}</p>
       </div>
     );
   if (data.kind === "error")
     return (
       <div className={styles.message}>
-        <h1 className={styles.title}>Не вдалося завантажити профіль</h1>
-        <p>Спробуйте оновити сторінку трохи згодом.</p>
+        <h1 className={styles.title}>{m.profile.error.title}</h1>
+        <p>{m.profile.error.text}</p>
       </div>
     );
   if (data.kind === "closed")
     return (
       <div className={styles.message}>
         <Head profile={data.profile} />
-        <p>🔒 Профіль закритий — {data.profile.nickname} не показує свої списки іншим.</p>
+        <p>{fmt(m.profile.closed, { nickname: data.profile.nickname })}</p>
       </div>
     );
 
@@ -135,7 +142,8 @@ export function ProfileView({ nickname }: { nickname: string }) {
 }
 
 function Head({ profile }: { profile: PublicProfile }) {
-  const since = new Intl.DateTimeFormat("uk-UA", { day: "numeric", month: "long", year: "numeric" }).format(
+  const { m, fmt, intl } = useI18n();
+  const since = new Intl.DateTimeFormat(intl, { day: "numeric", month: "long", year: "numeric" }).format(
     new Date(profile.created_at),
   );
   return (
@@ -147,7 +155,7 @@ function Head({ profile }: { profile: PublicProfile }) {
         <h1 className={styles.title} dir="auto">
           {profile.nickname}
         </h1>
-        <p className={styles.since}>з нами з {since}</p>
+        <p className={styles.since}>{fmt(m.profile.since, { date: since })}</p>
       </div>
     </div>
   );
@@ -166,6 +174,8 @@ function Ready({
   media: Map<number, MyMedia>;
   own: boolean;
 }) {
+  const { m, fmt, count, intl } = useI18n();
+  const scoreText = useScoreText();
   const firstTab = LIST_STATUSES.find((s) => stats.byStatus[s] > 0) ?? "watching";
   const [tab, setTab] = useState<ListStatus>(firstTab);
   const [copied, setCopied] = useState(false);
@@ -200,80 +210,87 @@ function Ready({
         <div className={styles.ownBar}>
           {profile.is_public ? (
             <>
-              <span>🌐 Відкритий профіль — цю сторінку бачать усі, хто має посилання.</span>
+              <span>{m.profile.own.public}</span>
               <button type="button" className={styles.ownButton} onClick={copyLink}>
-                {copied ? "Скопійовано ✓" : "Копіювати посилання"}
+                {copied ? m.profile.own.copied : m.profile.own.copy}
               </button>
             </>
           ) : (
-            <span>🔒 Закритий профіль — статистику й списки бачите лише ви.</span>
+            <span>{m.profile.own.private}</span>
           )}
           <Link href="/account" className={styles.ownButton}>
-            Налаштування
+            {m.profile.own.settings}
           </Link>
         </div>
       )}
 
-      <section className={styles.tiles} aria-label="Підсумки">
-        <Tile value={String(total)} label="аніме в списках" />
-        <Tile value={stats.episodes.toLocaleString("uk-UA")} label="серій переглянуто" />
+      <section className={styles.tiles} aria-label={m.profile.tiles.label}>
+        <Tile value={total.toLocaleString(intl)} label={m.profile.tiles.anime} />
+        <Tile value={stats.episodes.toLocaleString(intl)} label={m.profile.tiles.episodes} />
         <Tile
-          value={hours.toLocaleString("uk-UA")}
-          label={hours >= 24 ? `годин ≈ ${Math.round(hours / 24)} дн.` : "годин перегляду"}
+          value={hours.toLocaleString(intl)}
+          label={
+            hours >= 24
+              ? fmt(m.profile.tiles.hoursDays, { days: Math.round(hours / 24).toLocaleString(intl) })
+              : m.profile.tiles.hours
+          }
         />
-        <Tile value={stats.averageScore !== null ? formatUserScore(stats.averageScore) : "—"} label="середня оцінка" />
+        <Tile
+          value={stats.averageScore !== null ? scoreText(stats.averageScore) : "—"}
+          label={m.profile.tiles.average}
+        />
       </section>
 
       <div className={styles.charts}>
         <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Оцінки</h2>
+          <h2 className={styles.panelTitle}>{m.profile.scores.title}</h2>
           {stats.scores.some((n) => n > 0) ? (
             <Columns
-              bars={stats.scores.map((count, i) => ({
+              bars={stats.scores.map((n, i) => ({
                 label: String(i + 1),
-                value: count,
-                tip: `Оцінка ${i + 1}: ${count} аніме`,
+                value: n,
+                tip: fmt(m.profile.scores.tip, { score: i + 1, count: count(m.common.anime, n) }),
               }))}
-              caption="Скільки аніме отримали кожну оцінку від 1 до 10"
+              caption={m.profile.scores.caption}
             />
           ) : (
-            <p className={styles.empty}>Ще немає оцінених аніме.</p>
+            <p className={styles.empty}>{m.profile.scores.empty}</p>
           )}
         </section>
 
         <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Серії по місяцях</h2>
+          <h2 className={styles.panelTitle}>{m.profile.months.title}</h2>
           {stats.months.some((m) => m.episodes > 0) ? (
             <>
               <Columns
-                bars={stats.months.map((m) => ({
-                  label: shortMonth(m.date),
-                  value: m.episodes,
-                  tip: `${longMonth(m.date)}: ${m.episodes} ${pluralEpisodes(m.episodes)}`,
+                bars={stats.months.map((month) => ({
+                  label: shortMonth(month.date, intl),
+                  value: month.episodes,
+                  tip: `${longMonth(month.date, intl)}: ${count(m.common.episodes, month.episodes)}`,
                 }))}
-                caption="Скільки серій відмічено переглянутими щомісяця за останній рік"
+                caption={m.profile.months.caption}
                 dense
               />
-              <p className={styles.footnote}>За датою відмітки: «Переглянуто весь сезон» записує всі серії одним днем.</p>
+              <p className={styles.footnote}>{m.profile.months.footnote}</p>
             </>
           ) : (
-            <p className={styles.empty}>За останній рік серій не відмічено.</p>
+            <p className={styles.empty}>{m.profile.months.empty}</p>
           )}
         </section>
 
         <section className={`${styles.panel} ${styles.panelWide}`}>
-          <h2 className={styles.panelTitle}>Улюблені жанри</h2>
+          <h2 className={styles.panelTitle}>{m.profile.genres.title}</h2>
           {stats.genres.length > 0 ? (
             <Genres genres={stats.genres.slice(0, 8)} />
           ) : (
-            <p className={styles.empty}>Жанри з’являться, коли в списках будуть аніме, які дивляться чи вже подивилися.</p>
+            <p className={styles.empty}>{m.profile.genres.empty}</p>
           )}
         </section>
       </div>
 
       <section className={styles.lists}>
-        <h2 className={styles.panelTitle}>Списки</h2>
-        <div className={styles.tabs} role="tablist" aria-label="Списки">
+        <h2 className={styles.panelTitle}>{m.profile.lists.title}</h2>
+        <div className={styles.tabs} role="tablist" aria-label={m.profile.lists.title}>
           {LIST_STATUSES.map((s) => (
             <button
               key={s}
@@ -283,7 +300,7 @@ function Ready({
               className={`${styles.tab} ${tab === s ? styles.tabActive : ""}`}
               onClick={() => setTab(s)}
             >
-              {LIST_STATUS_LABELS[s]} <span className={styles.tabCount}>{stats.byStatus[s]}</span>
+              {m.profile.status[s]} <span className={styles.tabCount}>{stats.byStatus[s]}</span>
             </button>
           ))}
         </div>
@@ -292,12 +309,12 @@ function Ready({
             items={items.map((x) => x.media)}
             badge={(m) => {
               const score = scoreOf.get(m.id);
-              return score != null ? `★ ${formatUserScore(score)}` : undefined;
+              return score != null ? `★ ${scoreText(score)}` : undefined;
             }}
             hideable={false}
           />
         ) : (
-          <p className={styles.empty}>У цьому списку поки порожньо.</p>
+          <p className={styles.empty}>{m.profile.lists.empty}</p>
         )}
       </section>
     </div>
@@ -347,18 +364,20 @@ function Columns({
 }
 
 function Genres({ genres }: { genres: { genre: string; count: number; average: number | null }[] }) {
+  const { m, count } = useI18n();
+  const scoreText = useScoreText();
   const max = Math.max(1, ...genres.map((g) => g.count));
   return (
     <ul className={styles.genres}>
       {genres.map((g) => (
         <li key={g.genre} className={styles.genre}>
-          <span className={styles.genreName}>{GENRE_LABELS[g.genre] ?? g.genre}</span>
+          <span className={styles.genreName}>{label(m.labels.genre, g.genre)}</span>
           <span className={styles.genreTrack} aria-hidden="true">
             <span className={styles.genreBar} style={{ width: `${(g.count / max) * 100}%` }} />
           </span>
           <span className={styles.genreValue}>
-            {g.count} аніме
-            {g.average !== null && <span className={styles.genreScore}> · ★ {formatUserScore(g.average)}</span>}
+            {count(m.common.anime, g.count)}
+            {g.average !== null && <span className={styles.genreScore}> · ★ {scoreText(g.average)}</span>}
           </span>
         </li>
       ))}
@@ -366,14 +385,5 @@ function Genres({ genres }: { genres: { genre: string; count: number; average: n
   );
 }
 
-function plural(n: number, one: string, few: string, many: string): string {
-  const ten = n % 10;
-  const hundred = n % 100;
-  if (ten === 1 && hundred !== 11) return one;
-  if (ten >= 2 && ten <= 4 && (hundred < 12 || hundred > 14)) return few;
-  return many;
-}
-
-const pluralEpisodes = (n: number) => plural(n, "серія", "серії", "серій");
-const shortMonth = (d: Date) => new Intl.DateTimeFormat("uk-UA", { month: "short" }).format(d).replace(".", "");
-const longMonth = (d: Date) => new Intl.DateTimeFormat("uk-UA", { month: "long", year: "numeric" }).format(d);
+const shortMonth = (d: Date, intl: string) => new Intl.DateTimeFormat(intl, { month: "short" }).format(d).replace(".", "");
+const longMonth = (d: Date, intl: string) => new Intl.DateTimeFormat(intl, { month: "long", year: "numeric" }).format(d);

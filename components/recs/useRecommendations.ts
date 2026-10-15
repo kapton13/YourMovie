@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import type { ListStatus } from "@/lib/lists";
-import type { RecEntry, RecommendationsResult } from "@/lib/recommendations";
+import type { RecEntry, RecReason, RecommendationsResult } from "@/lib/recommendations";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
 
@@ -76,4 +77,21 @@ export function useRecommendations(): State {
   if (user === null) return { kind: "guest" };
   if (loaded?.userId !== user.id) return { kind: "loading" };
   return loaded.state;
+}
+
+/** Текст «чому порадили» мовою сайту. */
+export function useReasonText(): (reason: RecReason) => string {
+  const { m, fmt, intl } = useI18n();
+  const name = (title: string) => title || m.common.untitled;
+  return (reason) => {
+    if (reason.kind === "popular") return m.recs.reason.popular;
+    if (reason.kind === "rated") {
+      const score = reason.score.toLocaleString(intl, { maximumFractionDigits: 1 });
+      return fmt(m.recs.reason.rated, { title: name(reason.title), score });
+    }
+    const [first, second] = reason.titles;
+    return second === undefined
+      ? fmt(m.recs.reason.similarOne, { title: name(first ?? "") })
+      : fmt(m.recs.reason.similarTwo, { first: name(first), second: name(second) });
+  };
 }

@@ -1,8 +1,9 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
 import { SkipListed } from "@/components/hidden/SkipListed";
+import { Link } from "@/components/i18n/I18nProvider";
 import { EpisodeList } from "@/components/list/EpisodeList";
 import { MyListBlock } from "@/components/list/MyListBlock";
 import { UserMediaProvider, type FranchiseContext } from "@/components/list/UserMediaProvider";
@@ -17,18 +18,11 @@ import {
   type MediaDetails,
 } from "@/lib/anilist";
 import { catalogHref } from "@/lib/catalog";
-import {
-  COUNTRY_LABELS,
-  FORMAT_LABELS,
-  GENRE_LABELS,
-  RELATION_LABELS,
-  SEASON_LABELS,
-  SOURCE_LABELS,
-  STATUS_LABELS,
-  formatAiringDate,
-  formatFuzzyDate,
-  formatScore,
-} from "@/lib/labels";
+import { count, fmt } from "@/lib/i18n/format";
+import { formatAiringDate, formatFuzzyDate, label, partLabel } from "@/lib/i18n/labels";
+import { getI18n } from "@/lib/i18n/server";
+import { formatScore } from "@/lib/labels";
+import type { Messages } from "@/messages";
 import { descriptionParagraphs } from "@/lib/text";
 import styles from "./page.module.css";
 
@@ -36,33 +30,28 @@ function parseId(raw: string): number | null {
   return /^\d{1,9}$/.test(raw) ? Number(raw) : null;
 }
 
-function pluralVotes(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "оцінка";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "оцінки";
-  return "оцінок";
+function displayTitle(media: MediaDetails, m: Messages): string {
+  return media.title.english ?? media.title.romaji ?? m.common.untitled;
 }
 
-function displayTitle(media: MediaDetails): string {
-  return media.title.english ?? media.title.romaji ?? "Без назви";
-}
-
-export async function generateMetadata({ params }: PageProps<"/[lang]/anime/[id]">) {
+export async function generateMetadata({ params }: PageProps<"/[lang]/anime/[id]">): Promise<Metadata> {
+  const { m } = await getI18n();
   const id = parseId((await params).id);
   const media = id ? await getMedia(id).catch(() => null) : null;
-  return { title: media ? `${displayTitle(media)} — YourMovie` : "Аніме — YourMovie" };
+  return { title: media ? fmt(m.anime.metaTitle, { title: displayTitle(media, m) }) : m.anime.metaFallback };
 }
 
-export default function AnimePage({ params }: PageProps<"/[lang]/anime/[id]">) {
+export default async function AnimePage({ params }: PageProps<"/[lang]/anime/[id]">) {
+  const { m } = await getI18n();
   return (
-    <Suspense fallback={<p className={styles.status}>Завантажуємо…</p>}>
+    <Suspense fallback={<p className={styles.status}>{m.anime.loading}</p>}>
       <Anime params={params} />
     </Suspense>
   );
 }
 
 async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">) {
+  const { lang, m, intl } = await getI18n();
   const id = parseId((await params).id);
   if (!id) notFound();
 
@@ -72,9 +61,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
   } catch (error) {
     console.error(error);
     return (
-      <p className={styles.status}>
-        Не вдалося завантажити дані з AniList. Спробуйте оновити сторінку трохи згодом.
-      </p>
+      <p className={styles.status}>{m.common.anilistError}</p>
     );
   }
   if (!media) notFound();
@@ -86,7 +73,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
   const partInFranchise = franchise ? [...franchise.main, ...franchise.extras].find((p) => p.id === media.id) : undefined;
   const mainIndex = franchise ? franchise.main.findIndex((p) => p.id === media.id) : -1;
 
-  const title = displayTitle(media);
+  const title = displayTitle(media, m);
   const altTitles = [media.title.romaji, media.title.native].filter((t) => t && t !== title);
   const score = formatScore(media.averageScore);
   const votes = media.stats?.scoreDistribution.reduce((sum, d) => sum + d.amount, 0) ?? 0;
@@ -96,17 +83,19 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
     .slice(0, 12);
 
   const related = media.relations.edges
-    .filter((edge) => edge.node.type === "ANIME" && RELATION_LABELS[edge.relationType])
-    .map((edge) => ({ ...edge.node, relation: RELATION_LABELS[edge.relationType]! }));
+    .filter((edge) => edge.node.type === "ANIME" && m.labels.relation[edge.relationType])
+    .map((edge) => ({ ...edge.node, relation: m.labels.relation[edge.relationType] }));
   const similar = media.recommendations.nodes
     .map((node) => node.mediaRecommendation)
-    .filter((m): m is NonNullable<typeof m> => m != null && !m.isAdult);
+    .filter((rec): rec is NonNullable<typeof rec> => rec != null && !rec.isAdult);
   // Перша частина кожного схожого аніме — щоб сховати й сезон 2 того, що вже є в списках.
-  const roots = await getRoots(similar.map((m) => m.id).sort((a, b) => a - b)).catch((error) => {
+  const roots = await getRoots(similar.map((rec) => rec.id).sort((a, b) => a - b)).catch((error) => {
     console.error(error);
     return {} as Record<number, number>;
   });
-  const recommendations = similar.map((m) => ({ ...m, rootId: roots[m.id] ?? m.id }));
+  const recommendations = similar.map((rec) => ({ ...rec, rootId: roots[rec.id] ?? rec.id }));
+  const part = partInFranchise ? partLabel(partInFranchise, m) : undefined;
+  const [partOfBefore, partOfAfter] = m.anime.franchise.partOf.split("{title}");
 
   return (
     <UserMediaProvider franchise={franchiseContext(media, franchise)} airedCount={airedEpisodeCount(media)}>
@@ -122,7 +111,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
         <div className={styles.poster} style={{ backgroundColor: media.coverImage.color ?? undefined }}>
           {(media.coverImage.extraLarge ?? media.coverImage.large) && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={media.coverImage.extraLarge ?? media.coverImage.large!} alt={`Постер: ${title}`} />
+            <img src={media.coverImage.extraLarge ?? media.coverImage.large!} alt={fmt(m.anime.poster, { title })} />
           )}
         </div>
 
@@ -137,28 +126,31 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
                   <span className={styles.ratingScale}> / 10</span>
                 </span>
                 <span className={styles.ratingNote}>
-                  Середня оцінка користувачів AniList
-                  {votes > 0 && <> · {votes.toLocaleString("uk-UA")} {pluralVotes(votes)}</>}
+                  {m.anime.rating.note}
+                  {votes > 0 && <> · {count(m.anime.rating.votes, votes, intl)}</>}
                 </span>
               </>
             ) : (
-              <span className={styles.ratingNote}>Оцінки ще немає</span>
+              <span className={styles.ratingNote}>{m.anime.rating.none}</span>
             )}
           </div>
           <div className={styles.badges}>
-            {media.format && <span>{FORMAT_LABELS[media.format]}</span>}
+            {media.format && <span>{label(m.labels.format, media.format)}</span>}
             {media.seasonYear && <span>{media.seasonYear}</span>}
-            {media.status && <span>{STATUS_LABELS[media.status]}</span>}
+            {media.status && <span>{label(m.labels.status, media.status)}</span>}
           </div>
           {media.nextAiringEpisode && (
             <p className={styles.airing}>
-              Серія {media.nextAiringEpisode.episode} вийде {formatAiringDate(media.nextAiringEpisode.airingAt)}
+              {fmt(m.anime.nextEpisode, {
+                n: media.nextAiringEpisode.episode,
+                date: formatAiringDate(media.nextAiringEpisode.airingAt, intl),
+              })}
             </p>
           )}
           {media.genres.length > 0 && (
             <ul className={styles.genres}>
               {media.genres.map((genre) => (
-                <li key={genre}>{GENRE_LABELS[genre] ?? genre}</li>
+                <li key={genre}>{label(m.labels.genre, genre)}</li>
               ))}
             </ul>
           )}
@@ -168,34 +160,33 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
           {franchise && partInFranchise && franchise.main.length + franchise.extras.length > 1 && (
             <p className={styles.franchiseNote}>
               {franchise.key === media.id ? (
-                <>
-                  Аніме з кількох частин: {franchise.main.length + franchise.extras.length}. Ваш статус і оцінка — для
-                  всього аніме.
-                </>
+                fmt(m.anime.franchise.root, { n: franchise.main.length + franchise.extras.length })
               ) : (
                 <>
-                  Частина аніме{" "}
+                  {partOfBefore}
                   <Link href={`/anime/${franchise.key}`} className={styles.franchiseLink}>
-                    «{franchise.title}»
-                  </Link>{" "}
-                  · {partInFranchise.label}
-                  {mainIndex >= 0 ? ` (${mainIndex + 1} з ${franchise.main.length})` : " · додатково"}
+                    {fmt(m.anime.franchise.quoted, { title: franchise.title })}
+                  </Link>
+                  {partOfAfter} · {part}
+                  {mainIndex >= 0
+                    ? ` ${fmt(m.anime.franchise.position, { n: mainIndex + 1, total: franchise.main.length })}`
+                    : ` · ${m.anime.franchise.extra}`}
                 </>
               )}
             </p>
           )}
-          <MyListBlock seasonLabel={partInFranchise?.label} mediaId={media.id} title={title} />
-          <h2 className={styles.subheading}>Опис</h2>
+          <MyListBlock seasonLabel={part} mediaId={media.id} title={title} />
+          <h2 className={styles.subheading}>{m.anime.description.heading}</h2>
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => <p key={i} className={styles.paragraph}>{p}</p>)
           ) : (
-            <p className={styles.muted}>Опису поки немає.</p>
+            <p className={styles.muted}>{m.anime.description.empty}</p>
           )}
-          {paragraphs.length > 0 && <p className={styles.note}>Опис англійською — так його надає AniList.</p>}
+          {paragraphs.length > 0 && lang !== "en" && <p className={styles.note}>{m.anime.description.englishNote}</p>}
 
           {tags.length > 0 && (
             <>
-              <h2 className={styles.subheading}>Теги</h2>
+              <h2 className={styles.subheading}>{m.anime.tags}</h2>
               <ul className={styles.tags}>
                 {tags.map((tag) => (
                   <li key={tag.name}>{tag.name}</li>
@@ -205,7 +196,7 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
           )}
         </div>
 
-        <InfoList media={media} />
+        <InfoList media={media} m={m} intl={intl} />
       </div>
 
       <Suspense fallback={null}>
@@ -213,16 +204,16 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
       </Suspense>
 
       <Suspense fallback={null}>
-        <WatchOrder id={media.id} />
+        <WatchOrder id={media.id} m={m} />
       </Suspense>
 
       {related.length > 0 && (
-        <MediaRow title="Пов'язане" items={related} label={(m) => m.relation} />
+        <MediaRow title={m.anime.related} items={related} label={(item) => item.relation} />
       )}
       {recommendations.length > 0 && (
         // Те, що людина вже дивиться чи подивилася, у «Схожих» не показуємо.
         <SkipListed>
-          <MediaRow title="Схожі аніме" items={recommendations} />
+          <MediaRow title={m.anime.similar} items={recommendations} />
         </SkipListed>
       )}
     </UserMediaProvider>
@@ -256,59 +247,65 @@ async function Episodes({ id }: { id: number }) {
   return data ? <EpisodeList data={data} /> : null;
 }
 
-function InfoList({ media }: { media: MediaDetails }) {
-  const start = formatFuzzyDate(media.startDate);
-  const end = formatFuzzyDate(media.endDate);
+function InfoList({ media, m, intl }: { media: MediaDetails; m: Messages; intl: string }) {
+  const t = m.anime.info;
+  const start = formatFuzzyDate(media.startDate, intl);
+  const end = formatFuzzyDate(media.endDate, intl);
   const dates = start && end && start !== end ? `${start} — ${end}` : start;
 
   const rows: [string, React.ReactNode][] = [];
-  if (media.format) rows.push(["Формат", FORMAT_LABELS[media.format]]);
-  if (media.episodes) rows.push(["Серій", media.episodes]);
-  if (media.duration) rows.push(["Тривалість серії", `${media.duration} хв`]);
-  if (media.status) rows.push(["Статус", STATUS_LABELS[media.status]]);
+  if (media.format) rows.push([t.format, label(m.labels.format, media.format)]);
+  if (media.episodes) rows.push([t.episodes, media.episodes]);
+  if (media.duration) rows.push([t.duration, fmt(t.minutes, { n: media.duration })]);
+  if (media.status) rows.push([t.status, label(m.labels.status, media.status)]);
   if (media.season && media.seasonYear)
     rows.push([
-      "Сезон",
+      t.season,
       <Link key="season" href={catalogHref({
           season: media.season,
           yearFrom: media.seasonYear,
           yearTo: media.seasonYear,
         })}>
-        {SEASON_LABELS[media.season]} {media.seasonYear}
+        {label(m.labels.season, media.season)} {media.seasonYear}
       </Link>,
     ]);
-  if (dates) rows.push(["Дати виходу", dates]);
+  if (dates) rows.push([t.dates, dates]);
   if (media.studios.nodes.length > 0)
-    rows.push(["Студія", media.studios.nodes.map((s) => s.name).join(", ")]);
-  if (media.source) rows.push(["Першоджерело", SOURCE_LABELS[media.source] ?? media.source]);
+    rows.push([t.studio, media.studios.nodes.map((s) => s.name).join(", ")]);
+  if (media.source) rows.push([t.source, label(m.labels.source, media.source)]);
   if (media.countryOfOrigin)
-    rows.push(["Країна", COUNTRY_LABELS[media.countryOfOrigin] ?? media.countryOfOrigin]);
-  if (media.popularity) rows.push(["Додали до списків", media.popularity.toLocaleString("uk-UA")]);
+    rows.push([t.country, label(m.labels.country, media.countryOfOrigin)]);
+  if (media.popularity) rows.push([t.popularity, media.popularity.toLocaleString(intl)]);
 
   return (
     <aside className={styles.info}>
       <dl>
-        {rows.map(([label, value]) => (
-          <div key={label} className={styles.infoRow}>
-            <dt>{label}</dt>
+        {rows.map(([name, value]) => (
+          <div key={name} className={styles.infoRow}>
+            <dt>{name}</dt>
             <dd>{value}</dd>
           </div>
         ))}
       </dl>
       <a className={styles.source} href={media.siteUrl} target="_blank" rel="noopener noreferrer">
-        Сторінка на AniList ↗
+        {t.anilistPage}
       </a>
     </aside>
   );
 }
 
-async function WatchOrder({ id }: { id: number }) {
+async function WatchOrder({ id, m }: { id: number; m: Messages }) {
   const items = await getWatchOrder(id).catch((error) => {
     console.error(error);
     return [];
   });
   if (items.length === 0) return null;
   return (
-    <MediaRow title="Порядок перегляду" items={items} currentId={id} badge={(m) => (m.startDate.year ? String(m.startDate.year) : "Анонс")} />
+    <MediaRow
+      title={m.anime.watchOrder}
+      items={items}
+      currentId={id}
+      badge={(item) => (item.startDate.year ? String(item.startDate.year) : m.anime.announced)}
+    />
   );
 }

@@ -1,5 +1,58 @@
 import type { Messages } from "..";
 
-const my: Messages["my"] = {};
+const my: Messages["my"] = {
+  title: "Мои аниме",
+  metaTitle: "Мои аниме — YourMovie",
+  loggedOut: { text: "{link}, чтобы видеть свои списки, новые серии и прогресс.", link: "Войдите" },
+  loadError: "Не удалось загрузить ваш список. Обновите страницу.",
+  franchisesSlow: "AniList сейчас отвечает медленно — сезоны могут быть не сгруппированы. Обновите страницу чуть позже.",
+  animeNumber: "Аниме #{id}",
+  tabsLabel: "Списки",
+  statuses: {
+    watching: "Смотрю",
+    planning: "Планирую",
+    completed: "Просмотрено",
+    paused: "На паузе",
+    dropped: "Брошено",
+  },
+  sort: {
+    label: "Сортировка:",
+    new: "новые серии",
+    title: "название",
+    recent: "последнее изменение",
+  },
+  empty: {
+    watching: "Здесь появятся аниме со статусом «Смотрю». Найдите что-нибудь в {link} и отметьте первую серию.",
+    catalogLink: "каталоге",
+    caughtUp: "Всё вышедшее просмотрено. Как только выйдет новая серия, аниме появится здесь.",
+    grid: "Здесь пока пусто.",
+  },
+  newEpisode: "Новая серия!",
+  newDot: "новая",
+  left: "осталось {episodes}",
+  loading: "загружаем…",
+  myScore: "моя оценка ★ {score}",
+  duration: { hours: "{h} ч", minutes: "{m} мин", hoursMinutes: "{h} ч {m} мин" },
+  plusOneLabel: "Отметить серию {n} ({part}) просмотренной",
+  episodeNo: "№{n}",
+  nextEpisode: "Серия {n} выйдет {date}",
+  confirmAll: "Отметить {episodes} просмотренными?",
+  seasonDone: "Просмотрен весь сезон",
+  airedDone: "Просмотрено всё вышедшее",
+  episode: "Серия {n}",
+  upTo: "все до этой",
+  rateLabel: "Оценить серию {n}",
+  watchedLabel: "Серия {n} просмотрена",
+  watched: "Просмотрено",
+  ratingLabel: "Оценка серии {n}",
+  more: { text: "Ещё {n} — на {link}", link: "странице сезона" },
+  waiting: {
+    toggle: "Ждут новых серий ({n})",
+    next: "{part}, серия {n} — {date}",
+    unknown: "дата новых серий неизвестна",
+  },
+  parts: { one: "{n} часть", few: "{n} части", many: "{n} частей", other: "{n} части" },
+  extras: " + {n} доп.",
+};
 
 export default my;

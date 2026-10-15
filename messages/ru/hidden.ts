@@ -1,5 +1,15 @@
 import type { Messages } from "..";
 
-const hidden: Messages["hidden"] = {};
+const hidden: Messages["hidden"] = {
+  tab: "Не интересно",
+  empty: "Здесь появятся аниме, которые вы скрыли красным крестиком ✕. Сайт их не показывает и не рекомендует.",
+  note: "Эти аниме сайт не показывает на главной, в каталоге и в рекомендациях.",
+  animeNumber: "Аниме #{id}",
+  restore: "Вернуть",
+  toast: "«{title}» больше не будет показываться.",
+  undo: "Отменить",
+  crossLabel: "Не интересно: «{title}» — больше не показывать",
+  crossTitle: "Не интересно — больше не показывать",
+};
 
 export default hidden;
