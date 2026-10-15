@@ -9,7 +9,7 @@
     "lint": "eslint",
     "update-titles": "node scripts/update-title-index.mjs",
     "update-ru-titles": "node scripts/update-ru-titles.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm test"
