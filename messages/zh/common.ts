@@ -10,6 +10,8 @@ const common: Messages["common"] = {
     recommendations: "推荐",
     login: "登录",
     myProfile: "我的主页（{name}）",
+    /** Кружечок біля «Мої аніме»: у скількох аніме вийшли нові серії. */
+    newEpisodes: { one: "{n} 部动画有新剧集", other: "{n} 部动画有新剧集" },
   },
   theme: { toggle: "切换日间 / 夜间模式" },
   language: { label: "网站语言", choose: "语言" },

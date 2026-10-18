@@ -124,6 +124,22 @@ a {
   stroke-linecap: round;
 }
 
+/* Кружечок «нові серії» біля «Мої аніме» */
+.nav-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 /* На телефоні «Мої аніме» — значок, «Головна» ховаємо (логотип теж веде на головну) */
 @media (max-width: 640px) {
   .nav-my svg {
@@ -132,6 +148,20 @@ a {
 
   .nav-my span {
     display: none;
+  }
+
+  .nav-my {
+    position: relative;
+  }
+
+  .nav-badge {
+    position: absolute;
+    top: -7px;
+    right: -9px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 0.65rem;
   }
 
   .nav-home {

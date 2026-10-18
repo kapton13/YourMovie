@@ -10,6 +10,8 @@ const common: Messages["common"] = {
     recommendations: "Recomendaciones",
     login: "Iniciar sesión",
     myProfile: "Mi perfil ({name})",
+    /** Кружечок біля «Мої аніме»: у скількох аніме вийшли нові серії. */
+    newEpisodes: { one: "{n} anime con episodios nuevos", other: "{n} animes con episodios nuevos" },
   },
   theme: { toggle: "Cambiar entre tema claro y oscuro" },
   language: { label: "Idioma del sitio", choose: "Idioma" },

@@ -1,29 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { expectStatus, fmt, login, messagesFor, skipWithoutAccount, snapshot } from "./helpers";
+import { expectStatus, findAiring, fmt, login, messagesFor, skipWithoutAccount, snapshot } from "./helpers";
 
 /** Правила статусів у справжньому браузері (CLAUDE.md, етап 2; «Переглянуто» для онгоїнгів — 2026-10-15). */
 
 const m = messagesFor("uk");
 const YOUR_NAME = 21519; // фільм, 1 серія
 const DEATH_NOTE = 1535; // 37 серій, вийшло повністю
-
-/** Популярне аніме, що зараз виходить: 1–5 серій уже вийшло, без попередніх сезонів. */
-async function findAiring(): Promise<{ id: number; aired: number }> {
-  const res = await fetch("https://graphql.anilist.co", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      query: `{ Page(perPage: 40) { media(type: ANIME, status: RELEASING, format: TV, sort: POPULARITY_DESC) {
-        id nextAiringEpisode { episode } relations { edges { relationType } } } } }`,
-    }),
-  });
-  const media = ((await res.json()) as { data: { Page: { media: { id: number; nextAiringEpisode: { episode: number } | null; relations: { edges: { relationType: string }[] } }[] } } }).data.Page.media;
-  const found = media.find(
-    (x) => x.nextAiringEpisode && x.nextAiringEpisode.episode >= 2 && x.nextAiringEpisode.episode <= 6 && !x.relations.edges.some((e) => e.relationType === "PREQUEL"),
-  );
-  if (!found) throw new Error("немає відповідного онгоїнгу");
-  return { id: found.id, aired: found.nextAiringEpisode!.episode - 1 };
-}
 
 test.beforeEach(({}, testInfo) => skipWithoutAccount(testInfo));
 

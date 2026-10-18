@@ -3,6 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { notifyListsChanged } from "@/components/my/useNewEpisodes";
 import { useHydrated } from "@/components/useHydrated";
 import {
   animeAverage,
@@ -217,6 +218,7 @@ export function UserMediaProvider({
     writeQueue.current = task.catch(() => null);
     const problem = await task.catch((e: unknown) => String(e));
     if (--pendingWrites.current === 0) setSaving(false);
+    if (!problem) notifyListsChanged();
     if (problem) {
       console.error(problem);
       // Частину могло вже бути збережено — показуємо як було й перечитуємо з бази, як є насправді.

@@ -10,6 +10,8 @@ const common: Messages["common"] = {
     recommendations: "추천",
     login: "로그인",
     myProfile: "내 프로필 ({name})",
+    /** Кружечок біля «Мої аніме»: у скількох аніме вийшли нові серії. */
+    newEpisodes: { one: "새 화가 있는 애니 {n}편", other: "새 화가 있는 애니 {n}편" },
   },
   theme: { toggle: "주간 / 야간 테마 전환" },
   language: { label: "사이트 언어", choose: "언어" },
