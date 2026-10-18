@@ -104,3 +104,22 @@ export async function expectStatus(mediaId: number, status: string | null) {
 export function skipWithoutAccount(testInfo: TestInfo) {
   testInfo.skip(!hasAccount, NO_ACCOUNT);
 }
+
+/** Популярне аніме, що зараз виходить: 1–5 серій уже вийшло, без попередніх сезонів. */
+export async function findAiring(): Promise<{ id: number; aired: number }> {
+  const res = await fetch("https://graphql.anilist.co", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      query: `{ Page(perPage: 40) { media(type: ANIME, status: RELEASING, format: TV, sort: POPULARITY_DESC) {
+        id nextAiringEpisode { episode } relations { edges { relationType } } } } }`,
+    }),
+  });
+  const media = ((await res.json()) as { data: { Page: { media: { id: number; nextAiringEpisode: { episode: number } | null; relations: { edges: { relationType: string }[] } }[] } } }).data.Page.media;
+  const found = media.find(
+    (x) => x.nextAiringEpisode && x.nextAiringEpisode.episode >= 2 && x.nextAiringEpisode.episode <= 6 && !x.relations.edges.some((e) => e.relationType === "PREQUEL"),
+  );
+  if (!found) throw new Error("немає відповідного онгоїнгу");
+  return { id: found.id, aired: found.nextAiringEpisode!.episode - 1 };
+}
+

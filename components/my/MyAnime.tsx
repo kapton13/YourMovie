@@ -10,10 +10,12 @@ import { fmt } from "@/lib/i18n/format";
 import { formatAiringDate, label, partLabel } from "@/lib/i18n/labels";
 import { animeTitle } from "@/lib/i18n/title";
 import { LIST_STATUSES, type ListEntry, type ListStatus } from "@/lib/lists";
+import { isNewEpisode, isPending, unwatchedAired } from "@/lib/newEpisodes";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
 import { useHidden } from "@/components/hidden/HiddenProvider";
 import { HiddenList } from "./HiddenList";
+import { notifyListsChanged } from "./useNewEpisodes";
 import type { Messages } from "@/messages";
 import styles from "./MyAnime.module.css";
 
@@ -36,7 +38,6 @@ type Item = {
   parts: PartView[];
 };
 
-const NEW_EPISODE_DAYS = 7;
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** «2 год 10 хв», «45 хв». */
@@ -281,13 +282,10 @@ export function MyAnime() {
         const parts = [...franchise.main, ...franchise.extras].map((part): PartView => {
           const fresh = media.get(part.id);
           const partMarks = marks.get(part.id);
-          const aired = fresh?.airedCount ?? 0;
-          const unwatched: number[] = [];
-          for (let n = 1; n <= aired; n++) if (!partMarks?.get(n)?.watched) unwatched.push(n);
+          const unwatched = unwatchedAired(fresh?.airedCount ?? 0, partMarks);
           const isMain = mainIds.has(part.id);
           // Побічні частини показуємо, лише якщо людина вже почала їх дивитися.
-          const started = Boolean(partMarks && [...partMarks.values()].some((x) => x.watched));
-          return { part, media: fresh, isMain, unwatched, pending: unwatched.length > 0 && (isMain || started) };
+          return { part, media: fresh, isMain, unwatched, pending: isPending(unwatched, isMain, partMarks) };
         });
         return { key: entry.media_id, franchise, entry, parts };
       }),
@@ -320,7 +318,7 @@ export function MyAnime() {
   const waiting = mediaReady ? watching.filter((i) => !i.parts.some((p) => p.pending)) : [];
 
   const lastAired = (item: Item) => Math.max(0, ...item.parts.filter((p) => p.pending).map((p) => p.media?.lastAiredAt ?? 0));
-  const isNewPart = (p: PartView) => Boolean(p.pending && p.media?.lastAiredAt && now - p.media.lastAiredAt < NEW_EPISODE_DAYS * 86400);
+  const isNewPart = (p: PartView) => isNewEpisode(p.pending, p.media?.lastAiredAt, now);
 
   const sorted = [...behind].sort((a, b) => {
     if (sort === "title") return animeTitle(a.franchise.titles, lang).localeCompare(animeTitle(b.franchise.titles, lang), intl);
@@ -380,6 +378,7 @@ export function MyAnime() {
     writeQueue.current = task.catch(() => null);
     const results = await task.catch((e: unknown) => [{ error: { message: String(e) } }]);
     const failed = results.find((r) => r.error);
+    if (!failed) notifyListsChanged();
     if (failed) {
       console.error(failed.error);
       setMarks(before.marks);

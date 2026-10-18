@@ -10,6 +10,8 @@ const common: Messages["common"] = {
     recommendations: "Öneriler",
     login: "Giriş yap",
     myProfile: "Profilim ({name})",
+    /** Кружечок біля «Мої аніме»: у скількох аніме вийшли нові серії. */
+    newEpisodes: { one: "Yeni bölümü olan {n} anime", other: "Yeni bölümü olan {n} anime" },
   },
   theme: { toggle: "Gündüz / gece temasını değiştir" },
   language: { label: "Site dili", choose: "Dil" },

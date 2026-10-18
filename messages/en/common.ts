@@ -10,6 +10,8 @@ const common = {
     recommendations: "Recommendations",
     login: "Log in",
     myProfile: "My profile ({name})",
+    /** Кружечок біля «Мої аніме»: у скількох аніме вийшли нові серії. */
+    newEpisodes: { one: "{n} anime with new episodes", other: "{n} anime with new episodes" } as Plural,
   },
   theme: { toggle: "Switch day / night theme" },
   language: { label: "Site language", choose: "Language" },
