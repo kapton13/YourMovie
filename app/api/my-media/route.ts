@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { anilistFailed } from "@/lib/apiError";
 import { LIMITS, clientKey, tooMany } from "@/lib/rateLimit";
 import { getMyMedia } from "@/lib/anilist";
 
@@ -15,7 +16,6 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json(await getMyMedia(ids));
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "anilist" }, { status: 502 });
+    return anilistFailed(error);
   }
 }

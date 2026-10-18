@@ -83,7 +83,17 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
   const seedIds = [...weights.keys()]
     .sort((a, b) => Math.abs(weights.get(b)!) - Math.abs(weights.get(a)!))
     .slice(0, MAX_SEEDS);
-  const seeds = await getRecSeeds(seedIds);
+  // AniList іноді відмовляє: тоді радимо з того, що вдалося зібрати, а без нічого — популярне.
+  let failure: unknown = null;
+  async function attempt<T>(load: () => Promise<T>, fallback: T): Promise<T> {
+    try {
+      return await load();
+    } catch (error) {
+      failure ??= error;
+      return fallback;
+    }
+  }
+  const seeds = await attempt(() => getRecSeeds(seedIds), []);
   const entryOf = new Map(entries.map((e) => [e.id, e]));
 
   // ---- Смак: які жанри й теми людина оцінює високо, а які — низько ----
@@ -132,7 +142,7 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
   const chains = new Map(ids.map((id) => [id, [id]]));
   let walking = ids;
   for (let step = 0; step < 5 && walking.length > 0; step++) {
-    const cards = await getRecCards(walking.map((id) => chains.get(id)!.at(-1)!));
+    const cards = await attempt(() => getRecCards(walking.map((id) => chains.get(id)!.at(-1)!)), new Map<number, RecCard>());
     const next: number[] = [];
     for (const id of walking) {
       const chain = chains.get(id)!;
@@ -144,7 +154,10 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
     }
     walking = next;
   }
-  const roots = await getRecCards(ids.map((id) => chains.get(id)!.at(-1)!));
+  const roots = await attempt(() => getRecCards(ids.map((id) => chains.get(id)!.at(-1)!)), new Map<number, RecCard>());
+  // Картки не прийшли — беремо ті, що прийшли разом зі «схожими», але лише перші частини.
+  for (const seed of seeds)
+    for (const { media } of seed.recs) if (!roots.has(media.id) && media.previous === null) roots.set(media.id, media);
 
   const merged = new Map<number, Candidate>();
   for (const id of ids) {
@@ -188,9 +201,9 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
 
   // ---- Мало даних — доповнюємо популярним ----
   if (items.length < 30) {
-    const home = await getHomeSections();
-    const popularIds = [...home.trending, ...home.popular, ...home.top].map((m) => m.id);
-    const cards = await getRecCards(popularIds);
+    const home = await attempt(() => getHomeSections(), null);
+    const popularIds = home ? [...home.trending, ...home.popular, ...home.top].map((m) => m.id) : [];
+    const cards = await attempt(() => getRecCards(popularIds), new Map<number, RecCard>());
     const taken = new Set(items.map((i) => i.media.id));
     for (const id of popularIds) {
       const card = cards.get(id);
@@ -200,6 +213,7 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
     }
   }
 
+  if (items.length === 0 && failure) throw failure;
   const basedOn = seeds.filter((s) => weights.get(s.id)! > 0).length;
   return { items, basedOn };
 }

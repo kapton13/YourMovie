@@ -32,6 +32,7 @@ const common: Messages["common"] = {
   yes: "예",
   no: "아니요",
   cancel: "취소",
+  retry: "다시 시도",
   close: "닫기",
   done: "완료",
   episodes: { one: "{n}화", other: "{n}화" },

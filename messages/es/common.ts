@@ -32,6 +32,7 @@ const common: Messages["common"] = {
   yes: "Sí",
   no: "No",
   cancel: "Cancelar",
+  retry: "Reintentar",
   close: "Cerrar",
   done: "Listo",
   episodes: { one: "episodio", other: "episodios" },

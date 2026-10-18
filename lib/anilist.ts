@@ -956,10 +956,18 @@ function fresh<T extends { at: number }>(memo: Map<number, T>, id: number): T | 
   return hit && Date.now() - hit.at < REC_TTL ? hit : undefined;
 }
 
+/**
+ * Частинами й паралельно. Невдала частина не валить решту: рекомендації краще показати з того,
+ * що вдалося зібрати (AniList іноді відмовляє серверам Vercel). Усе не вдалося — помилка.
+ */
 async function inChunks(ids: number[], size: number, load: (chunk: number[]) => Promise<void>) {
   const chunks: number[][] = [];
   for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
-  await Promise.all(chunks.map(load));
+  const results = await Promise.allSettled(chunks.map(load));
+  const failed = results.filter((r) => r.status === "rejected");
+  if (failed.length === 0) return;
+  console.error(`AniList: ${failed.length} of ${chunks.length} chunks failed`, failed[0].reason);
+  if (failed.length === chunks.length) throw failed[0].reason;
 }
 
 /** «Схожі» для аніме користувача (по 25 за запит — так відповідь AniList не надто велика). */

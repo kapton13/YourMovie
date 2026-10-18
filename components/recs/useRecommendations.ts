@@ -13,7 +13,7 @@ type State =
   | { kind: "checking" }
   | { kind: "loading" }
   | { kind: "guest" }
-  | { kind: "error" }
+  | { kind: "error"; retry: () => void }
   | { kind: "ready"; result: RecommendationsResult };
 
 /** Останній результат: між сторінками не перераховуємо, доки списки не змінилися. */
@@ -58,25 +58,30 @@ export function useRecommendations(): State {
   const user = useUser();
   // Порівнюємо за id: після оновлення входу (раз на годину) приходить новий об'єкт того самого користувача.
   const userId = user?.id;
-  const [loaded, setLoaded] = useState<{ userId: string; state: State } | null>(null);
+  const [loaded, setLoaded] = useState<{ userId: string; attempt: number; state: State } | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    // Збій AniList часто минає за кілька секунд — один раз пробуємо ще, перш ніж показати помилку.
+    const pause = () => new Promise((r) => setTimeout(r, 3000));
     load(userId)
-      .then((result) => !cancelled && setLoaded({ userId, state: { kind: "ready", result } }))
+      .catch(() => pause().then(() => (cancelled ? Promise.reject(new Error("cancelled")) : load(userId))))
+      .then((result) => !cancelled && setLoaded({ userId, attempt, state: { kind: "ready", result } }))
       .catch((error) => {
         console.error(error);
-        if (!cancelled) setLoaded({ userId, state: { kind: "error" } });
+        const retry = () => setAttempt((n) => n + 1);
+        if (!cancelled) setLoaded({ userId, attempt, state: { kind: "error", retry } });
       });
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, attempt]);
 
   if (user === undefined) return { kind: "checking" };
   if (user === null) return { kind: "guest" };
-  if (loaded?.userId !== user.id) return { kind: "loading" };
+  if (loaded?.userId !== user.id || loaded.attempt !== attempt) return { kind: "loading" };
   return loaded.state;
 }
 
