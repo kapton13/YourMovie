@@ -45,6 +45,8 @@ export function useSwitchLanguage() {
     const userId = data.session?.user.id;
     if (userId) {
       const { error } = await supabase.from("profiles").update({ language: next }).eq("id", userId);
+      // Мова листів (підтвердження, новий пароль) — шаблони Supabase читають її з user_metadata.
+      if (!error) await supabase.auth.updateUser({ data: { language: next } }).catch(() => null);
       if (error) {
         console.warn(error);
         ok = false;

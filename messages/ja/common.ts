@@ -23,6 +23,7 @@ const common: Messages["common"] = {
     toCatalog: "カタログへ",
   },
   anilistError: "AniListからデータを読み込めませんでした。しばらくしてからページを再読み込みしてください。",
+  tooMany: { title: "リクエストが多すぎます", text: "検索が速すぎます。1分ほど待ってからもう一度お試しください。" },
   saveError: "保存できませんでした。接続を確認して、もう一度お試しください。",
   loading: "読み込み中…",
   untitled: "タイトルなし",

@@ -23,6 +23,7 @@ const common = {
     toCatalog: "Go to the catalog",
   },
   anilistError: "Couldn’t load data from AniList. Please refresh the page a little later.",
+  tooMany: { title: "Too many requests", text: "You’re searching very fast. Please wait a minute and try again." },
   saveError: "Couldn’t save. Check your connection and try again.",
   loading: "Loading…",
   untitled: "Untitled",

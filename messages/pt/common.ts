@@ -23,6 +23,7 @@ const common: Messages["common"] = {
     toCatalog: "Ir para o catálogo",
   },
   anilistError: "Não foi possível carregar os dados do AniList. Atualize a página daqui a pouco.",
+  tooMany: { title: "Muitas solicitações", text: "Você está pesquisando muito rápido. Aguarde um minuto e tente de novo." },
   saveError: "Não foi possível salvar. Verifique sua conexão e tente de novo.",
   loading: "Carregando…",
   untitled: "Sem título",
