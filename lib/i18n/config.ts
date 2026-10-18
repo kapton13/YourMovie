@@ -26,6 +26,28 @@ export const LOCALE_INFO: Record<Locale, { name: string; short: string; intl: st
 /** Cookie з обраною мовою (для тих, хто не ввійшов; тим, хто ввійшов, — ще й у профілі). */
 export const LANG_COOKIE = "ym-lang";
 
+/** Мова, яку людина обрала на цьому пристрої (cookie `ym-lang`), або null. Рядок cookie — з браузера чи запиту. */
+export function cookieLang(cookies: string | null | undefined): Locale | null {
+  const value = cookies?.match(new RegExp(`(?:^|;\\s*)${LANG_COOKIE}=([^;]*)`))?.[1];
+  return hasLocale(value) ? value : null;
+}
+
+/**
+ * Куди перенаправити сторінку (null — показуємо як є): адреса без мови → з обраною мовою чи англійською;
+ * адреса іншою мовою, ніж обрала людина, → обраною. Хто мови не обирав, бачить мову з адреси.
+ */
+export function languageRedirect(pathname: string, chosen: string | null | undefined): string | null {
+  const choice = hasLocale(chosen) ? chosen : null;
+  const inPath = pathname.split("/")[1];
+  if (hasLocale(inPath) && (!choice || choice === inPath)) return null;
+  return switchLocalePath(pathname, choice ?? DEFAULT_LOCALE);
+}
+
+/** Сторінки входу й реєстрації: туди не перенаправляємо на мову профілю (вони самі ведуть далі після входу). */
+export function isAuthPage(pathname: string): boolean {
+  return /^\/(login|signup|reset-password)(\/|$)/.test(stripLocale(pathname));
+}
+
 export function hasLocale(value: string | null | undefined): value is Locale {
   return Boolean(value) && (LOCALES as readonly string[]).includes(value as string);
 }

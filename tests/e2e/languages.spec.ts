@@ -78,3 +78,25 @@ test("шапка й меню мов на вузькому телефоні (320 
   // Усі мови видно без прокрутки меню.
   for (const option of await options.all()) await expect(option).toBeInViewport();
 });
+
+test("обрана мова не «злітає»: «Назад» і старі посилання відкриваються обраною мовою", async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto("/uk");
+  await page.goto("/uk/catalog?q=frieren");
+  const loads: string[] = [];
+  // Справжні завантаження сторінки з сервера (не службові оновлення адреси всередині сторінки).
+  page.on("request", (r) => r.isNavigationRequest() && r.frame() === page.mainFrame() && loads.push(new URL(r.url()).pathname));
+  await page.locator("header button[aria-haspopup]:visible").first().click();
+  await page.getByRole("option", { name: /Deutsch/ }).click();
+  await expect(page).toHaveURL(/\/de\/catalog\?q=frieren$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "de");
+  await page.waitForTimeout(1500);
+  expect(loads, "вибір мови — одне перезавантаження, без «туди-назад»").toEqual(["/de/catalog"]);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/de$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "de");
+  await page.goto("/uk/anime/16498"); // старе посилання іншою мовою
+  await expect(page).toHaveURL(/\/de\/anime\/16498$/);
+  expect(errors).toEqual([]);
+});

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { collectErrors, db, fmt, login, messagesFor, skipWithoutAccount, snapshot } from "./helpers";
+import { account, collectErrors, db, fmt, login, messagesFor, skipWithoutAccount, snapshot } from "./helpers";
 
 /** «Не цікаво», профіль і мова профілю для тестового акаунта. Усе змінене повертається як було. */
 
@@ -109,11 +109,21 @@ test("мова з шапки зберігається в профілі й ді�
     await expect(page).toHaveURL(/\/de\/account/);
     await expect.poll(async () => ((await rest(`profiles?select=language&id=eq.${userId}`)) as { language: string }[])[0].language).toBe("de");
 
+    // Інший пристрій: вхід англійською — одразу на мову профілю, одним переходом.
     const other = await browser.newPage();
-    await login(other, "en").catch(() => {}); // після входу сайт сам перейде на мову профілю
+    await other.goto("/en/login");
+    await other.locator("input[type=email]").fill(account.email);
+    await other.locator("input[type=password]").fill(account.password);
+    await other.locator("form button[type=submit]").click();
+    await expect(other).toHaveURL(/\/de\/account/);
     await other.goto("/en/catalog");
     await expect(other).toHaveURL(/\/de\/catalog/);
     await other.close();
+
+    // «Мова сайту» в налаштуваннях теж працює.
+    await page.locator("main select:visible:not([autocomplete])").first().selectOption("uk");
+    await expect(page).toHaveURL(/\/uk\/account/);
+    await expect.poll(async () => ((await rest(`profiles?select=language&id=eq.${userId}`)) as { language: string }[])[0].language).toBe("uk");
   } finally {
     await rest(`profiles?id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ language }), headers: { prefer: "return=minimal" } });
   }
