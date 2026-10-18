@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Link, useI18n, useLocaleRouter } from "@/components/i18n/I18nProvider";
+import { rememberLang } from "@/components/i18n/LanguageSwitcher";
+import { hasLocale, localePath, switchLocalePath } from "@/lib/i18n/config";
 import { cleanNickname } from "@/lib/profile";
 import { safeNext } from "@/lib/safeNext";
 import { getSupabaseBrowser, setRemember } from "@/lib/supabase/client";
@@ -17,7 +19,7 @@ const MIN_PASSWORD = 8;
 
 export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
   const router = useLocaleRouter();
-  const { m, fmt, href } = useI18n();
+  const { m, fmt, href, lang } = useI18n();
   const t = m.auth;
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
@@ -62,8 +64,16 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
     try {
       if (mode === "login") {
         setRemember(remember);
-        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
         if (error) return setError(authErrorMessage(error, m));
+        // Мова з профілю (обрана на будь-якому пристрої) — одразу туди, одним переходом.
+        const { data: profile } = await supabase.from("profiles").select("language").eq("id", data.user.id).maybeSingle();
+        const preferred = profile?.language;
+        if (hasLocale(preferred) && preferred !== lang) {
+          rememberLang(preferred);
+          window.location.assign(switchLocalePath(localePath(lang, next), preferred));
+          return;
+        }
         router.replace(next);
         router.refresh();
       } else if (mode === "signup") {

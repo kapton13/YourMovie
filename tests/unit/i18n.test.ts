@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { LOCALES, LOCALE_INFO, localePath, stripLocale, switchLocalePath, type Locale } from "@/lib/i18n/config";
+import { LOCALES, LOCALE_INFO, cookieLang, isAuthPage, languageRedirect, localePath, stripLocale, switchLocalePath, type Locale } from "@/lib/i18n/config";
 import { count, fmt, plural, type Plural } from "@/lib/i18n/format";
 import { animeTitle } from "@/lib/i18n/title";
 import { messagesFor, type Messages } from "@/messages";
@@ -114,6 +114,32 @@ describe("адреси з мовою", () => {
     expect(switchLocalePath("/catalog", "de")).toBe("/de/catalog");
     expect(switchLocalePath("/ru", "en")).toBe("/en");
     expect(stripLocale("/ko/u/nick")).toBe("/u/nick");
+  });
+});
+
+describe("яку мову показати (вибір людини має перевагу над адресою)", () => {
+  it("адреса без мови → обрана або англійська", () => {
+    expect(languageRedirect("/", null)).toBe("/en");
+    expect(languageRedirect("/catalog", "uk")).toBe("/uk/catalog");
+  });
+
+  it("мову не обирали — показуємо мову з адреси", () => {
+    expect(languageRedirect("/ja/anime/1", null)).toBeNull();
+    expect(languageRedirect("/ja/anime/1", "nonsense")).toBeNull();
+  });
+
+  it("обрали іншу (кнопка «Назад», старе посилання) → та сама сторінка обраною мовою", () => {
+    expect(languageRedirect("/uk/catalog", "de")).toBe("/de/catalog");
+    expect(languageRedirect("/de/catalog", "de")).toBeNull();
+  });
+
+  it("cookie з мовою й сторінки входу", () => {
+    expect(cookieLang("a=1; ym-lang=fr; b=2")).toBe("fr");
+    expect(cookieLang("ym-lang=xx")).toBeNull();
+    expect(cookieLang("")).toBeNull();
+    expect(isAuthPage("/uk/login")).toBe(true);
+    expect(isAuthPage("/de/signup")).toBe(true);
+    expect(isAuthPage("/uk/account")).toBe(false);
   });
 });
 

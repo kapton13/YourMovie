@@ -1,15 +1,33 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { notifyProfileChanged, useProfile } from "@/components/auth/useProfile";
-import { LANG_COOKIE, LOCALES, LOCALE_INFO, hasLocale, switchLocalePath, type Locale } from "@/lib/i18n/config";
+import { useProfile } from "@/components/auth/useProfile";
+import {
+  LANG_COOKIE,
+  LOCALES,
+  LOCALE_INFO,
+  cookieLang,
+  hasLocale,
+  isAuthPage,
+  switchLocalePath,
+  type Locale,
+} from "@/lib/i18n/config";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { useI18n } from "./I18nProvider";
 import styles from "./LanguageSwitcher.module.css";
 
-function rememberLang(lang: Locale) {
+export function rememberLang(lang: Locale) {
   document.cookie = `${LANG_COOKIE}=${lang}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+}
+
+/**
+ * Відкрити поточну сторінку іншою мовою — повним перезавантаженням: мова — це корінь сайту, і частина стану
+ * (користувач, списки, «Не цікаво») інакше лишалася б від старої сторінки. `replace`: «Назад» веде на попередню
+ * сторінку, а не на цю ж старою мовою.
+ */
+export function reloadIn(lang: Locale) {
+  const { pathname, search, hash } = window.location;
+  window.location.replace(switchLocalePath(pathname, lang) + search + hash);
 }
 
 /**
@@ -18,7 +36,6 @@ function rememberLang(lang: Locale) {
  */
 export function useSwitchLanguage() {
   const { lang } = useI18n();
-  const router = useRouter();
   return async (next: Locale): Promise<boolean> => {
     if (next === lang) return true;
     let ok = true;
@@ -31,10 +48,12 @@ export function useSwitchLanguage() {
       if (error) {
         console.warn(error);
         ok = false;
-      } else notifyProfileChanged();
+        // Не зберіглося в профілі — не міняємо мову, інакше мова профілю одразу поверне стару.
+        return ok;
+      }
     }
     rememberLang(next);
-    router.replace(switchLocalePath(window.location.pathname, next) + window.location.search + window.location.hash);
+    reloadIn(next);
     return ok;
   };
 }
@@ -43,20 +62,31 @@ export function useSwitchLanguage() {
 export function LanguageSwitcher() {
   const { lang, m } = useI18n();
   const { profile } = useProfile();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
-  // Мова з профілю діє на всіх пристроях: якщо сторінка іншою мовою — переходимо на мову профілю.
+  // Мова з профілю діє на всіх пристроях: обрали іншу на іншому пристрої — переходимо на неї
+  // (крім сторінок входу: вони після входу самі ведуть на мову профілю).
   const preferred = profile?.language;
   useEffect(() => {
-    if (hasLocale(preferred) && preferred !== lang) {
+    if (hasLocale(preferred) && preferred !== lang && !isAuthPage(window.location.pathname)) {
       rememberLang(preferred);
-      router.replace(switchLocalePath(window.location.pathname, preferred) + window.location.search + window.location.hash);
+      reloadIn(preferred);
     }
-    // Лише коли стала відома мова профілю або змінилася сторінка.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferred, lang]);
+
+  // Сторінку взято з пам'яті браузера (кнопка «Назад», без запиту до сервера, який би сам переадресував) —
+  // перевіряємо обрану мову тут: під час відкриття й під час відновлення сторінки.
+  useEffect(() => {
+    const check = () => {
+      const chosen = cookieLang(document.cookie);
+      if (chosen && chosen !== lang) reloadIn(chosen);
+    };
+    check();
+    const onShow = (event: PageTransitionEvent) => event.persisted && check();
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [lang]);
 
   useEffect(() => {
     if (!open) return;
