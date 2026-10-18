@@ -23,6 +23,7 @@ const common: Messages["common"] = {
     toCatalog: "Kataloğa git",
   },
   anilistError: "AniList’ten veriler yüklenemedi. Biraz sonra sayfayı yenile.",
+  tooMany: { title: "Çok fazla istek", text: "Çok hızlı arama yapıyorsun. Bir dakika bekleyip tekrar dene." },
   saveError: "Kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
   loading: "Yükleniyor…",
   untitled: "Adsız",

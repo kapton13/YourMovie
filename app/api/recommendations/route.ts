@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LIMITS, clientKey, tooMany } from "@/lib/rateLimit";
 import { LIST_STATUSES, type ListStatus } from "@/lib/lists";
 import { buildRecommendations, type RecEntry } from "@/lib/recommendations";
 
@@ -10,6 +11,8 @@ const ids = (value: unknown): number[] =>
  * лише id, статуси й оцінки: { entries: [{ id, status, score }], hidden: [id] }.
  */
 export async function POST(request: NextRequest) {
+  const limit = LIMITS.recommendations.take(clientKey(request.headers));
+  if (!limit.ok) return tooMany(limit.retryAfter);
   const body = await request.json().catch(() => null);
   const entries: RecEntry[] = (Array.isArray(body?.entries) ? body.entries : [])
     .filter(

@@ -23,6 +23,7 @@ const common: Messages["common"] = {
     toCatalog: "前往动画库",
   },
   anilistError: "无法从 AniList 加载数据，请稍后刷新页面。",
+  tooMany: { title: "请求过多", text: "你的搜索太频繁了。请等一分钟后再试。" },
   saveError: "保存失败，请检查网络后重试。",
   loading: "加载中…",
   untitled: "无标题",

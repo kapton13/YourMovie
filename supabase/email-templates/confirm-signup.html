@@ -1,0 +1,108 @@
+{{ $lang := "" }}{{ $dir := "" }}{{ $next := "" }}{{ $heading := "" }}{{ $text := "" }}{{ $button := "" }}{{ $ignore := "" }}{{ $linkHint := "" }}{{ $footer := "" }}
+{{ $want := printf "%v" .Data.language }}
+{{ if eq $want `uk` }}
+{{ $lang = `uk` }}{{ $dir = `ltr` }}{{ $next = `/uk/account?welcome=1` }}
+{{ $heading = `Підтвердьте пошту` }}
+{{ $text = `Вітаємо в YourMovie! Натисніть кнопку, щоб підтвердити пошту й завершити реєстрацію.` }}
+{{ $button = `Підтвердити пошту` }}
+{{ $ignore = `Якщо ви не реєструвалися в YourMovie, просто проігноруйте цей лист.` }}
+{{ $linkHint = `Якщо кнопка не працює, скопіюйте це посилання в браузер:` }}{{ $footer = `YourMovie — ваш трекер аніме` }}
+{{ else if eq $want `ru` }}
+{{ $lang = `ru` }}{{ $dir = `ltr` }}{{ $next = `/ru/account?welcome=1` }}
+{{ $heading = `Подтвердите почту` }}
+{{ $text = `Добро пожаловать в YourMovie! Нажмите кнопку, чтобы подтвердить почту и завершить регистрацию.` }}
+{{ $button = `Подтвердить почту` }}
+{{ $ignore = `Если вы не регистрировались в YourMovie, просто проигнорируйте это письмо.` }}
+{{ $linkHint = `Если кнопка не работает, скопируйте эту ссылку в браузер:` }}{{ $footer = `YourMovie — ваш трекер аниме` }}
+{{ else if eq $want `es` }}
+{{ $lang = `es` }}{{ $dir = `ltr` }}{{ $next = `/es/account?welcome=1` }}
+{{ $heading = `Confirma tu correo` }}
+{{ $text = `¡Te damos la bienvenida a YourMovie! Pulsa el botón para confirmar tu correo y terminar el registro.` }}
+{{ $button = `Confirmar correo` }}
+{{ $ignore = `Si no te registraste en YourMovie, ignora este correo.` }}
+{{ $linkHint = `Si el botón no funciona, copia este enlace en tu navegador:` }}{{ $footer = `YourMovie — tu registro de anime` }}
+{{ else if eq $want `pt` }}
+{{ $lang = `pt` }}{{ $dir = `ltr` }}{{ $next = `/pt/account?welcome=1` }}
+{{ $heading = `Confirme seu e-mail` }}
+{{ $text = `Boas-vindas ao YourMovie! Toque no botão para confirmar seu e-mail e concluir o cadastro.` }}
+{{ $button = `Confirmar e-mail` }}
+{{ $ignore = `Se você não se cadastrou no YourMovie, ignore este e-mail.` }}
+{{ $linkHint = `Se o botão não funcionar, copie este link no seu navegador:` }}{{ $footer = `YourMovie — seu rastreador de animes` }}
+{{ else if eq $want `fr` }}
+{{ $lang = `fr` }}{{ $dir = `ltr` }}{{ $next = `/fr/account?welcome=1` }}
+{{ $heading = `Confirmez votre e-mail` }}
+{{ $text = `Bienvenue sur YourMovie ! Appuyez sur le bouton pour confirmer votre e-mail et terminer l’inscription.` }}
+{{ $button = `Confirmer l’e-mail` }}
+{{ $ignore = `Si vous ne vous êtes pas inscrit sur YourMovie, ignorez simplement cet e-mail.` }}
+{{ $linkHint = `Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :` }}{{ $footer = `YourMovie — votre suivi d’animes` }}
+{{ else if eq $want `de` }}
+{{ $lang = `de` }}{{ $dir = `ltr` }}{{ $next = `/de/account?welcome=1` }}
+{{ $heading = `Bestätige deine E-Mail` }}
+{{ $text = `Willkommen bei YourMovie! Tippe auf den Button, um deine E-Mail zu bestätigen und die Registrierung abzuschließen.` }}
+{{ $button = `E-Mail bestätigen` }}
+{{ $ignore = `Wenn du dich nicht bei YourMovie registriert hast, ignoriere diese E-Mail einfach.` }}
+{{ $linkHint = `Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:` }}{{ $footer = `YourMovie – dein Anime-Tracker` }}
+{{ else if eq $want `pl` }}
+{{ $lang = `pl` }}{{ $dir = `ltr` }}{{ $next = `/pl/account?welcome=1` }}
+{{ $heading = `Potwierdź e-mail` }}
+{{ $text = `Witaj w YourMovie! Kliknij przycisk, aby potwierdzić e-mail i dokończyć rejestrację.` }}
+{{ $button = `Potwierdź e-mail` }}
+{{ $ignore = `Jeśli nie zakładałeś konta w YourMovie, po prostu zignoruj tę wiadomość.` }}
+{{ $linkHint = `Jeśli przycisk nie działa, skopiuj ten link do przeglądarki:` }}{{ $footer = `YourMovie — twój tracker anime` }}
+{{ else if eq $want `tr` }}
+{{ $lang = `tr` }}{{ $dir = `ltr` }}{{ $next = `/tr/account?welcome=1` }}
+{{ $heading = `E-postanı onayla` }}
+{{ $text = `YourMovie’ye hoş geldin! E-postanı onaylayıp kaydı tamamlamak için düğmeye bas.` }}
+{{ $button = `E-postayı onayla` }}
+{{ $ignore = `YourMovie’ye kaydolmadıysan bu e-postayı yok say.` }}
+{{ $linkHint = `Düğme çalışmazsa bu bağlantıyı tarayıcına kopyala:` }}{{ $footer = `YourMovie — anime takipçin` }}
+{{ else if eq $want `ja` }}
+{{ $lang = `ja` }}{{ $dir = `ltr` }}{{ $next = `/ja/account?welcome=1` }}
+{{ $heading = `メールアドレスの確認` }}
+{{ $text = `YourMovieへようこそ！ボタンを押してメールアドレスを確認し、登録を完了してください。` }}
+{{ $button = `メールアドレスを確認` }}
+{{ $ignore = `YourMovieに登録した覚えがない場合は、このメールを無視してください。` }}
+{{ $linkHint = `ボタンが使えない場合は、このリンクをブラウザに貼り付けてください：` }}{{ $footer = `YourMovie — あなたのアニメ記録` }}
+{{ else if eq $want `ko` }}
+{{ $lang = `ko` }}{{ $dir = `ltr` }}{{ $next = `/ko/account?welcome=1` }}
+{{ $heading = `이메일을 인증해 주세요` }}
+{{ $text = `YourMovie에 오신 것을 환영해요! 버튼을 눌러 이메일을 인증하고 가입을 마무리하세요.` }}
+{{ $button = `이메일 인증` }}
+{{ $ignore = `YourMovie에 가입한 적이 없다면 이 메일을 무시하세요.` }}
+{{ $linkHint = `버튼이 작동하지 않으면 이 링크를 브라우저에 붙여 넣으세요:` }}{{ $footer = `YourMovie — 나만의 애니 트래커` }}
+{{ else if eq $want `zh` }}
+{{ $lang = `zh` }}{{ $dir = `ltr` }}{{ $next = `/zh/account?welcome=1` }}
+{{ $heading = `验证你的邮箱` }}
+{{ $text = `欢迎来到 YourMovie！点击按钮验证邮箱，完成注册。` }}
+{{ $button = `验证邮箱` }}
+{{ $ignore = `如果你没有注册 YourMovie，请忽略这封邮件。` }}
+{{ $linkHint = `如果按钮无法使用，请将此链接复制到浏览器中：` }}{{ $footer = `YourMovie — 你的追番记录` }}
+{{ else }}
+{{ $lang = `en` }}{{ $dir = `ltr` }}{{ $next = `/en/account?welcome=1` }}
+{{ $heading = `Confirm your email` }}
+{{ $text = `Welcome to YourMovie! Press the button to confirm your email and finish signing up.` }}
+{{ $button = `Confirm email` }}
+{{ $ignore = `If you didn’t sign up for YourMovie, just ignore this email.` }}
+{{ $linkHint = `If the button doesn’t work, copy this link into your browser:` }}{{ $footer = `YourMovie — your anime tracker` }}
+{{ end }}
+<!doctype html>
+<html lang="{{ $lang }}" dir="{{ $dir }}">
+<body style="margin:0;padding:0;background:#f5f6fa;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#161922;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6fa;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;padding:32px;">
+        <tr><td style="font-size:22px;font-weight:800;padding-bottom:24px;">Your<span style="color:#3d5fe0;">Movie</span></td></tr>
+        <tr><td style="font-size:20px;font-weight:700;padding-bottom:12px;">{{ $heading }}</td></tr>
+        <tr><td style="font-size:15px;line-height:1.6;color:#2b2f3a;padding-bottom:24px;">{{ $text }}</td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next={{ $next }}" style="display:inline-block;background:#3d5fe0;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px;">{{ $button }}</a>
+        </td></tr>
+        <tr><td style="font-size:13px;line-height:1.5;color:#5d6475;padding-bottom:6px;">{{ $linkHint }}</td></tr>
+        <tr><td style="font-size:12px;line-height:1.5;word-break:break-all;padding-bottom:24px;"><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next={{ $next }}" style="color:#3d5fe0;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next={{ $next }}</a></td></tr>
+        <tr><td style="font-size:13px;line-height:1.5;color:#5d6475;border-top:1px solid #e6e8ef;padding-top:16px;">{{ $ignore }}</td></tr>
+      </table>
+      <p style="font-size:12px;color:#5d6475;margin:16px 0 0;">{{ $footer }}</p>
+    </td></tr>
+  </table>
+</body>
+</html>

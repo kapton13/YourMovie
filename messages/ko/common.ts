@@ -23,6 +23,7 @@ const common: Messages["common"] = {
     toCatalog: "카탈로그로 가기",
   },
   anilistError: "AniList에서 데이터를 불러오지 못했어요. 잠시 후 페이지를 새로고침해 주세요.",
+  tooMany: { title: "요청이 너무 많아요", text: "검색이 너무 빨라요. 1분 정도 기다린 뒤 다시 시도해 주세요." },
   saveError: "저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",
   loading: "불러오는 중…",
   untitled: "제목 없음",

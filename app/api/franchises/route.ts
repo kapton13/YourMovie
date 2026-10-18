@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LIMITS, clientKey, tooMany } from "@/lib/rateLimit";
 import { getFranchises } from "@/lib/anilist";
 
 /** До яких аніме належать частини: /api/franchises?ids=1,2,3 → { id: аніме з усіма частинами }. */
 export async function GET(request: NextRequest) {
+  const limit = LIMITS.franchises.take(clientKey(request.headers));
+  if (!limit.ok) return tooMany(limit.retryAfter);
   const ids = (request.nextUrl.searchParams.get("ids") ?? "")
     .split(",")
     .map(Number)

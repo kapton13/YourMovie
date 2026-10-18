@@ -84,7 +84,8 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
           password,
           options: {
             emailRedirectTo: callback(next === "/account" ? "/account?welcome=1" : next),
-            data: { nickname: cleanNickname(nickname) },
+            // Мова — для листів (шаблони Supabase читають її з user_metadata).
+            data: { nickname: cleanNickname(nickname), language: lang },
           },
         });
         if (error) return setError(authErrorMessage(error, m));

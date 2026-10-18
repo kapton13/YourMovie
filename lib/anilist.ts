@@ -81,12 +81,30 @@ export class AniListError extends Error {
 
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
 
+/**
+ * Ліміт AniList (зараз 30 запитів за хвилину на сервер): з кожною відповіддю він каже, скільки лишилось
+ * і коли поновиться. Лишився останній — наступні запити чекають поновлення (не довше 10 с), а не
+ * отримують відмову чи тимчасове блокування.
+ */
+let anilistPausedUntil = 0;
+
+function rememberAniListLimit(headers: Headers) {
+  const remaining = headers.get("x-ratelimit-remaining");
+  if (remaining === null || Number(remaining) > 1) return;
+  // Час поновлення AniList називає лише разом із відмовою; інакше — коротка пауза.
+  const reset = Number(headers.get("x-ratelimit-reset")) * 1000; // секунди Unix → мс
+  anilistPausedUntil = Math.max(anilistPausedUntil, reset > Date.now() ? reset : Date.now() + 5_000);
+}
+
 async function anilist<T>(query: string, variables: Record<string, unknown>, attempt = 1): Promise<T> {
+  const wait = Math.min(anilistPausedUntil - Date.now(), 10_000);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   const res = await fetch(ANILIST_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ query, variables }),
   });
+  rememberAniListLimit(res.headers);
   if (RETRY_STATUSES.has(res.status) && attempt < 3) {
     // Ліміт запитів або тимчасовий збій AniList: ще дві спроби трохи згодом.
     const retryAfter = Number(res.headers.get("retry-after"));
