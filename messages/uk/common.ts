@@ -32,6 +32,7 @@ const common: Messages["common"] = {
   yes: "Так",
   no: "Ні",
   cancel: "Скасувати",
+  retry: "Спробувати ще раз",
   close: "Закрити",
   done: "Готово",
   episodes: { one: "серія", few: "серії", many: "серій", other: "серії" },

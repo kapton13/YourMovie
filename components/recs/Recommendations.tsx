@@ -68,7 +68,12 @@ export function Recommendations() {
     return (
       <>
         {heading}
-        <p className={styles.empty}>{m.recs.error}</p>
+        <div className={styles.empty} role="alert">
+          <p>{m.recs.error}</p>
+          <button type="button" className={styles.retry} onClick={state.retry}>
+            {m.common.retry}
+          </button>
+        </div>
       </>
     );
   }

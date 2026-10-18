@@ -32,6 +32,7 @@ const common = {
   yes: "Yes",
   no: "No",
   cancel: "Cancel",
+  retry: "Try again",
   close: "Close",
   done: "Done",
   episodes: { one: "episode", other: "episodes" } as Plural,

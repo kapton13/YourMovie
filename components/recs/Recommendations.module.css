@@ -157,3 +157,19 @@
     height: 250px;
   }
 }
+
+.retry {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.retry:hover {
+  border-color: var(--accent);
+}

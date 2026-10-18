@@ -32,6 +32,7 @@ const common: Messages["common"] = {
   yes: "はい",
   no: "いいえ",
   cancel: "キャンセル",
+  retry: "再試行",
   close: "閉じる",
   done: "完了",
   episodes: { one: "{n}話", other: "{n}話" },

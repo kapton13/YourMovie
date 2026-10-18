@@ -32,6 +32,7 @@ const common: Messages["common"] = {
   yes: "是",
   no: "否",
   cancel: "取消",
+  retry: "重试",
   close: "关闭",
   done: "完成",
   episodes: { one: "集", other: "集" },
