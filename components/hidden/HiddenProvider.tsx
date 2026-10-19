@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
+import { LISTS_CHANGED } from "@/components/my/useNewEpisodes";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useHydrated } from "@/components/useHydrated";
 import type { Franchise } from "@/lib/anilist";
@@ -137,25 +138,39 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
     const keys = (data as { media_id: number }[]).map((r) => r.media_id);
     const collect = () => new Set(keys.flatMap((k) => franchiseParts.current.get(k) ?? [k]));
     setListed({ userId: user.id, ids: collect() });
-    // Сезон 2, фільм чи OVA теж належать аніме зі списку — дізнаємося всі частини.
-    const missing = keys.filter((k) => !franchiseParts.current.has(k));
-    if (missing.length === 0) return;
-    for (let i = 0; i < missing.length; i += 300) {
-      const chunk = missing.slice(i, i + 300);
-      try {
-        const res = await fetch(`/api/franchises?ids=${chunk.join(",")}`);
-        if (!res.ok) continue;
-        const franchises = (await res.json()) as Record<number, Franchise>;
-        for (const k of chunk) {
-          const f = franchises[k];
-          if (f) franchiseParts.current.set(k, [k, ...[...f.main, ...f.extras].map((p) => p.id)]);
+    // Сезон 2, фільм чи OVA теж належать аніме зі списку — дізнаємося всі частини. Довгий список уперше
+    // сервер віддає частинами (або AniList відмовив) — ще одна спроба трохи згодом, уже з кешу сервера.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const missing = keys.filter((k) => !franchiseParts.current.has(k));
+      if (missing.length === 0) return;
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 3000));
+      for (let i = 0; i < missing.length; i += 300) {
+        const chunk = missing.slice(i, i + 300);
+        try {
+          const res = await fetch(`/api/franchises?ids=${chunk.join(",")}`);
+          if (!res.ok) continue;
+          const franchises = (await res.json()) as Record<number, Franchise>;
+          for (const k of chunk) {
+            const f = franchises[k];
+            if (f) franchiseParts.current.set(k, [k, ...[...f.main, ...f.extras].map((p) => p.id)]);
+          }
+        } catch (e) {
+          console.warn(e);
         }
-      } catch (e) {
-        console.warn(e);
       }
+      setListed({ userId: user.id, ids: collect() });
     }
-    setListed({ userId: user.id, ids: collect() });
   }, [user]);
+
+  // Щойно оцінене чи додане аніме зникає з порад одразу, а не після переходу на іншу сторінку.
+  // (Лише якщо список «вже в списках» тут потрібен — його вмикає `SkipListed`.)
+  const tracking = listed !== null;
+  useEffect(() => {
+    if (!tracking) return;
+    const refresh = () => void refreshListed();
+    window.addEventListener(LISTS_CHANGED, refresh);
+    return () => window.removeEventListener(LISTS_CHANGED, refresh);
+  }, [tracking, refreshListed]);
 
   const listedIds = user && listed?.userId === user.id ? listed.ids : EMPTY.listedIds;
   const rows = user && loaded?.userId === user.id ? loaded.rows : [];

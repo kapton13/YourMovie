@@ -854,10 +854,17 @@ export async function getFranchises(ids: number[], budgetMs = 8000): Promise<Rec
   const started = Date.now();
   for (const id of ids) {
     if (result[id]) continue;
-    // Довгий список уперше: віддаємо те, що встигли (решта — наступного разу, вже з кешу).
-    if (Date.now() - started > budgetMs) break;
+    // Довгий список уперше: віддаємо те, що встигли (решта — наступного разу, вже з кешу). Велике аніме
+    // (сотні частин) може саме перевищити час — не чекаємо його, воно дозбирається у фоні й ляже в кеш.
+    const left = budgetMs - (Date.now() - started);
+    if (left <= 0) break;
     try {
-      const franchise = await getFranchise(id);
+      const loading = getFranchise(id);
+      loading.catch(() => {});
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const franchise = await Promise.race([loading, new Promise<null>((r) => (timer = setTimeout(() => r(null), left)))]);
+      clearTimeout(timer);
+      if (!franchise) break;
       for (const part of [...franchise.main, ...franchise.extras]) result[part.id] = franchise;
       result[id] = franchise;
     } catch (error) {

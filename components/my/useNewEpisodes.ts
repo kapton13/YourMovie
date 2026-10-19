@@ -9,7 +9,7 @@ import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
 
 /** Подія «списки змінились» (відмітили серію, змінили статус) — лічильник у шапці перераховується. */
-const LISTS_CHANGED = "ym:lists-changed";
+export const LISTS_CHANGED = "ym:lists-changed";
 
 export function notifyListsChanged() {
   window.dispatchEvent(new Event(LISTS_CHANGED));

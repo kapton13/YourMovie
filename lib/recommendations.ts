@@ -1,5 +1,5 @@
 import type { Titles } from "./i18n/title";
-import { getHomeSections, getRecCards, getRecSeeds, type RecCard } from "./anilist";
+import { getFranchises, getHomeSections, getRecCards, getRecSeeds, type RecCard } from "./anilist";
 import type { ListStatus } from "./lists";
 
 /**
@@ -47,6 +47,7 @@ export function seedWeight(status: ListStatus, score: number | null): number {
 }
 
 const MAX_SEEDS = 75;
+const FRANCHISE_BUDGET_MS = 4000;
 const MAX_ITEMS = 120;
 const SKIP_FORMATS = new Set(["MUSIC", "SPECIAL"]);
 
@@ -93,7 +94,14 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
       return fallback;
     }
   }
-  const seeds = await attempt(() => getRecSeeds(seedIds), []);
+  const seedsLoading = attempt(() => getRecSeeds(seedIds), []);
+  // Усі частини аніме зі списків — так само, як їх групують «Мої аніме». Самих «попередніх частин» мало:
+  // передісторія, що вийшла пізніше (Fate/Zero, Kizumonogatari), до першої частини не веде. Паралельно
+  // зі «схожими» й з обмеженням часу: не встигли (довгий список уперше) — решту відсіє браузер.
+  // «Не цікаво» браузер і так надсилає всіма частинами.
+  const listedKeys = entries.filter((e) => e.status !== "planning").map((e) => e.id);
+  const franchisesLoading = attempt(() => getFranchises(listedKeys, FRANCHISE_BUDGET_MS), {});
+  const seeds = await seedsLoading;
   const entryOf = new Map(entries.map((e) => [e.id, e]));
 
   // ---- Смак: які жанри й теми людина оцінює високо, а які — низько ----
@@ -158,6 +166,8 @@ export async function buildRecommendations(entries: RecEntry[], hidden: number[]
   // Картки не прийшли — беремо ті, що прийшли разом зі «схожими», але лише перші частини.
   for (const seed of seeds)
     for (const { media } of seed.recs) if (!roots.has(media.id) && media.previous === null) roots.set(media.id, media);
+
+  for (const f of Object.values(await franchisesLoading)) for (const part of [...f.main, ...f.extras]) exclude.add(part.id);
 
   const merged = new Map<number, Candidate>();
   for (const id of ids) {

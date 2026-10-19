@@ -6,6 +6,7 @@ const anilist = vi.hoisted(() => ({
   getRecSeeds: vi.fn(),
   getRecCards: vi.fn(),
   getHomeSections: vi.fn(),
+  getFranchises: vi.fn(),
 }));
 vi.mock("@/lib/anilist", () => anilist);
 
@@ -46,6 +47,7 @@ describe("рекомендації, коли AniList відмовляє", () => 
   beforeEach(() => {
     vi.resetAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => {});
+    anilist.getFranchises.mockResolvedValue({});
   });
 
   it("усе гаразд — радимо схожі", async () => {
@@ -89,5 +91,48 @@ describe("рекомендації, коли AniList відмовляє", () => 
     anilist.getRecCards.mockRejectedValue(new Error("AniList: 403"));
     anilist.getHomeSections.mockRejectedValue(new Error("AniList: 403"));
     await expect(buildRecommendations(entries, [])).rejects.toThrow("AniList: 403");
+  });
+});
+
+describe("рекомендації: що вже в списках, не радимо", () => {
+  const franchise = (key: number, main: number[], extras: number[] = []) => ({
+    key,
+    main: main.map((id) => ({ id })),
+    extras: extras.map((id) => ({ id })),
+  });
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    anilist.getRecCards.mockImplementation(async (ids: number[]) => cardsOf(ids));
+    anilist.getHomeSections.mockResolvedValue({ trending: [], popular: [], top: [] });
+  });
+
+  it("передісторія, що вийшла пізніше (Fate/Zero до Fate/stay night), — та сама історія, не радимо", async () => {
+    // У списку — аніме 1 (ключ — найперша частина). Порада 50 — його передісторія: «попередньої» не має,
+    // тож лише групування аніме знає, що це те саме аніме. 60 — інше аніме.
+    anilist.getRecSeeds.mockResolvedValue([seed(1, [50, 60]), seed(2, [50, 60])]);
+    anilist.getFranchises.mockResolvedValue({ 1: franchise(1, [1, 50], [55]), 2: franchise(2, [2]) });
+    const { items } = await buildRecommendations(
+      [entries[0], { id: 2, status: "completed", score: 8 }],
+      [],
+    );
+    expect(items.map((i) => i.media.id)).toEqual([60]);
+    expect(anilist.getFranchises).toHaveBeenCalledWith([1, 2], expect.any(Number));
+  });
+
+  it("«Планую» — не виключаємо (його можна радити)", async () => {
+    anilist.getRecSeeds.mockResolvedValue([seed(1, [70])]);
+    anilist.getFranchises.mockResolvedValue({ 1: franchise(1, [1]) });
+    const { items } = await buildRecommendations([entries[0], { id: 70, status: "planning", score: null }], []);
+    expect(items.map((i) => i.media.id)).toEqual([70]);
+    expect(anilist.getFranchises).toHaveBeenCalledWith([1], expect.any(Number));
+  });
+
+  it("групування не прийшло — радимо як раніше, без помилки", async () => {
+    anilist.getRecSeeds.mockResolvedValue([seed(1, [50, 60])]);
+    anilist.getFranchises.mockRejectedValue(new Error("AniList: 429"));
+    const { items } = await buildRecommendations(entries, []);
+    expect(items.map((i) => i.media.id).sort()).toEqual([50, 60]);
   });
 });
