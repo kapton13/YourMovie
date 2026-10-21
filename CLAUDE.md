@@ -85,10 +85,12 @@
 - `site-health.yml` — щогодини перевіряє живий сайт і AniList (`scripts/site-health.mjs`; ознака даних — постери `s4.anilist.co`, бо текст помилки є в словнику кожної сторінки). Біда — задача з міткою `site-health` (лист власнику), минула — закриває; AniList повернувся — запускає `e2e` для pull request з міткою `merge-when-green`.
 - `e2e.yml` — повні перевірки в браузері на GitHub (вручну з номером pull request або міткою `merge-when-green`; з міткою після успіху сам зливає, якщо голова не змінилась). Секрети `E2E_EMAIL`/`E2E_PASSWORD` — окремий тестовий акаунт (власник вписує сам у Settings → Secrets; у чат не надсилати). AniList не відповідає — відкладає.
 - `update-dictionaries.yml` — щопонеділка оновлює `data/title-index.json` і `data/ru-titles.json` (скрипти чекають 2,1 с між запитами до AniList і не пишуть словник, якщо даних помітно менше), проганяє `npm run check` і пропонує зміни з гілки `bot/dictionaries`.
+- `check.yml`, завдання `build` — збирає сайт і міряє вагу коду для браузера (`npm run budget`, межі — `bundle-budget.json`; стало важче — помилка; свідомо — підняти межу).
+- `.github/dependabot.yml` — щотижня один pull request з дрібними оновленнями бібліотек; великі — окремо, обговорюємо.
 - Розклад (`schedule`) працює лише з `main`.
 
 ## Команди
-- `npm run dev` — локальний запуск; `npm run build` — збірка; `npm run lint` — перевірка коду; `npm run check` і `npm run test:e2e` — див. «Автоматичні перевірки».
+- `npm run dev` — локальний запуск; `npm run build` — збірка; `npm run budget` — вага коду для браузера (після збірки); `npm run lint` — перевірка коду; `npm run check` і `npm run test:e2e` — див. «Автоматичні перевірки».
 - `npm run update-titles` — оновити словник назв для пошуку (≈2 хв, запити до AniList).
 - `npm run update-ru-titles` — оновити російські назви з Shikimori (≈5 хв).
 
