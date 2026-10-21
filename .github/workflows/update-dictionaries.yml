@@ -1,0 +1,64 @@
+# Робот: щотижня оновлює словники назв (пошук за недописаним словом і російські назви) — scripts/update-*.mjs.
+# Зміни кладе в гілку bot/dictionaries і пропонує злиття (pull request; якщо GitHub не дозволяє роботу
+# створити його — задачею з посиланням). Зливає людина/Claude після перевірки.
+name: update-dictionaries
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency: update-dictionaries
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: AniList працює?
+        id: anilist
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://graphql.anilist.co \
+            -H 'Content-Type: application/json' -d '{"query":"{ Media(id: 1) { id } }"}')
+          echo "AniList: $CODE"
+          echo "up=$([ "$CODE" = 200 ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+      - name: Оновити словники
+        if: steps.anilist.outputs.up == 'yes'
+        run: |
+          npm run update-titles
+          npm run update-ru-titles
+      - name: Перевірити, що сайт не зламався
+        if: steps.anilist.outputs.up == 'yes'
+        run: |
+          npm ci
+          npm run check
+      - name: Запропонувати зміни
+        if: steps.anilist.outputs.up == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- data; then echo "Словники без змін."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/dictionaries
+          git add data
+          git commit -m "Weekly dictionaries update (title index, Russian titles)"
+          git push -f origin bot/dictionaries
+          if [ -n "$(gh pr list --head bot/dictionaries --state open --json number --jq '.[0].number // empty')" ]; then
+            echo "Pull request уже відкритий — оновлено."
+            exit 0
+          fi
+          BODY="Робот оновив словники: назви для пошуку (data/title-index.json) і російські назви (data/ru-titles.json). Швидкі перевірки пройдено. Перед злиттям — переглянути й запустити повні перевірки."
+          gh pr create --base main --head bot/dictionaries --title "Щотижневе оновлення словників" --body "$BODY" \
+            || gh issue create --title "Оновлено словники — перевірити й злити" \
+                 --body "$BODY Зміни: https://github.com/${{ github.repository }}/compare/main...bot/dictionaries"

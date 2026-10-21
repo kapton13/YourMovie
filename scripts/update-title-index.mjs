@@ -2,7 +2,7 @@
  * Оновлює data/title-index.json — словник назв найпопулярніших аніме для пошуку
  * за недописаним словом («frie» → Frieren). AniList такого пошуку не вміє.
  *
- * Запуск: npm run update-titles   (раз на кілька місяців, щоб підхопити нові популярні тайтли)
+ * Запуск: npm run update-titles   (≈2 хв; робот GitHub запускає щотижня — .github/workflows/update-dictionaries.yml)
  */
 import { writeFile } from "node:fs/promises";
 
@@ -21,6 +21,7 @@ const QUERY = `
 // Лише латиниця й кирилиця: інші письменності для пошуку з нашого сайту не потрібні.
 const USEFUL = /^[\p{Script=Latin}\p{Script=Cyrillic}\p{N}\p{P}\p{S}\s]+$/u;
 
+const ANILIST_PAUSE_MS = 2100;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchPage(page) {
@@ -56,8 +57,11 @@ for (let page = 1; page <= PAGES; page++) {
   }
   process.stdout.write(`\r  сторінка ${page}/${PAGES}`);
   if (!data.pageInfo.hasNextPage) break;
-  await sleep(800);
+  // ≤ 28 запитів за хвилину: ліміт AniList зараз 30, а сайт теж до нього звертається.
+  await sleep(ANILIST_PAUSE_MS);
 }
 
+// AniList віддав набагато менше, ніж має бути (збій) — не псуємо робочий словник.
+if (entries.length < PAGES * 50 * 0.9) throw new Error(`Замало тайтлів (${entries.length}) — словник не змінено.`);
 await writeFile(new URL("../data/title-index.json", import.meta.url), JSON.stringify(entries) + "\n");
 console.log(`\nГотово: ${entries.length} тайтлів.`);

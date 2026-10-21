@@ -3,7 +3,7 @@
  * ({ id AniList: "назва" }). Сайт показує їх у російській версії без запитів до Shikimori щоразу;
  * для решти аніме — англійська назва (а на сторінці аніме — назва й опис із Shikimori напряму).
  *
- * Запуск: npm run update-ru-titles   (≈5 хв; раз на кілька місяців)
+ * Запуск: npm run update-ru-titles   (≈8 хв; робот GitHub запускає щотижня — .github/workflows/update-dictionaries.yml)
  */
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,6 +19,7 @@ const ANILIST_QUERY = `
   }
 `;
 const SHIKIMORI_QUERY = `query ($ids: String) { animes(ids: $ids, limit: 50) { malId russian } }`;
+const ANILIST_PAUSE_MS = 2100;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function post(url, body, label) {
@@ -62,7 +63,8 @@ for (let page = 1; !cacheFresh && page <= PAGES; page++) {
   for (const m of data.media) if (m.idMal) pairs.push([m.id, m.idMal]);
   process.stdout.write(`\r  AniList: сторінка ${page}/${PAGES}`);
   if (!data.pageInfo.hasNextPage) break;
-  await sleep(800);
+  // ≤ 28 запитів за хвилину: ліміт AniList зараз 30, а сайт теж до нього звертається.
+  await sleep(ANILIST_PAUSE_MS);
 }
 
 if (!cacheFresh) await writeFile(pairsCache, JSON.stringify(pairs));
@@ -79,5 +81,8 @@ for (let i = 0; i < pairs.length; i += 50) {
 
 const result = {};
 for (const [id, mal] of pairs) if (byMal.has(mal)) result[id] = byMal.get(mal);
+// Збій AniList чи Shikimori — назв набагато менше, ніж у робочому словнику: не псуємо його.
+const before = Object.keys(JSON.parse(await readFile(new URL("../data/ru-titles.json", import.meta.url), "utf8"))).length;
+if (Object.keys(result).length < before * 0.9) throw new Error(`Замало назв (${Object.keys(result).length} замість ~${before}) — словник не змінено.`);
 await writeFile(new URL("../data/ru-titles.json", import.meta.url), JSON.stringify(result) + "\n");
 console.log(`\nГотово: ${Object.keys(result).length} російських назв з ${pairs.length} аніме.`);

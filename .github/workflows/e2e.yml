@@ -1,0 +1,83 @@
+# Повні перевірки в браузері (tests/e2e) на GitHub — те саме, що `npm run test:e2e` перед злиттям з main.
+# Запуск: вручну (Actions → e2e → Run workflow, номер pull request) або міткою merge-when-green на pull request.
+# З міткою merge-when-green після успішних перевірок робот сам зливає pull request (якщо за цей час
+# у ньому нічого не змінилося). AniList не відповідає — перевірки відкладаються: site-health запустить їх,
+# щойно AniList повернеться.
+# Потрібні секрети репозиторію E2E_EMAIL і E2E_PASSWORD — окремий тестовий акаунт сайту (не справжній!).
+name: e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Номер pull request"
+        required: true
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Один тестовий акаунт — перевірки по черзі.
+concurrency: e2e
+
+jobs:
+  e2e:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'merge-when-green'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.inputs.pr || github.event.pull_request.number }}
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - name: Що перевіряємо
+        id: pr
+        run: |
+          if [ -z "$E2E_EMAIL" ] || [ -z "$E2E_PASSWORD" ]; then
+            echo "::error::Немає секретів E2E_EMAIL / E2E_PASSWORD (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          SHA=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://graphql.anilist.co \
+            -H 'Content-Type: application/json' -d '{"query":"{ Media(id: 1) { id } }"}')
+          echo "AniList: $CODE"
+          echo "anilist=$([ "$CODE" = 200 ] && echo up || echo down)" >> "$GITHUB_OUTPUT"
+      - name: AniList не відповідає — відкладаємо
+        if: steps.pr.outputs.anilist != 'up'
+        run: echo "::warning::AniList не відповідає — перевірки відкладено; site-health запустить їх, коли він повернеться."
+      - uses: actions/checkout@v4
+        if: steps.pr.outputs.anilist == 'up'
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+      - uses: actions/setup-node@v4
+        if: steps.pr.outputs.anilist == 'up'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Зібрати сайт
+        if: steps.pr.outputs.anilist == 'up'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
+      - name: Перевірки в браузері
+        if: steps.pr.outputs.anilist == 'up'
+        run: npx playwright test
+      - name: Злити (мітка merge-when-green)
+        if: steps.pr.outputs.anilist == 'up'
+        run: |
+          if gh pr view "$PR" --json labels --jq '.labels[].name' | grep -qx merge-when-green; then
+            gh pr merge "$PR" --merge --match-head-commit "${{ steps.pr.outputs.sha }}"
+          else
+            echo "Мітки merge-when-green немає — не зливаю."
+          fi
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7
