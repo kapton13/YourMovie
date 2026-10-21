@@ -167,9 +167,17 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   const tracking = listed !== null;
   useEffect(() => {
     if (!tracking) return;
-    const refresh = () => void refreshListed();
+    // Кілька кліків поспіль (серії одна за одною) — одне оновлення.
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void refreshListed(), 800);
+    };
     window.addEventListener(LISTS_CHANGED, refresh);
-    return () => window.removeEventListener(LISTS_CHANGED, refresh);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(LISTS_CHANGED, refresh);
+    };
   }, [tracking, refreshListed]);
 
   const listedIds = user && listed?.userId === user.id ? listed.ids : EMPTY.listedIds;
