@@ -27,15 +27,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function CatalogPage({ searchParams }: PageProps<"/[lang]/catalog">) {
   const { m } = await getI18n();
-  const options = await getFilterOptions().catch((error) => {
-    console.error(error);
-    return { tagGroups: [], maxYear: 2027 };
-  });
 
   return (
     <CatalogTransitionProvider>
       <Suspense fallback={<ControlsFallback />}>
-        <CatalogControls tagGroups={options.tagGroups} maxYear={options.maxYear} />
+        <Controls />
       </Suspense>
       <PendingResults>
         <Suspense fallback={<ResultsSkeleton label={m.common.loading} />}>
@@ -44,6 +40,15 @@ export default async function CatalogPage({ searchParams }: PageProps<"/[lang]/c
       </PendingResults>
     </CatalogTransitionProvider>
   );
+}
+
+/** Панель фільтрів; теги — з AniList (не відповів — панель без тегів, решта працює). */
+async function Controls() {
+  const options = await getFilterOptions().catch((error) => {
+    console.error(error);
+    return { tagGroups: [], maxYear: 2027 };
+  });
+  return <CatalogControls tagGroups={options.tagGroups} maxYear={options.maxYear} />;
 }
 
 function ControlsFallback() {

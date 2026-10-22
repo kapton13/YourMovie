@@ -1,11 +1,51 @@
 import { cacheLife } from "next/cache";
 import type { Titles } from "./i18n/title";
-import { attachRussianTitles } from "./russianTitles";
+import { AniListError, anilist } from "./anilistClient";
+import { shared } from "./shared";
 import { PAGE_SIZE, type CatalogQuery, type SortKey } from "./catalog";
 import { rankByRelevance } from "./search";
 import { searchTitleIndex } from "./titleIndex";
 
-const ANILIST_URL = "https://graphql.anilist.co";
+export { AniListError };
+
+/*
+ * Пам'ять сервера по кожному аніме окремо (на додачу до кешу сторінок): кеш Next запам'ятовує відповідь
+ * на цілий набір id, а набори в людей різні, — тож без цієї пам'яті ті самі аніме перепитувались би
+ * в AniList знову й знову.
+ */
+const MEMO_LIMIT = 20000;
+
+/**
+ * AniList не відповів, поки збирається сайт (`next build` на Vercel): не валимо збирання — інакше під час
+ * збою AniList не вийде викласти навіть виправлення. Короткий кеш робить ці дані «дірою», яку сервер
+ * заповнить уже під час роботи. На сервері помилка йде далі як звичайно (і кеш тримає старі дані).
+ */
+const BUILDING = process.env.NEXT_PHASE === "phase-production-build";
+type BuildFailure = { buildFailure: string };
+
+function failedDuringBuild(error: unknown): BuildFailure {
+  if (!BUILDING) throw error;
+  console.warn("AniList unavailable during build, deferring to runtime:", String(error));
+  cacheLife("seconds");
+  return { buildFailure: String(error) };
+}
+
+function unwrap<T extends object>(result: T | BuildFailure): T {
+  if ("buildFailure" in result) throw new AniListError(503, result.buildFailure);
+  return result;
+}
+
+/** Щоб пам'ять не росла без кінця: забуваємо застаріле, а якщо й того мало — усе. */
+function prune(memo: Map<number, { at: number }>, ttl: number) {
+  if (memo.size < MEMO_LIMIT) return;
+  for (const [id, hit] of memo) if (Date.now() - hit.at >= ttl) memo.delete(id);
+  if (memo.size >= MEMO_LIMIT) memo.clear();
+}
+
+function fresh<T extends { at: number }>(memo: Map<number, T>, id: number, ttl: number): T | undefined {
+  const hit = memo.get(id);
+  return hit && Date.now() - hit.at < ttl ? hit : undefined;
+}
 
 export type MediaFormat =
   | "TV"
@@ -69,57 +109,6 @@ const HOME_QUERY = `
     }
   }
 `;
-
-export class AniListError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(`AniList: ${status} ${message}`);
-  }
-}
-
-const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
-
-/**
- * Ліміт AniList (зараз 30 запитів за хвилину на сервер): з кожною відповіддю він каже, скільки лишилось
- * і коли поновиться. Лишився останній — наступні запити чекають поновлення (не довше 10 с), а не
- * отримують відмову чи тимчасове блокування.
- */
-let anilistPausedUntil = 0;
-
-function rememberAniListLimit(headers: Headers) {
-  const remaining = headers.get("x-ratelimit-remaining");
-  if (remaining === null || Number(remaining) > 1) return;
-  // Час поновлення AniList називає лише разом із відмовою; інакше — коротка пауза.
-  const reset = Number(headers.get("x-ratelimit-reset")) * 1000; // секунди Unix → мс
-  anilistPausedUntil = Math.max(anilistPausedUntil, reset > Date.now() ? reset : Date.now() + 5_000);
-}
-
-async function anilist<T>(query: string, variables: Record<string, unknown>, attempt = 1): Promise<T> {
-  const wait = Math.min(anilistPausedUntil - Date.now(), 10_000);
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  const res = await fetch(ANILIST_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
-  rememberAniListLimit(res.headers);
-  if (RETRY_STATUSES.has(res.status) && attempt < 3) {
-    // Ліміт запитів або тимчасовий збій AniList: ще дві спроби трохи згодом.
-    const retryAfter = Number(res.headers.get("retry-after"));
-    const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000 * attempt;
-    await new Promise((r) => setTimeout(r, Math.min(wait, 8000)));
-    return anilist<T>(query, variables, attempt + 1);
-  }
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json || json.errors) {
-    const error = json?.errors?.[0];
-    throw new AniListError(error?.status ?? res.status, error?.message ?? res.statusText);
-  }
-  attachRussianTitles(json.data);
-  return json.data as T;
-}
 
 export type CatalogItem = MediaCard & {
   title: { native: string | null };
@@ -279,13 +268,21 @@ export type FilterOptions = {
 };
 
 export async function getFilterOptions(): Promise<FilterOptions> {
-  "use cache";
-  cacheLife("days");
+  return unwrap(await loadFilterOptions());
+}
 
+async function loadFilterOptions(): Promise<FilterOptions | BuildFailure> {
+  "use cache";
   const maxYear = new Date().getFullYear() + 1;
-  const data = await anilist<{
-    MediaTagCollection: { name: string; category: string; isAdult: boolean }[];
-  }>(`query { MediaTagCollection { name category isAdult } }`, {});
+  let data;
+  try {
+    data = await anilist<{
+      MediaTagCollection: { name: string; category: string; isAdult: boolean }[];
+    }>(`query { MediaTagCollection { name category isAdult } }`, {});
+  } catch (error) {
+    return failedDuringBuild(error);
+  }
+  cacheLife("days");
 
   const groups = new Map<string, string[]>();
   for (const tag of data.MediaTagCollection) {
@@ -308,16 +305,24 @@ export function seasonOf(date: Date): { season: Season; year: number } {
 }
 
 export async function getHomeSections(): Promise<HomeSections> {
-  "use cache";
-  cacheLife("hours");
+  return unwrap(await loadHomeSections());
+}
 
+async function loadHomeSections(): Promise<HomeSections | BuildFailure> {
+  "use cache";
   const current = seasonOf(new Date());
   type PageData = { media: MediaCard[] };
-  const data = await anilist<Record<"trending" | "seasonal" | "popular" | "top", PageData>>(
-    HOME_QUERY,
-    // З запасом: на головній ховаємо те, що людина вже має в списках, а показуємо по 12.
-    { season: current.season, year: current.year, perPage: 24 },
-  );
+  let data;
+  try {
+    data = await anilist<Record<"trending" | "seasonal" | "popular" | "top", PageData>>(
+      HOME_QUERY,
+      // З запасом: на головній ховаємо те, що людина вже має в списках, а показуємо по 12.
+      { season: current.season, year: current.year, perPage: 24 },
+    );
+  } catch (error) {
+    return failedDuringBuild(error);
+  }
+  cacheLife("hours");
   const all = [data.trending, data.seasonal, data.popular, data.top].flatMap((p) => p.media);
   const roots = await getRoots(all.map((m) => m.id)).catch((error) => {
     console.error(error);
@@ -395,14 +400,20 @@ const ROOTS_QUERY = `
   }
 `;
 
+/** «Попередня частина» кожного аніме — для `getRoots` з різних сторінок. */
+const previousMemo = shared("previousMemo", () => new Map<number, { at: number; previous: number | null }>());
+
 /**
  * Перша частина аніме для кожного id: ідемо назад по «попередня частина» (для OVA — до основного
  * аніме). Так сезон 3 на головній ховається, якщо в списку людини є це аніме (воно записане
  * під першою частиною). Кілька легких запитів на всі картки разом.
  */
 export async function getRoots(ids: number[]): Promise<Record<number, number>> {
+  return unwrap(await loadRoots(ids));
+}
+
+async function loadRoots(ids: number[]): Promise<Record<number, number> | BuildFailure> {
   "use cache";
-  cacheLife("days");
 
   type Node = {
     id: number;
@@ -414,12 +425,24 @@ export async function getRoots(ids: number[]): Promise<Record<number, number>> {
   const chains = new Map<number, number[]>([...new Set(ids)].map((id) => [id, [id]]));
   let walking = [...chains.keys()];
   for (let step = 0; step < 6 && walking.length > 0; step++) {
+    for (const id of walking) {
+      const last = chains.get(id)!.at(-1)!;
+      const hit = fresh(previousMemo, last, FRANCHISE_TTL);
+      if (hit) previousOf.set(last, hit.previous);
+    }
     const unknown = [...new Set(walking.map((id) => chains.get(id)!.at(-1)!))].filter((id) => !previousOf.has(id));
     for (let i = 0; i < unknown.length; i += 50) {
       const chunk = unknown.slice(i, i + 50);
-      const data = await anilist<{ Page: { media: Node[] } }>(ROOTS_QUERY, { ids: chunk });
+      let data;
+      try {
+        data = await anilist<{ Page: { media: Node[] } }>(ROOTS_QUERY, { ids: chunk });
+      } catch (error) {
+        return failedDuringBuild(error);
+      }
       for (const id of chunk) previousOf.set(id, null);
       for (const m of data.Page.media) previousOf.set(m.id, previousPart(m, m.relations.edges));
+      const at = Date.now();
+      for (const id of chunk) previousMemo.set(id, { at, previous: previousOf.get(id)! });
     }
     const next: number[] = [];
     for (const id of walking) {
@@ -432,6 +455,8 @@ export async function getRoots(ids: number[]): Promise<Record<number, number>> {
     }
     walking = next;
   }
+  prune(previousMemo, FRANCHISE_TTL);
+  cacheLife("days");
   return Object.fromEntries([...chains].map(([id, chain]) => [id, chain.at(-1)!]));
 }
 
@@ -581,8 +606,23 @@ function byDate(a: WatchOrderItem, b: WatchOrderItem): number {
   return dateKey(a.startDate) - dateKey(b.startDate) || a.id - b.id;
 }
 
+const FRANCHISE_TTL = 24 * 60 * 60 * 1000;
+/** Аніме за id будь-якої його частини: сезон 2 після сезону 1 не обходить усе аніме наново. */
+const franchiseMemo = shared("franchiseMemo", () => new Map<number, { at: number; franchise: Franchise }>());
+
 /** Усі частини аніме, до якого належить `id`. */
 export async function getFranchise(id: number): Promise<Franchise> {
+  const hit = fresh(franchiseMemo, id, FRANCHISE_TTL);
+  if (hit) return hit.franchise;
+  const franchise = await loadFranchise(id);
+  prune(franchiseMemo, FRANCHISE_TTL);
+  const at = Date.now();
+  for (const part of [...franchise.main, ...franchise.extras]) franchiseMemo.set(part.id, { at, franchise });
+  franchiseMemo.set(id, { at, franchise });
+  return franchise;
+}
+
+async function loadFranchise(id: number): Promise<Franchise> {
   "use cache";
   cacheLife("days");
 
@@ -815,11 +855,8 @@ const MY_MEDIA_QUERY = `
   }
 `;
 
-/** До 50 тайтлів за раз (ліміт AniList); id мають бути відсортовані — так краще кешується. */
-export async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
-  "use cache";
-  cacheLife("minutes");
-
+/** До 50 тайтлів за раз (ліміт AniList). */
+async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
   type Response = {
     Page: { media: (MediaCard & Pick<MyMedia, "status" | "duration" | "genres" | "nextAiringEpisode">)[] };
     recent: { airingSchedules: { mediaId: number; episode: number; airingAt: number }[] };
@@ -840,12 +877,30 @@ export async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
   }));
 }
 
+/** Серії виходять щотижня, тож кілька хвилин — достатньо свіжо. */
+const MY_MEDIA_TTL = 5 * 60 * 1000;
+const myMediaMemo = shared("myMediaMemo", () => new Map<number, { at: number; media: MyMedia | null }>());
+
+/** Дані для «Моїх аніме», профілю й лічильника нових серій; перепитуємо лише те, чого немає в пам'яті. */
 export async function getMyMedia(ids: number[]): Promise<MyMedia[]> {
-  const unique = [...new Set(ids)].sort((a, b) => a - b);
+  const unique = [...new Set(ids)];
+  const missing = unique.filter((id) => !fresh(myMediaMemo, id, MY_MEDIA_TTL)).sort((a, b) => a - b);
+  const loaded = new Map<number, MyMedia | null>();
   const chunks: number[][] = [];
-  for (let i = 0; i < unique.length; i += 50) chunks.push(unique.slice(i, i + 50));
-  const results = await Promise.all(chunks.map((chunk) => getMyMediaChunk(chunk)));
-  return results.flat();
+  for (let i = 0; i < missing.length; i += 50) chunks.push(missing.slice(i, i + 50));
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const media = await getMyMediaChunk(chunk);
+      const at = Date.now();
+      for (const id of chunk) loaded.set(id, null);
+      for (const m of media) loaded.set(m.id, m);
+      for (const id of chunk) myMediaMemo.set(id, { at, media: loaded.get(id)! });
+    }),
+  );
+  prune(myMediaMemo, MY_MEDIA_TTL);
+  return unique
+    .map((id) => (loaded.has(id) ? loaded.get(id) : myMediaMemo.get(id)?.media) ?? null)
+    .filter((m): m is MyMedia => m !== null);
 }
 
 /** Кілька аніме за id їхніх частин; частини одного аніме не рахуються двічі. */
@@ -948,20 +1003,9 @@ function toRecCard(raw: RawRecCard): RecCard {
  * аніме — тож пам'ятаємо кожне аніме окремо й догружаємо лише те, чого бракує.
  */
 const REC_TTL = 6 * 60 * 60 * 1000;
-const seedMemo = new Map<number, { at: number; seed: RecSeed | null }>();
-const cardMemo = new Map<number, { at: number; card: RecCard | null }>();
+const seedMemo = shared("seedMemo", () => new Map<number, { at: number; seed: RecSeed | null }>());
+const cardMemo = shared("cardMemo", () => new Map<number, { at: number; card: RecCard | null }>());
 
-/** Щоб пам'ять не росла без кінця: забуваємо застаріле, а якщо й того мало — усе. */
-function prune(memo: Map<number, { at: number }>) {
-  if (memo.size < 20000) return;
-  for (const [id, hit] of memo) if (Date.now() - hit.at >= REC_TTL) memo.delete(id);
-  if (memo.size >= 20000) memo.clear();
-}
-
-function fresh<T extends { at: number }>(memo: Map<number, T>, id: number): T | undefined {
-  const hit = memo.get(id);
-  return hit && Date.now() - hit.at < REC_TTL ? hit : undefined;
-}
 
 /**
  * Частинами й паралельно. Невдала частина не валить решту: рекомендації краще показати з того,
@@ -979,12 +1023,12 @@ async function inChunks(ids: number[], size: number, load: (chunk: number[]) => 
 
 /** «Схожі» для аніме користувача (по 25 за запит — так відповідь AniList не надто велика). */
 export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
-  prune(seedMemo);
-  prune(cardMemo);
+  prune(seedMemo, REC_TTL);
+  prune(cardMemo, REC_TTL);
   // Збираємо результат тут, а не з пам'яті: інший запит може її тим часом почистити.
   const found = new Map<number, RecSeed | null>();
   for (const id of new Set(ids)) {
-    const hit = fresh(seedMemo, id);
+    const hit = fresh(seedMemo, id, REC_TTL);
     if (hit) found.set(id, hit.seed);
   }
   const missing = [...new Set(ids)].filter((id) => !found.has(id));
@@ -1023,11 +1067,11 @@ export async function getRecSeeds(ids: number[]): Promise<RecSeed[]> {
 
 /** Картки аніме для рекомендацій (щоб дійти до першого сезону). */
 export async function getRecCards(ids: number[]): Promise<Map<number, RecCard>> {
-  prune(cardMemo);
+  prune(cardMemo, REC_TTL);
   const result = new Map<number, RecCard>();
   const missing: number[] = [];
   for (const id of new Set(ids)) {
-    const hit = fresh(cardMemo, id);
+    const hit = fresh(cardMemo, id, REC_TTL);
     if (!hit) missing.push(id);
     else if (hit.card) result.set(id, hit.card);
   }

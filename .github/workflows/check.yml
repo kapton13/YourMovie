@@ -17,3 +17,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+
+  # Збірка сайту й вага коду для браузера (scripts/bundle-budget.mjs, межі — bundle-budget.json).
+  # Збірка не залежить від AniList (див. failedDuringBuild у lib/anilist.ts).
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/bundle-budget.mjs

@@ -1,0 +1,68 @@
+# Робот: щогодини перевіряє живий сайт і AniList (scripts/site-health.mjs).
+# Щось не так — відкриває задачу з міткою site-health (GitHub надсилає про неї лист); минуло — закриває її.
+name: site-health
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+  pull-requests: read
+
+concurrency: site-health
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: health
+        run: node scripts/site-health.mjs report.md
+        continue-on-error: true
+      - name: Задача в GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ steps.health.outputs.state || 'site-broken' }}
+        run: |
+          [ -f report.md ] || echo "❌ Перевірка не змогла запуститися — див. журнал робота." > report.md
+          LABEL=site-health
+          gh label create "$LABEL" --color d93f0b --description "Робот: стан живого сайту" 2>/dev/null || true
+          OPEN=$(gh issue list --label "$LABEL" --state open --json number,title --jq '.[0].number // empty')
+          case "$STATE" in
+            ok) TITLE="" ;;
+            anilist-down) TITLE="Сайт: AniList не відповідає (дані про аніме недоступні)" ;;
+            *) TITLE="Сайт працює неправильно" ;;
+          esac
+          if [ -z "$TITLE" ]; then
+            if [ -n "$OPEN" ]; then
+              WAS=$(gh issue view "$OPEN" --json title --jq .title)
+              gh issue comment "$OPEN" --body-file report.md
+              gh issue close "$OPEN" --comment "✅ Знову все працює — задачу закрито автоматично."
+              # AniList повернувся — повні перевірки для pull request, що чекали на нього (мітка merge-when-green;
+              # пройдуть — робот сам їх зіллє). Лише раз, у момент повернення, а не щогодини.
+              case "$WAS" in *AniList*)
+                for PR in $(gh pr list --label merge-when-green --state open --json number --jq '.[].number'); do
+                  echo "Запускаю перевірки для #$PR"
+                  gh workflow run e2e.yml -f pr="$PR"
+                done ;;
+              esac
+            fi
+          elif [ -z "$OPEN" ]; then
+            gh issue create --title "$TITLE" --label "$LABEL" --body-file report.md
+          else
+            # Та сама біда — лише оновлюємо опис (без нових листів); інша — коментар.
+            CURRENT=$(gh issue view "$OPEN" --json title --jq .title)
+            if [ "$CURRENT" != "$TITLE" ]; then
+              gh issue edit "$OPEN" --title "$TITLE"
+              gh issue comment "$OPEN" --body-file report.md
+            fi
+            gh issue edit "$OPEN" --body-file report.md
+          fi

@@ -1,0 +1,17 @@
+# Робот Dependabot: раз на тиждень пропонує оновити бібліотеки (дрібні оновлення — одним pull request),
+# раз на місяць — дії GitHub. Великі оновлення (нова «головна» версія) — окремо, їх обговорюємо.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
