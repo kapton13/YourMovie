@@ -49,7 +49,7 @@ jobs:
       - name: AniList не відповідає — відкладаємо
         if: steps.pr.outputs.anilist != 'up'
         run: echo "::warning::AniList не відповідає — перевірки відкладено; site-health запустить їх, коли він повернеться."
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.pr.outputs.anilist == 'up'
         with:
           ref: ${{ steps.pr.outputs.sha }}
