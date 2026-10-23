@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { MediaRow } from "@/components/MediaRow";
 import { SkipListed } from "@/components/hidden/SkipListed";
@@ -68,6 +69,9 @@ async function Anime({ params }: Pick<PageProps<"/[lang]/anime/[id]">, "params">
   const { lang, m, intl } = await getI18n();
   const id = parseId((await params).id);
   if (!id) notFound();
+  // Сторінка аніме — завжди під час запиту (пам'ять сервера зважає на час): без цього Next пробує
+  // заздалегідь зібрати її для кожного id і засмічує журнал помилками «Date.now() під час збирання».
+  await connection();
 
   let media;
   try {

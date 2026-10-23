@@ -99,4 +99,29 @@ describe("запити до AniList", () => {
     await expect(next).resolves.toEqual({ b: 2 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("самі не перевищуємо ліміт: зайвий запит за хвилину чекає місця, а не отримує відмову від AniList", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(async () => ok({ a: 1 }, { "x-ratelimit-limit": "30" }));
+    await Promise.all(Array.from({ length: 28 }, (_, i) => query(i)));
+    expect(fetchMock).toHaveBeenCalledTimes(28);
+    // Одразу після сплеску місце звільниться лише за хвилину — відмовляємо самі, AniList не чіпаємо.
+    await expect(query(99)).rejects.toMatchObject({ status: 429 });
+    expect(fetchMock).toHaveBeenCalledTimes(28);
+    // За 45 с — чекати лишилось 15 с: чекаємо й ідемо.
+    await vi.advanceTimersByTimeAsync(45_000);
+    const next = query(100);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetchMock).toHaveBeenCalledTimes(28);
+    await vi.advanceTimersByTimeAsync(6_000);
+    await expect(next).resolves.toEqual({ a: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(29);
+  });
+
+  it("AniList каже, що ліміт 90 на хвилину, — запас більший", async () => {
+    fetchMock.mockImplementation(async () => ok({ a: 1 }, { "x-ratelimit-limit": "90" }));
+    await query(0);
+    await Promise.all(Array.from({ length: 60 }, (_, i) => query(i + 1)));
+    expect(fetchMock).toHaveBeenCalledTimes(61);
+  });
 });
