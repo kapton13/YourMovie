@@ -20,6 +20,9 @@ updates:
         update-types: [version-update:semver-major]
       # Браузер для перевірок у середовищі Claude закріплено під 1.56; оновлюємо разом із ним.
       - dependency-name: "@playwright/test"
+      # ESLint 10 — коли eslint-config-next його офіційно підтримає (власник погодив відкласти 2026-10-23).
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
