@@ -12,7 +12,7 @@ import {
   switchLocalePath,
   type Locale,
 } from "@/lib/i18n/config";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { hasSession, loadSupabase } from "@/lib/supabase/client";
 import { useI18n } from "./I18nProvider";
 import styles from "./LanguageSwitcher.module.css";
 
@@ -40,10 +40,10 @@ export function useSwitchLanguage() {
     if (next === lang) return true;
     let ok = true;
     // Хто ввійшов — дізнаємося в момент вибору (профіль у компоненті міг ще не завантажитися).
-    const supabase = getSupabaseBrowser();
-    const { data } = await supabase.auth.getSession();
-    const userId = data.session?.user.id;
-    if (userId) {
+    // Гість (без cookie входу) — профілю немає, бібліотеку Supabase не вантажимо.
+    const supabase = hasSession() ? await loadSupabase() : null;
+    const userId = supabase ? (await supabase.auth.getSession()).data.session?.user.id : undefined;
+    if (supabase && userId) {
       const { error } = await supabase.from("profiles").update({ language: next }).eq("id", userId);
       // Мова листів (підтвердження, новий пароль) — шаблони Supabase читають її з user_metadata.
       if (!error) await supabase.auth.updateUser({ data: { language: next } }).catch(() => null);

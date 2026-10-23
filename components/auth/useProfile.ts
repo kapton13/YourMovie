@@ -7,8 +7,37 @@ import { useUser } from "./useUser";
 
 const listeners = new Set<() => void>();
 
+/*
+ * Профіль потрібен відразу кільком частинам сторінки (шапка, вибір мови, налаштування) — читаємо його з бази
+ * один раз на всіх; змінився (`notifyProfileChanged` чи `reload`) — читаємо знову.
+ */
+let generation = 0;
+let cache: { userId: string; generation: number; promise: Promise<Profile | null> } | null = null;
+
+function fetchProfile(userId: string): Promise<Profile | null> {
+  if (cache && cache.userId === userId && cache.generation === generation) return cache.promise;
+  const promise = Promise.resolve(
+    getSupabaseBrowser()
+      .from("profiles")
+      // Усі поля: так сторінка працює й до оновлення бази (поки немає окремих полів ПІБ).
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle(),
+  ).then(({ data, error }) => {
+    if (error) {
+      console.error(error);
+      // Не вдалося — наступного разу спробуємо знову.
+      if (cache?.promise === promise) cache = null;
+    }
+    return (data as Profile | null) ?? null;
+  });
+  cache = { userId, generation, promise };
+  return promise;
+}
+
 /** Повідомити всі компоненти (напр. шапку), що профіль змінився. */
 export function notifyProfileChanged() {
+  generation++;
   for (const listener of listeners) listener();
 }
 
@@ -17,29 +46,25 @@ export function useProfile(): { profile: Profile | null | undefined; reload: () 
   const user = useUser();
   const [loaded, setLoaded] = useState<{ userId: string; profile: Profile | null } | null>(null);
   const [version, setVersion] = useState(0);
-  const reload = useCallback(() => setVersion((v) => v + 1), []);
+  const refresh = useCallback(() => setVersion((v) => v + 1), []);
+  const reload = useCallback(() => {
+    generation++;
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
-    listeners.add(reload);
+    listeners.add(refresh);
     return () => {
-      listeners.delete(reload);
+      listeners.delete(refresh);
     };
-  }, [reload]);
+  }, [refresh]);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    getSupabaseBrowser()
-      .from("profiles")
-      // Усі поля: так сторінка працює й до оновлення бази (поки немає окремих полів ПІБ).
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) console.error(error);
-        setLoaded({ userId: user.id, profile: (data as Profile | null) ?? null });
-      });
+    fetchProfile(user.id).then((profile) => {
+      if (!cancelled) setLoaded({ userId: user.id, profile });
+    });
     return () => {
       cancelled = true;
     };

@@ -7,7 +7,7 @@ import { rememberLang } from "@/components/i18n/LanguageSwitcher";
 import { hasLocale, localePath, switchLocalePath } from "@/lib/i18n/config";
 import { cleanNickname } from "@/lib/profile";
 import { safeNext } from "@/lib/safeNext";
-import { getSupabaseBrowser, setRemember } from "@/lib/supabase/client";
+import { loadSupabase, setRemember } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 import { NicknameField, type NicknameState } from "./NicknameField";
 import styles from "./auth.module.css";
@@ -56,7 +56,7 @@ export function AuthForm({ initialMode }: { initialMode: "login" | "signup" }) {
       return;
     }
     setBusy(true);
-    const supabase = getSupabaseBrowser();
+    const supabase = await loadSupabase();
     // Після посилання з листа — на сторінку тією ж мовою, якою людина зараз користується.
     const callback = (target: string) =>
       `${window.location.origin}/auth/callback?next=${encodeURIComponent(href(target))}`;
