@@ -121,7 +121,7 @@ export function useNewEpisodes(): number | null {
     if (!userId) return;
     let cancelled = false;
     let timer: number | undefined;
-    const refresh = (force: boolean) => {
+    const refresh = (force: boolean, retry = true) => {
       const cached = force ? null : readCache(userId);
       if (cached !== null) return setState({ userId, count: cached });
       countNewEpisodes(userId)
@@ -129,7 +129,11 @@ export function useNewEpisodes(): number | null {
           writeCache(userId, count);
           if (!cancelled) setState({ userId, count });
         })
-        .catch((e) => console.warn(e)); // не вийшло — просто без кружечка
+        .catch((e) => {
+          // AniList зайнятий (ліміт запитів) — ще раз трохи згодом; знову ні — просто без кружечка.
+          console.warn(e);
+          if (retry && !cancelled) timer = window.setTimeout(() => refresh(true, false), 8000);
+        });
     };
     refresh(false);
     // Відмітили серію чи змінили статус — перерахувати (трохи згодом: кілька кліків поспіль — один перерахунок).

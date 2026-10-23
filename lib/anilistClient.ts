@@ -9,7 +9,9 @@ import { shared } from "./shared";
  * — однакові запити, що йдуть одночасно, ідуть до AniList один раз;
  * — AniList вимкнений (403) чи збоїть кілька разів поспіль — якийсь час не звертаємося зовсім, сторінки
  *   одразу показують «не вдалося завантажити» з кешу/пам'яті, а не добивають його повторами;
- * — ліміт вичерпано (429) — чекаємо, скільки він каже, а не повторюємо одразу.
+ * — самі рахуємо запити за останню хвилину й не перевищуємо ліміт AniList (з запасом): відмова 429
+ *   блокує на хвилину, тож краще трохи почекати до неї;
+ * — ліміт усе ж вичерпано (429) — чекаємо, скільки він каже, а не повторюємо одразу.
  */
 
 const ANILIST_URL = "https://graphql.anilist.co";
@@ -24,6 +26,13 @@ const FAILURE_PAUSE_MS = 60_000;
 const RATE_LIMIT_PAUSE_MS = 60_000;
 /** Коротку паузу ліміту (≤ стількох мс) чекаємо самі; довшу — відмовляємо одразу. */
 const MAX_WAIT_MS = 10_000;
+/** Ліміт AniList, доки він сам не назвав свій (`x-ratelimit-limit`: 90 звично, 30 — коли йому важко). */
+const DEFAULT_LIMIT = 30;
+/** Запас: те саме місце (IP) можуть ділити інші процеси й скрипти. */
+const LIMIT_MARGIN = 2;
+const WINDOW_MS = 60_000;
+/** Скільки чекаємо вільного місця у хвилині, перш ніж відмовити. */
+const MAX_WINDOW_WAIT_MS = 20_000;
 
 export class AniListError extends Error {
   constructor(
@@ -43,7 +52,25 @@ const state = shared("anilistClient", () => ({
   /** До цього часу чекаємо: ліміт запитів вичерпано. */
   pausedUntil: 0,
   failuresInRow: 0,
+  /** Коли пішли запити за останню хвилину. */
+  sent: [] as number[],
+  limit: DEFAULT_LIMIT,
 }));
+
+/** Місце в межах ліміту за хвилину (рахуємо самі); немає довго — відмова без запиту до AniList. */
+async function takeWindow() {
+  for (;;) {
+    const now = Date.now();
+    while (state.sent.length > 0 && now - state.sent[0] >= WINDOW_MS) state.sent.shift();
+    if (state.sent.length < state.limit - LIMIT_MARGIN) {
+      state.sent.push(now);
+      return;
+    }
+    const wait = state.sent[0] + WINDOW_MS - now + 50;
+    if (wait > MAX_WINDOW_WAIT_MS) throw new AniListError(429, "own limit reached, not asking for a while");
+    await sleep(wait);
+  }
+}
 
 async function takeSlot() {
   if (state.active < MAX_CONCURRENT) {
@@ -85,6 +112,7 @@ async function send<T>(query: string, variables: Record<string, unknown>, attemp
 
   if (process.env.ANILIST_DEBUG) console.log("[anilist]", /\w+\s+(\w+)/.exec(query)?.[1], JSON.stringify(variables).slice(0, 120));
   let res: Response;
+  await takeWindow();
   await takeSlot();
   try {
     res = await fetch(ANILIST_URL, {
@@ -105,6 +133,8 @@ async function send<T>(query: string, variables: Record<string, unknown>, attemp
     releaseSlot();
   }
 
+  const limit = Number(res.headers.get("x-ratelimit-limit"));
+  if (limit > LIMIT_MARGIN) state.limit = limit;
   // Лишився останній запит у хвилині — наступні почекають поновлення.
   const remaining = res.headers.get("x-ratelimit-remaining");
   if (remaining !== null && Number(remaining) <= 1) {
@@ -149,4 +179,6 @@ export function resetAniListClient() {
   state.unavailableUntil = 0;
   state.pausedUntil = 0;
   state.failuresInRow = 0;
+  state.sent.length = 0;
+  state.limit = DEFAULT_LIMIT;
 }

@@ -49,11 +49,11 @@ jobs:
       - name: AniList не відповідає — відкладаємо
         if: steps.pr.outputs.anilist != 'up'
         run: echo "::warning::AniList не відповідає — перевірки відкладено; site-health запустить їх, коли він повернеться."
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.pr.outputs.anilist == 'up'
         with:
           ref: ${{ steps.pr.outputs.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.pr.outputs.anilist == 'up'
         with:
           node-version: 22
@@ -75,7 +75,7 @@ jobs:
           else
             echo "Мітки merge-when-green немає — не зливаю."
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-traces

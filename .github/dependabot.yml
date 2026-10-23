@@ -11,6 +11,15 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Сервер і роботи працюють на Node 22 — типи мають відповідати їй.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+      # TypeScript 7 (новий компілятор) — перейдемо окремо, коли Next.js його офіційно підтримає.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # Браузер для перевірок у середовищі Claude закріплено під 1.56; оновлюємо разом із ним.
+      - dependency-name: "@playwright/test"
   - package-ecosystem: github-actions
     directory: /
     schedule:
