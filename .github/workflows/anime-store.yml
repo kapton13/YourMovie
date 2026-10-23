@@ -1,0 +1,45 @@
+# Нічний робот: оновлює нашу копію даних AniList у Supabase (scripts/sync-anime-store.mts, таблиця anime_store).
+# Потрібен секрет SUPABASE_SECRET_KEY (Supabase → Project Settings → API Keys → secret). Немає — робот
+# пропускає роботу з поясненням, а не падає щоночі.
+name: anime-store
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: anime-store
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - name: Є ключ?
+        id: key
+        run: |
+          if [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "::notice::Немає секрету SUPABASE_SECRET_KEY — копію даних не оновлено."
+            echo "ok=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=yes" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'yes'
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.ok == 'yes'
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.key.outputs.ok == 'yes'
+        run: npm ci
+      - name: Оновити копію
+        if: steps.key.outputs.ok == 'yes'
+        run: npx tsx scripts/sync-anime-store.mts
+        env:
+          MAX_MINUTES: "55"

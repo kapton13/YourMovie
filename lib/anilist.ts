@@ -1,6 +1,7 @@
 import { cacheLife } from "next/cache";
 import type { Titles } from "./i18n/title";
 import { AniListError, anilist } from "./anilistClient";
+import { readStore, type StoreHit } from "./animeStore";
 import { shared } from "./shared";
 import { PAGE_SIZE, type CatalogQuery, type SortKey } from "./catalog";
 import { rankByRelevance } from "./search";
@@ -537,8 +538,21 @@ const MEDIA_QUERY = `
 /** Повертає null, якщо такого аніме немає. */
 export async function getMedia(id: number): Promise<MediaDetails | null> {
   "use cache";
-  cacheLife("hours");
+  try {
+    const media = await fetchMediaDetails(id);
+    cacheLife("hours");
+    return media;
+  } catch (error) {
+    // AniList не відповів — сторінка з нашої копії (хай і вчорашньої), ненадовго: AniList скоро повернеться.
+    const stored = (await readStore<MediaDetails>("details", [id])).get(id);
+    if (!stored) throw error;
+    cacheLife("minutes");
+    return stored.data;
+  }
+}
 
+/** Сторінка аніме з AniList (без кешу — її бере й нічний робот). Такого id немає — null. */
+export async function fetchMediaDetails(id: number): Promise<MediaDetails | null> {
   try {
     const data = await anilist<{ Media: MediaDetails }>(MEDIA_QUERY, { id });
     return data.Media;
@@ -610,24 +624,62 @@ const FRANCHISE_TTL = 24 * 60 * 60 * 1000;
 /** Аніме за id будь-якої його частини: сезон 2 після сезону 1 не обходить усе аніме наново. */
 const franchiseMemo = shared("franchiseMemo", () => new Map<number, { at: number; franchise: Franchise }>());
 
-/** Усі частини аніме, до якого належить `id`. */
-export async function getFranchise(id: number): Promise<Franchise> {
-  const hit = fresh(franchiseMemo, id, FRANCHISE_TTL);
-  if (hit) return hit.franchise;
-  const franchise = await loadFranchise(id);
+/** Згруповане нічним роботом за цей час беремо з нашої копії, не обходячи зв'язки в AniList. */
+const STORED_FRANCHISE_FRESH = 8 * 24 * 60 * 60 * 1000;
+
+function rememberFranchise(id: number, franchise: Franchise) {
   prune(franchiseMemo, FRANCHISE_TTL);
   const at = Date.now();
   for (const part of [...franchise.main, ...franchise.extras]) franchiseMemo.set(part.id, { at, franchise });
   franchiseMemo.set(id, { at, franchise });
-  return franchise;
+}
+
+/** Аніме з нашої копії за id будь-якої частини. */
+async function storedFranchises(ids: number[]): Promise<Map<number, StoreHit<Franchise>>> {
+  const parts = await readStore<{ key: number }>("part", ids);
+  const keys = new Map([...parts].map(([id, hit]) => [id, hit.data.key]));
+  const franchises = await readStore<Franchise>("franchise", [...new Set(keys.values())]);
+  const result = new Map<number, StoreHit<Franchise>>();
+  for (const [id, key] of keys) {
+    const hit = franchises.get(key);
+    if (hit) result.set(id, hit);
+  }
+  return result;
+}
+
+/** Усі частини аніме, до якого належить `id`. */
+export async function getFranchise(id: number, stored?: StoreHit<Franchise>): Promise<Franchise> {
+  const hit = fresh(franchiseMemo, id, FRANCHISE_TTL);
+  if (hit) return hit.franchise;
+  stored ??= (await storedFranchises([id])).get(id);
+  if (stored && Date.now() - stored.updatedAt < STORED_FRANCHISE_FRESH) {
+    rememberFranchise(id, stored.data);
+    return stored.data;
+  }
+  try {
+    const franchise = await loadFranchise(id);
+    rememberFranchise(id, franchise);
+    return franchise;
+  } catch (error) {
+    // AniList не відповів — давніша копія краще, ніж нічого.
+    if (stored) return stored.data;
+    throw error;
+  }
 }
 
 async function loadFranchise(id: number): Promise<Franchise> {
   "use cache";
   cacheLife("days");
+  return buildFranchise(id);
+}
 
+/**
+ * Обхід зв'язків AniList від `id`: усі частини того самого аніме. Без кешу Next — його викликає й нічний
+ * робот (scripts/), де кешу немає.
+ */
+export async function buildFranchise(id: number): Promise<Franchise> {
   type Node = Omit<FranchisePart, "kind" | "season"> & {
-    relations: { edges: { relationType: RelationType; node: { id: number; type: string } }[] };
+    relations: { edges: { relationType: RelationType; node: { id: number; type: string; format: string | null } }[] };
   };
 
   const nodes = new Map<number, Node>();
@@ -641,7 +693,15 @@ async function loadFranchise(id: number): Promise<Franchise> {
       for (const edge of media.relations.edges) {
         // Серіал із PARENT — це спін-оф (окреме аніме), а не OVA чи фільм до основного.
         const spinOff = edge.relationType === "PARENT" && SERIES_FORMATS.has(media.format ?? "");
-        const follow = !spinOff && (CHAIN_TYPES.includes(edge.relationType) || EXTRA_TYPES.includes(edge.relationType));
+        // Спешл чи фільм, до якого ми прийшли з аніме, не приводить нових серіалів через «побічні» зв'язки:
+        // кросовер «Lupin III vs Meitantei Conan» — побічна історія і Конана, і Люпена, але це два різні аніме.
+        const crossover =
+          media.id !== id &&
+          !SERIES_FORMATS.has(media.format ?? "") &&
+          EXTRA_TYPES.includes(edge.relationType) &&
+          SERIES_FORMATS.has(edge.node.format ?? "");
+        const follow =
+          !spinOff && !crossover && (CHAIN_TYPES.includes(edge.relationType) || EXTRA_TYPES.includes(edge.relationType));
         if (follow && edge.node.type === "ANIME" && !queued.has(edge.node.id)) {
           queued.add(edge.node.id);
           next.push(edge.node.id);
@@ -776,8 +836,23 @@ const SCHEDULE_PAGES = 4; // до 200 найновіших серій із да�
 
 export async function getEpisodes(id: number): Promise<EpisodesData> {
   "use cache";
-  cacheLife("hours");
+  try {
+    const episodes = await buildEpisodes(id);
+    cacheLife("hours");
+    return episodes;
+  } catch (error) {
+    const stored = (await readStore<EpisodesData>("episodes", [id])).get(id);
+    if (!stored) throw error;
+    cacheLife("minutes");
+    // «Вийшла» рахуємо за датами виходу знову: копія могла бути зроблена до виходу серії.
+    const now = Date.now() / 1000;
+    const episodes = stored.data.episodes.map((e) => ({ ...e, aired: e.aired || (e.airingAt !== null && e.airingAt <= now) }));
+    return { ...stored.data, episodes, airedCount: Math.max(stored.data.airedCount, episodes.filter((e) => e.aired).length) };
+  }
+}
 
+/** Серії з AniList (без кешу — їх бере й нічний робот). */
+export async function buildEpisodes(id: number): Promise<EpisodesData> {
   type Response = {
     Media: {
       episodes: number | null;
@@ -855,8 +930,8 @@ const MY_MEDIA_QUERY = `
   }
 `;
 
-/** До 50 тайтлів за раз (ліміт AniList). */
-async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
+/** До 50 тайтлів за раз (ліміт AniList). Без пам'яті — його бере й нічний робот. */
+export async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
   type Response = {
     Page: { media: (MediaCard & Pick<MyMedia, "status" | "duration" | "genres" | "nextAiringEpisode">)[] };
     recent: { airingSchedules: { mediaId: number; episode: number; airingAt: number }[] };
@@ -877,6 +952,22 @@ async function getMyMediaChunk(ids: number[]): Promise<MyMedia[]> {
   }));
 }
 
+/**
+ * Копія могла бути зроблена до виходу серії: вийшла за розкладом (`nextAiringEpisode`) — рахуємо вийшлою.
+ * Наступні серії розкладу копія не знає, тож більше однієї не додаємо.
+ */
+function refreshAired(media: MyMedia): MyMedia {
+  const next = media.nextAiringEpisode;
+  if (!next || next.airingAt > Date.now() / 1000) return media;
+  return {
+    ...media,
+    airedCount: Math.max(media.airedCount, next.episode),
+    lastAiredAt: next.airingAt,
+    recentAirings: [[next.episode, next.airingAt], ...media.recentAirings],
+    nextAiringEpisode: null,
+  };
+}
+
 /** Серії виходять щотижня, тож кілька хвилин — достатньо свіжо. */
 const MY_MEDIA_TTL = 5 * 60 * 1000;
 const myMediaMemo = shared("myMediaMemo", () => new Map<number, { at: number; media: MyMedia | null }>());
@@ -890,7 +981,16 @@ export async function getMyMedia(ids: number[]): Promise<MyMedia[]> {
   for (let i = 0; i < missing.length; i += 50) chunks.push(missing.slice(i, i + 50));
   await Promise.all(
     chunks.map(async (chunk) => {
-      const media = await getMyMediaChunk(chunk);
+      let media;
+      try {
+        media = await getMyMediaChunk(chunk);
+      } catch (error) {
+        // AniList не відповів — з нашої копії (хай і вчорашньої); немає й там — помилка, як і раніше.
+        const stored = await readStore<MyMedia>("media", chunk);
+        if (stored.size === 0) throw error;
+        for (const [id, hit] of stored) loaded.set(id, refreshAired(hit.data));
+        return;
+      }
       const at = Date.now();
       for (const id of chunk) loaded.set(id, null);
       for (const m of media) loaded.set(m.id, m);
@@ -907,6 +1007,8 @@ export async function getMyMedia(ids: number[]): Promise<MyMedia[]> {
 export async function getFranchises(ids: number[], budgetMs = 8000): Promise<Record<number, Franchise>> {
   const result: Record<number, Franchise> = {};
   const started = Date.now();
+  // Одним махом з нашої копії все, чого немає в пам'яті (два запити до бази на весь список).
+  const stored = await storedFranchises(ids.filter((id) => !fresh(franchiseMemo, id, FRANCHISE_TTL)));
   for (const id of ids) {
     if (result[id]) continue;
     // Довгий список уперше: віддаємо те, що встигли (решта — наступного разу, вже з кешу). Велике аніме
@@ -914,7 +1016,7 @@ export async function getFranchises(ids: number[], budgetMs = 8000): Promise<Rec
     const left = budgetMs - (Date.now() - started);
     if (left <= 0) break;
     try {
-      const loading = getFranchise(id);
+      const loading = getFranchise(id, stored.get(id));
       loading.catch(() => {});
       let timer: ReturnType<typeof setTimeout> | undefined;
       const franchise = await Promise.race([loading, new Promise<null>((r) => (timer = setTimeout(() => r(null), left)))]);
