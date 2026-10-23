@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Link, useI18n, useLocaleRouter } from "@/components/i18n/I18nProvider";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { loadSupabase } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 import { useUser } from "./useUser";
 import styles from "./auth.module.css";
@@ -39,7 +39,7 @@ export function NewPasswordForm() {
     setError("");
     if (password.length < MIN_PASSWORD) return setError(fmt(m.auth.passwordTooShort, { n: MIN_PASSWORD }));
     setBusy(true);
-    const { error } = await getSupabaseBrowser().auth.updateUser({ password });
+    const { error } = await (await loadSupabase()).auth.updateUser({ password });
     setBusy(false);
     if (error) return setError(authErrorMessage(error, m));
     setDone(true);

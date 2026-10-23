@@ -8,7 +8,7 @@ import type { MyMedia } from "@/lib/anilist";
 import { label } from "@/lib/i18n/labels";
 import { LIST_STATUSES, type ListStatus } from "@/lib/lists";
 import { computeStats, type ProfileStats, type StatsEntry, type StatsMark } from "@/lib/stats";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { loadSupabase } from "@/lib/supabase/client";
 import { selectAll } from "@/lib/supabase/selectAll";
 import styles from "./Profile.module.css";
 
@@ -70,9 +70,10 @@ export function ProfileView({ nickname }: { nickname: string }) {
     // Чекаємо, доки стане відомо, чи людина ввійшла: від цього залежить, чи бачить вона свій закритий профіль.
     if (userId === undefined) return;
     let cancelled = false;
-    const supabase = getSupabaseBrowser();
     const done = (data: Loaded) => !cancelled && setLoaded({ key: loadKey, data });
     const load = async () => {
+      // Відкритий профіль дивляться й гості — бібліотеку Supabase вантажимо тут.
+      const supabase = await loadSupabase();
       const { data: rows, error } = await supabase.rpc("profile_by_nickname", { nick: nickname });
       if (error) return done({ kind: "error" });
       const profile = (rows as PublicProfile[] | null)?.[0];

@@ -105,7 +105,8 @@ test("мова з шапки зберігається в профілі й ді�
   try {
     await login(page, "uk");
     await page.locator("header button[aria-haspopup]:visible").first().click();
-    await page.getByRole("option", { name: /Deutsch/ }).click();
+    // Пункт меню мов у шапці (на сторінці налаштувань є ще й список «Мова сайту»).
+    await page.locator("header").getByRole("option", { name: /Deutsch/ }).click();
     await expect(page).toHaveURL(/\/de\/account/);
     await expect.poll(async () => ((await rest(`profiles?select=language&id=eq.${userId}`)) as { language: string }[])[0].language).toBe("de");
 

@@ -4,10 +4,8 @@ import { animeTitle, type Titles } from "@/lib/i18n/title";
 import { useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import { useI18n } from "@/components/i18n/I18nProvider";
-import type { ListStatus } from "@/lib/lists";
+import { myEntries, myHiddenRows } from "@/lib/myLists";
 import type { RecEntry, RecReason, RecommendationsResult } from "@/lib/recommendations";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
-import { selectAll } from "@/lib/supabase/selectAll";
 
 type State =
   | { kind: "checking" }
@@ -20,21 +18,9 @@ type State =
 let memo: { key: string; promise: Promise<RecommendationsResult> } | null = null;
 
 async function load(userId: string): Promise<RecommendationsResult> {
-  const supabase = getSupabaseBrowser();
-  const [entriesRes, hiddenRes] = await Promise.all([
-    // Лише свої: відкриті профілі інших людей теж можна читати.
-    selectAll((from, to) =>
-      supabase.from("list_entries").select("media_id, status, score").eq("user_id", userId).order("media_id").range(from, to),
-    ),
-    selectAll((from, to) =>
-      supabase.from("hidden_media").select("media_id").eq("user_id", userId).order("media_id").range(from, to),
-    ),
-  ]);
-  if (entriesRes.error) throw entriesRes.error;
-  const entries: RecEntry[] = (entriesRes.data as { media_id: number; status: ListStatus; score: number | null }[])
-    .map((e) => ({ id: e.media_id, status: e.status, score: e.score === null ? null : Number(e.score) }))
-    .sort((a, b) => a.id - b.id);
-  const hidden = ((hiddenRes.data ?? []) as { media_id: number }[]).map((h) => h.media_id).sort((a, b) => a - b);
+  const [listed, hiddenRows] = await Promise.all([myEntries(userId), myHiddenRows(userId).catch(() => [])]);
+  const entries: RecEntry[] = listed.map((e) => ({ id: e.media_id, status: e.status, score: e.score })).sort((a, b) => a.id - b.id);
+  const hidden = hiddenRows.map((h) => h.media_id).sort((a, b) => a - b);
   const key = JSON.stringify([userId, entries, hidden]);
   if (!memo || memo.key !== key) {
     const promise = fetch("/api/recommendations", {

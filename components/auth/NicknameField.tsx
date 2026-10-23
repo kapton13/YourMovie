@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { cleanNickname, nicknameProblem } from "@/lib/profile";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { loadSupabase } from "@/lib/supabase/client";
 import styles from "./auth.module.css";
 
 export type NicknameState = "empty" | "invalid" | "checking" | "taken" | "free" | "same";
@@ -47,7 +47,7 @@ export function NicknameField({
     if (instant) return;
     let cancelled = false;
     const timer = window.setTimeout(async () => {
-      const { data, error } = await getSupabaseBrowser().rpc("nickname_available", { nick });
+      const { data, error } = await (await loadSupabase()).rpc("nickname_available", { nick });
       // Якщо перевірка не вдалася — не блокуємо: остаточно перевірить база під час збереження.
       if (!cancelled) setChecked({ nick, free: Boolean(error) || Boolean(data) });
     }, 400);

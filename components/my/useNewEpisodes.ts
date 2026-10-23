@@ -3,17 +3,12 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
 import type { Franchise, MyMedia } from "@/lib/anilist";
-import type { ListStatus } from "@/lib/lists";
 import { countWithNewEpisodes, type AnimeParts } from "@/lib/newEpisodes";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { LISTS_CHANGED, myEntries } from "@/lib/myLists";
 import { selectAll } from "@/lib/supabase/selectAll";
 
-/** Подія «списки змінились» (відмітили серію, змінили статус) — лічильник у шапці перераховується. */
-export const LISTS_CHANGED = "ym:lists-changed";
-
-export function notifyListsChanged() {
-  window.dispatchEvent(new Event(LISTS_CHANGED));
-}
+export { LISTS_CHANGED, notifyListsChanged } from "@/lib/myLists";
 
 /** Скільки пам'ятаємо порахований лічильник (між сторінками й перезавантаженнями вкладки). */
 const CACHE_MS = 10 * 60 * 1000;
@@ -46,17 +41,7 @@ async function inChunks<T>(ids: number[], size: number, load: (chunk: number[]) 
 /** У скількох аніме зі списку вийшли нові серії (правило — `lib/newEpisodes.ts`). */
 async function countNewEpisodes(userId: string): Promise<number> {
   const supabase = getSupabaseBrowser();
-  const { data: entries, error } = await selectAll((from, to) =>
-    supabase
-      .from("list_entries")
-      .select("media_id, status")
-      .eq("user_id", userId)
-      .in("status", ["watching", "completed"])
-      .order("media_id")
-      .range(from, to),
-  );
-  if (error) throw error;
-  const list = (entries ?? []) as { media_id: number; status: ListStatus }[];
+  const list = (await myEntries(userId)).filter((e) => e.status === "watching" || e.status === "completed");
   if (list.length === 0) return 0;
 
   const franchises: Record<number, Franchise> = {};

@@ -2,13 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@/components/auth/useUser";
-import { LISTS_CHANGED } from "@/components/my/useNewEpisodes";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useHydrated } from "@/components/useHydrated";
 import type { Franchise } from "@/lib/anilist";
 import { franchiseRows, quickRows, rowsToComplete, type HiddenRow } from "@/lib/hidden";
+import { LISTS_CHANGED, forgetMyHidden, myEntries, myHiddenRows } from "@/lib/myLists";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
-import { selectAll } from "@/lib/supabase/selectAll";
 import styles from "./Hidden.module.css";
 
 type HiddenContext = {
@@ -77,17 +76,13 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    selectAll((from, to) =>
-      getSupabaseBrowser()
-        .from("hidden_media")
-        .select("media_id, franchise_key")
-        .eq("user_id", user.id)
-        .order("media_id")
-        .range(from, to),
-    ).then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) console.warn(error);
-        setLoaded({ userId: user.id, rows: (data ?? []) as Row[] });
+    myHiddenRows(user.id)
+      .catch((error) => {
+        console.warn(error);
+        return [] as Row[];
+      })
+      .then((rows) => {
+        if (!cancelled) setLoaded({ userId: user.id, rows });
       });
     return () => {
       cancelled = true;
@@ -108,6 +103,7 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
         const fixes = rowsToComplete(new Map(chunk.map((key) => [key, groups.get(key)!])), franchises);
         if (fixes.length === 0) continue;
         const { error } = await getSupabaseBrowser().from("hidden_media").upsert(fixes);
+        forgetMyHidden();
         if (error) {
           console.warn(error);
           continue;
@@ -122,20 +118,13 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
 
   const refreshListed = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await selectAll((from, to) =>
-      getSupabaseBrowser()
-        .from("list_entries")
-        .select("media_id")
-        .eq("user_id", user.id)
-        .neq("status", "planning")
-        .order("media_id")
-        .range(from, to),
-    );
-    if (error) {
+    let keys: number[];
+    try {
+      keys = (await myEntries(user.id)).filter((e) => e.status !== "planning").map((e) => e.media_id);
+    } catch (error) {
       console.warn(error);
       return;
     }
-    const keys = (data as { media_id: number }[]).map((r) => r.media_id);
     const collect = () => new Set(keys.flatMap((k) => franchiseParts.current.get(k) ?? [k]));
     setListed({ userId: user.id, ids: collect() });
     // Сезон 2, фільм чи OVA теж належать аніме зі списку — дізнаємося всі частини. Довгий список уперше
@@ -200,6 +189,7 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
       });
       setToast(null);
       const { error } = await getSupabaseBrowser().from("hidden_media").delete().eq("franchise_key", key);
+      forgetMyHidden();
       if (error) {
         console.error(error);
         setRows((list) => [...list, ...removed]);
@@ -220,6 +210,7 @@ export function HiddenProvider({ children }: { children: React.ReactNode }) {
       // AniList не відповів — зберігаємо хоча б це; решту частин доповнимо, коли сайт відкриють наступного разу.
       const rowsToSave = franchise ? franchiseRows(franchise, [...quickIds]) : quick;
       const { error } = await getSupabaseBrowser().from("hidden_media").upsert(rowsToSave);
+      forgetMyHidden();
       if (error) {
         console.error(error);
         setRows((list) => list.filter((r) => !quickIds.has(r.media_id)));
